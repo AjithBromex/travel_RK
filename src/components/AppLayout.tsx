@@ -22,21 +22,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }}
       />
 
-      <Sidebar
-        collapsed={collapsed}
-        mobileOpen={mobileOpen}
-        onToggleCollapse={() => setCollapsed(!collapsed)}
-        onCloseMobile={() => setMobileOpen(false)}
-      />
+      {/* Mobile drawer */}
+      <div className="lg:hidden">
+        <Sidebar
+          collapsed={collapsed}
+          mobileOpen={mobileOpen}
+          onToggleCollapse={() => setCollapsed(!collapsed)}
+          onCloseMobile={() => setMobileOpen(false)}
+        />
+      </div>
 
       {/* Main content area */}
-      <div
-        className={`transition-all duration-300 ease-in-out ${
-          collapsed ? "lg:ml-[72px]" : "lg:ml-[260px]"
-        }`}
-      >
+      <div className="w-full">
         <Topbar onToggleMobileSidebar={() => setMobileOpen(!mobileOpen)} />
-        <main className="p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-68px)] max-w-7xl mx-auto">
+        <main className="p-3 sm:p-5 lg:p-6 min-h-[calc(100vh-68px)] max-w-[1520px] mx-auto">
           {children}
         </main>
       </div>
