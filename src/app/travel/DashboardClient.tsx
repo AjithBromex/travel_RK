@@ -45,6 +45,7 @@ export default function DashboardClient({
         <div className="flex items-center gap-3">
           <Link
             href="/travel/trips"
+            prefetch={true}
             className="btn btn-primary shadow-sm hover:shadow"
           >
             <PlusCircle className="w-4 h-4" />
@@ -52,6 +53,7 @@ export default function DashboardClient({
           </Link>
           <Link
             href="/travel/payments"
+            prefetch={true}
             className="btn btn-secondary shadow-sm"
           >
             <Wallet className="w-4 h-4" />
@@ -252,6 +254,7 @@ export default function DashboardClient({
                     <td className="text-right">
                       <Link
                         href={`/travel/trips?id=${trip.id}`}
+                        prefetch={true}
                         className="btn btn-secondary py-1 px-2.5 text-xs inline-flex items-center gap-1"
                       >
                         <Eye className="w-3.5 h-3.5" />

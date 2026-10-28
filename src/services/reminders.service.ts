@@ -12,33 +12,36 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
 import type { Reminder, ReminderStatus } from '@/types'
+import { withCache, invalidateCache } from '@/lib/cache'
 
 const COLLECTION = 'reminders'
 
 export async function getReminders(limitCount = 100): Promise<Reminder[]> {
-  try {
-    const q = query(collection(db, COLLECTION), orderBy('dueDate', 'asc'), limit(limitCount))
-    const snap = await getDocs(q)
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Reminder))
-  } catch (err) {
-    console.error("Error fetching reminders:", err)
-    return []
-  }
+  return withCache(
+    `reminders:list:${limitCount}`,
+    async () => {
+      const q = query(collection(db, COLLECTION), orderBy('dueDate', 'asc'), limit(limitCount))
+      const snap = await getDocs(q)
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Reminder))
+    },
+    { fallback: [] }
+  )
 }
 
 export async function getActiveReminders(): Promise<Reminder[]> {
-  try {
-    const q = query(
-      collection(db, COLLECTION),
-      where('status', 'in', ['pending', 'upcoming', 'overdue']),
-      orderBy('dueDate', 'asc')
-    )
-    const snap = await getDocs(q)
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Reminder))
-  } catch (err) {
-    console.error("Error fetching active reminders:", err)
-    return []
-  }
+  return withCache(
+    'reminders:active',
+    async () => {
+      const q = query(
+        collection(db, COLLECTION),
+        where('status', 'in', ['pending', 'upcoming', 'overdue']),
+        orderBy('dueDate', 'asc')
+      )
+      const snap = await getDocs(q)
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Reminder))
+    },
+    { fallback: [] }
+  )
 }
 
 export async function createReminder(data: Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
@@ -48,6 +51,7 @@ export async function createReminder(data: Omit<Reminder, 'id' | 'createdAt' | '
     createdAt: now,
     updatedAt: now,
   })
+  invalidateCache('reminders')
   return docRef.id
 }
 
@@ -56,6 +60,7 @@ export async function updateReminder(id: string, data: Partial<Reminder>): Promi
     ...data,
     updatedAt: new Date().toISOString(),
   })
+  invalidateCache('reminders')
 }
 
 export async function toggleReminderStatus(id: string, currentStatus: ReminderStatus): Promise<void> {
@@ -67,8 +72,10 @@ export async function toggleReminderStatus(id: string, currentStatus: ReminderSt
     updatedAt: new Date().toISOString(),
   }
   await updateDoc(doc(db, COLLECTION, id), updateData)
+  invalidateCache('reminders')
 }
 
 export async function deleteReminder(id: string): Promise<void> {
   await deleteDoc(doc(db, COLLECTION, id))
+  invalidateCache('reminders')
 }

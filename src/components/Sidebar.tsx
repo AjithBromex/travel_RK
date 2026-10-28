@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -42,8 +43,19 @@ export default function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [prevPath, setPrevPath] = useState(pathname);
+
+  // Clear pending state during render when pathname changes
+  if (prevPath !== pathname) {
+    setPrevPath(pathname);
+    setPendingHref(null);
+  }
 
   const isActive = (href: string) => {
+    if (pendingHref) {
+      return pendingHref === href;
+    }
     if (href === "/travel") return pathname === "/travel";
     return pathname.startsWith(href);
   };
@@ -107,7 +119,11 @@ export default function Sidebar({
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={onCloseMobile}
+                prefetch={true}
+                onClick={() => {
+                  setPendingHref(item.href);
+                  onCloseMobile();
+                }}
                 title={collapsed ? item.name : undefined}
                 className={`
                   flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium

@@ -86,6 +86,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
         {/* Notifications */}
         <Link
           href="/travel/reminders"
+          prefetch={true}
           className="relative p-2 rounded-lg hover:bg-slate-100 text-text-secondary transition-colors cursor-pointer"
           title="Notifications"
         >

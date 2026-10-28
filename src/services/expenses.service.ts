@@ -12,40 +12,44 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
 import type { Expense, ExpenseCategory } from '@/types'
+import { withCache, invalidateCache } from '@/lib/cache'
 
 const COLLECTION = 'expenses'
 
 export async function getExpenses(limitCount = 100): Promise<Expense[]> {
-  try {
-    const q = query(collection(db, COLLECTION), orderBy('expenseDate', 'desc'), limit(limitCount))
-    const snap = await getDocs(q)
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense))
-  } catch (err) {
-    console.error("Error fetching expenses:", err)
-    return []
-  }
+  return withCache(
+    `expenses:list:${limitCount}`,
+    async () => {
+      const q = query(collection(db, COLLECTION), orderBy('expenseDate', 'desc'), limit(limitCount))
+      const snap = await getDocs(q)
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense))
+    },
+    { fallback: [] }
+  )
 }
 
 export async function getExpensesByCategory(category: ExpenseCategory): Promise<Expense[]> {
-  try {
-    const q = query(collection(db, COLLECTION), where('category', '==', category), orderBy('expenseDate', 'desc'))
-    const snap = await getDocs(q)
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense))
-  } catch (err) {
-    console.error("Error fetching expenses by category:", err)
-    return []
-  }
+  return withCache(
+    `expenses:category:${category}`,
+    async () => {
+      const q = query(collection(db, COLLECTION), where('category', '==', category), orderBy('expenseDate', 'desc'))
+      const snap = await getDocs(q)
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense))
+    },
+    { fallback: [] }
+  )
 }
 
 export async function getExpensesByTrip(tripId: string): Promise<Expense[]> {
-  try {
-    const q = query(collection(db, COLLECTION), where('tripId', '==', tripId))
-    const snap = await getDocs(q)
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense))
-  } catch (err) {
-    console.error("Error fetching trip expenses:", err)
-    return []
-  }
+  return withCache(
+    `expenses:trip:${tripId}`,
+    async () => {
+      const q = query(collection(db, COLLECTION), where('tripId', '==', tripId))
+      const snap = await getDocs(q)
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense))
+    },
+    { fallback: [] }
+  )
 }
 
 export async function createExpense(data: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
@@ -55,6 +59,8 @@ export async function createExpense(data: Omit<Expense, 'id' | 'createdAt' | 'up
     createdAt: now,
     updatedAt: now,
   })
+  invalidateCache('expenses')
+  invalidateCache('dashboard')
   return docRef.id
 }
 
@@ -63,8 +69,12 @@ export async function updateExpense(id: string, data: Partial<Expense>): Promise
     ...data,
     updatedAt: new Date().toISOString(),
   })
+  invalidateCache('expenses')
+  invalidateCache('dashboard')
 }
 
 export async function deleteExpense(id: string): Promise<void> {
   await deleteDoc(doc(db, COLLECTION, id))
+  invalidateCache('expenses')
+  invalidateCache('dashboard')
 }
