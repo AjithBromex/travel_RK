@@ -8,6 +8,7 @@ const hasCustomConfig = !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAu0i9koilbhdhjk5V6rQ-E1blwnIBhk7M",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "rk-travels-1f4f3.firebaseapp.com",
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || "https://rk-travels-1f4f3-default-rtdb.firebaseio.com",
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "rk-travels-1f4f3",
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "rk-travels-1f4f3.firebasestorage.app",
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "19661413172",
