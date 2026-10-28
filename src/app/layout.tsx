@@ -1,0 +1,44 @@
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+import AuthProvider from "@/components/AuthProvider";
+import DisableNumberScroll from "@/components/DisableNumberScroll";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
+};
+
+export const metadata: Metadata = {
+  title: "RK Travel Hub — RK Enterprise",
+  description: "Professional travel agency, vehicle fleet, trip management, payments, and financial reporting system.",
+};
+
+const plusJakartaSans = Plus_Jakarta_Sans({ 
+  subsets: ["latin"], 
+  variable: "--font-sans",
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const jetbrainsMono = JetBrains_Mono({ 
+  subsets: ["latin"], 
+  variable: "--font-mono",
+  display: "swap",
+  weight: ["400", "500", "600"],
+});
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body className={`${plusJakartaSans.variable} ${jetbrainsMono.variable} min-h-screen bg-page text-text-primary antialiased selection:bg-primary/10 selection:text-primary font-sans`}>
+        <AuthProvider>
+          <DisableNumberScroll />
+          {children}
+        </AuthProvider>
+      </body>
+    </html>
+  );
+}
