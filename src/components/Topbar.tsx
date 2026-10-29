@@ -107,9 +107,9 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
           </Link>
         </div>
 
-        {/* Center: Executive Pill Navigation Bar (Desktop) */}
+        {/* Center: Executive Pill Navigation Bar (Desktop & Large Laptops) */}
         <nav
-          className={`hidden lg:flex items-center gap-1.5 p-1.5 rounded-full border transition-[box-shadow,background-color,border-color] duration-250 ease-out backdrop-blur-[12px] ${
+          className={`hidden lg:flex items-center gap-1 xl:gap-1.5 p-1 xl:p-1.5 rounded-full border transition-[box-shadow,background-color,border-color] duration-250 ease-out backdrop-blur-[12px] shrink-0 ${
             scrolled
               ? "scrolled bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
               : "bg-slate-200/80 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)]"
@@ -122,20 +122,26 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                 key={link.name}
                 href={link.href}
                 prefetch={true}
-                className={`px-4.5 py-2 rounded-full text-sm transition-all ${
+                className={`px-3 xl:px-4.5 py-1.5 xl:py-2 rounded-full text-xs xl:text-sm transition-all whitespace-nowrap ${
                   active
                     ? "bg-[#18181B] text-white font-bold shadow-sm"
                     : "text-slate-700 hover:text-slate-950 hover:bg-white/60 font-semibold"
                 }`}
               >
-                {link.name}
+                {link.name === "Fleet & Vehicles" ? (
+                  <>
+                    <span className="hidden xl:inline">Fleet &amp; </span>Vehicles
+                  </>
+                ) : (
+                  link.name
+                )}
               </Link>
             );
           })}
         </nav>
 
         {/* Right: Search, Notifications & Profile */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           {/* Search Pill */}
           <div className="hidden sm:flex items-center relative">
             <Search className="absolute left-3.5 w-4 h-4 text-slate-400" />
@@ -145,7 +151,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
               placeholder="Search trips, fleet..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-48 lg:w-60 h-9.5 pl-9.5 pr-3.5 border rounded-full text-[13px] text-slate-800 placeholder:text-slate-400 transition-[box-shadow,background-color,border-color] duration-250 ease-out outline-none backdrop-blur-[12px] ${
+              className={`w-36 md:w-44 xl:w-56 h-9 xl:h-9.5 pl-9.5 pr-3.5 border rounded-full text-xs xl:text-[13px] text-slate-800 placeholder:text-slate-400 transition-[box-shadow,background-color,border-color] duration-250 ease-out outline-none backdrop-blur-[12px] ${
                 scrolled
                   ? "bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)] focus:bg-white"
                   : "bg-slate-200/90 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)] focus:bg-white"
@@ -227,6 +233,35 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Mobile & Tablet Pill Navigation Strip (< lg) */}
+      <div className="lg:hidden w-full overflow-x-auto no-scrollbar pt-2.5 pb-0.5 pointer-events-auto">
+        <nav
+          className={`inline-flex items-center gap-1 p-1 rounded-full border transition-[box-shadow,background-color,border-color] duration-250 ease-out backdrop-blur-[12px] whitespace-nowrap ${
+            scrolled
+              ? "scrolled bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
+              : "bg-slate-200/85 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)]"
+          }`}
+        >
+          {navLinks.map((link) => {
+            const active = isLinkActive(link.href);
+            return (
+              <Link
+                key={link.name}
+                href={link.href}
+                prefetch={true}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 ${
+                  active
+                    ? "bg-[#18181B] text-white shadow-xs"
+                    : "text-slate-700 hover:text-slate-950 hover:bg-white/50"
+                }`}
+              >
+                {link.name}
+              </Link>
+            );
+          })}
+        </nav>
       </div>
 
       {/* Mobile search bar */}
