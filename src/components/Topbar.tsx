@@ -37,22 +37,11 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const userName = userProfile?.displayName || user?.displayName || user?.email?.split("@")[0] || "Administrator";
   const userRole = userProfile?.role || "admin";
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
-    };
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -76,13 +65,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
   };
 
   return (
-    <header
-      className={`sticky top-0 z-30 transition-all duration-300 px-3 sm:px-6 lg:px-8 ${
-        scrolled
-          ? "bg-slate-50/80 backdrop-blur-xl border-b border-slate-200/80 shadow-[0_10px_30px_-5px_rgba(15,23,42,0.08)] py-3"
-          : "bg-transparent border-b border-transparent shadow-none pt-4 pb-2.5"
-      }`}
-    >
+    <header className="sticky top-0 z-30 pt-4 pb-2.5 px-3 sm:px-6 lg:px-8 bg-transparent">
       <div className="max-w-[1520px] mx-auto flex items-center justify-between gap-3">
         {/* Left: Brand Capsule */}
         <div className="flex items-center gap-2">
