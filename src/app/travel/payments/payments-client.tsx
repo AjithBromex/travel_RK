@@ -11,26 +11,21 @@ import {
   Check,
   Plus,
   Download,
-  ArrowLeftRight,
   ArrowDownLeft,
   ArrowUpRight,
-  Building2,
   CreditCard,
-  Tag,
-  AlertCircle,
-  FileText,
   CheckCircle2,
-  Send,
-  Zap,
-  ShieldCheck,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
   Calendar,
-  MoreVertical,
-  CheckSquare,
-  Square,
+  Building2,
+  Tag,
+  ArrowRight,
   Bus,
 } from "lucide-react";
-import { formatINR, formatDate } from "@/lib/utils";
+import { formatINR, formatDate, exportToCSV } from "@/lib/utils";
 import type { Payment, Trip, PaymentType, PaymentMode } from "@/types";
 import { createPayment, deletePayment } from "@/services/payments.service";
 
@@ -40,42 +35,44 @@ interface PaymentsClientProps {
 }
 
 export default function PaymentsClient({ initialPayments, trips }: PaymentsClientProps) {
-  const [payments, setPayments] = useState<Payment[]>(initialPayments);
+  const [payments, setPayments] = useState<Payment[]>(initialPayments || []);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [sendReceipt, setSendReceipt] = useState(true);
 
-  // Form State matching screenshot
-  const initialForm = {
-    tripId: trips[0]?.tripNumber || (trips[0] ? `${trips[0].from} ➔ ${trips[0].to}` : "TR-8921"),
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const emptyForm = {
+    tripId: trips[0]?.tripNumber || trips[0]?.id || "",
     type: "customer_received" as PaymentType,
-    paymentDate: new Date().toISOString().split("T")[0],
-    amount: "6800",
+    paymentDate: todayStr,
+    amount: "",
     paymentMode: "upi" as PaymentMode,
-    notes: "UPI Ref #93847281928, Final client settlement",
+    notes: "",
   };
 
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(emptyForm);
 
-  // Quick Settlement handler
-  const handleQuickSettle = (driverName: string, tripRef: string, amount: number) => {
-    setForm({
-      tripId: tripRef,
-      type: "driver_payment",
-      paymentDate: new Date().toISOString().split("T")[0],
-      amount: amount.toString(),
-      paymentMode: "cash",
-      notes: `Driver payout settlement for ${driverName} (${tripRef})`,
-    });
-    // Scroll smoothly to form
-    const formElem = document.getElementById("record-payment-form");
-    if (formElem) {
-      formElem.scrollIntoView({ behavior: "smooth" });
-    }
-  };
+  // Dynamic Real KPIs
+  const totalCollections = payments
+    .filter((p) => p.type === "customer_received")
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const totalDriverPayouts = payments
+    .filter((p) => p.type === "driver_payment")
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const pendingCustomerDues = trips.reduce(
+    (sum, t) => sum + (Number(t.customerBalance) > 0 ? Number(t.customerBalance) : 0),
+    0
+  );
+
+  const selectedTrip = useMemo(() => {
+    return trips.find((t) => (t.tripNumber && t.tripNumber === form.tripId) || t.id === form.tripId);
+  }, [trips, form.tripId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +81,7 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
 
     const amountNum = Number(form.amount);
     if (!amountNum || amountNum <= 0) {
-      setFeedback({ message: "Please enter a valid positive payment amount", type: "error" });
+      setFeedback({ message: "Please enter a valid payment amount", type: "error" });
       setLoading(false);
       return;
     }
@@ -96,7 +93,7 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
         amount: amountNum,
         paymentDate: form.paymentDate,
         paymentMode: form.paymentMode,
-        notes: form.notes,
+        notes: form.notes.trim(),
       });
 
       const newPayment: Payment = {
@@ -106,19 +103,19 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
         amount: amountNum,
         paymentDate: form.paymentDate,
         paymentMode: form.paymentMode,
-        notes: form.notes,
+        notes: form.notes.trim(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
       setPayments((prev) => [newPayment, ...prev]);
       setFeedback({
-        message: sendReceipt
-          ? "Payment recorded & digital receipt dispatched to client!"
-          : "Payment recorded successfully!",
+        message: form.type === "customer_received"
+          ? "Customer receipt recorded successfully!"
+          : "Driver payout voucher recorded successfully!",
         type: "success",
       });
-      setForm(initialForm);
+      setForm(emptyForm);
     } catch (err: unknown) {
       console.error("Save payment error:", err);
       setFeedback({
@@ -131,829 +128,617 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
     }
   };
 
-  // KPIs
-  const totalCount = payments.length;
-  const totalCustomerReceipts = payments
-    .filter((p) => p.type === "customer_received")
-    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  const totalDriverPayments = payments
-    .filter((p) => p.type === "driver_payment")
-    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  const pendingCustomerReceivables = trips.reduce(
-    (sum, t) => sum + (Number(t.customerBalance) > 0 ? Number(t.customerBalance) : 0),
-    0
-  );
+  const handleDelete = async (payment: Payment) => {
+    if (!window.confirm(`Are you sure you want to delete this payment of ${formatINR(payment.amount)}?`)) {
+      return;
+    }
+
+    setDeletingId(payment.id);
+    try {
+      await deletePayment(payment.id);
+      setPayments((prev) => prev.filter((p) => p.id !== payment.id));
+      setFeedback({ message: "Payment entry deleted.", type: "success" });
+    } catch {
+      setFeedback({ message: "Failed to delete payment.", type: "error" });
+    } finally {
+      setDeletingId(null);
+      setTimeout(() => setFeedback(null), 3000);
+    }
+  };
 
   // Filtered Payments
   const filteredPayments = useMemo(() => {
     return payments.filter((p) => {
-      const matchesSearch =
-        p.tripId?.toLowerCase().includes(search.toLowerCase()) ||
-        p.notes?.toLowerCase().includes(search.toLowerCase()) ||
-        p.paymentMode?.toLowerCase().includes(search.toLowerCase());
+      if (search.trim()) {
+        const query = search.toLowerCase();
+        const matches =
+          p.tripId.toLowerCase().includes(query) ||
+          p.paymentMode.toLowerCase().includes(query) ||
+          (p.notes && p.notes.toLowerCase().includes(query));
+        if (!matches) return false;
+      }
 
-      const matchesType =
-        typeFilter === "all" ||
-        (typeFilter === "inflow" && p.type === "customer_received") ||
-        (typeFilter === "outflow" && p.type === "driver_payment");
+      if (typeFilter !== "all" && p.type !== typeFilter) {
+        return false;
+      }
 
-      return matchesSearch && matchesType;
+      return true;
     });
   }, [payments, search, typeFilter]);
 
-  // Benchmark ledger sample entries matching the design
-  const defaultLedgerEntries = [
-    {
-      id: "sample-1",
-      iconType: "inflow",
-      amount: "₹6,800",
-      tag: "Client Inflow",
-      tagColor: "bg-blue-50 text-blue-700",
-      tripRef: "Trip #TR-8921",
-      title: "Apex Logistics (Pune ➔ Mumbai BKC)",
-      details: "UPI Ref: 99482103 • Today, 11:20 AM",
-      status: "Verified & Cleared",
-      statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      actionText: "View Voucher",
-    },
-    {
-      id: "sample-2",
-      iconType: "outflow",
-      amount: "₹1,800",
-      tag: "Driver Payout",
-      tagColor: "bg-slate-100 text-slate-700",
-      tripRef: "Trip #TR-8922",
-      title: "Vikram Singh (Mumbai Airport Trip • Fuel & Batta Advance)",
-      details: "Cash Voucher #CV-84 • Today, 09:45 AM",
-      status: "Disbursed",
-      statusColor: "bg-slate-100 text-slate-700 border-slate-200",
-      actionText: "Voucher PDF",
-    },
-    {
-      id: "sample-3",
-      iconType: "corporate",
-      amount: "₹14,500",
-      tag: "Corporate Settlement",
-      tagColor: "bg-blue-50 text-blue-700",
-      tripRef: "Trip #TR-8918",
-      title: "Reliance Tech Parks Monthly Staff Shuttle Contract",
-      details: "HDFC Bank IMPS // 44910294 • Yesterday, 04:30 PM",
-      status: "Settled",
-      statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      actionText: "Invoice #1042",
-    },
-    {
-      id: "sample-4",
-      iconType: "fastag",
-      amount: "₹3,400",
-      tag: "FASTag & Fuel Float",
-      tagColor: "bg-slate-100 text-slate-700",
-      tripRef: "Fleet Unit MH-12-RN-4402",
-      title: "NH48 Expressway Auto-Topup via Fleet Corporate Card",
-      details: "NPCI FASTag Gateway #88701 • 26 Oct, 08:15 PM",
-      status: "Reconciled",
-      statusColor: "bg-slate-100 text-slate-700 border-slate-200",
-      actionText: "View Slip",
-    },
-    {
-      id: "sample-5",
-      iconType: "pending",
-      amount: "₹9,800",
-      tag: "Pending Collection",
-      tagColor: "bg-amber-100 text-amber-800",
-      tripRef: "Trip #TR-8919",
-      title: "Kavita Sharma (Pune ➔ Alibaug 3-Day Sightseeing Package)",
-      details: "Payment Due by 27 Oct (1 day overdue)",
-      isOverdue: true,
-      status: "Awaiting Balance",
-      statusColor: "bg-rose-50 text-rose-700 border-rose-200",
-      actionText: "Send Link",
-      isActionBtn: true,
-    },
-  ];
+  // Pagination
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredPayments.length / pageSize));
+  const paginatedPayments = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredPayments.slice(startIndex, startIndex + pageSize);
+  }, [filteredPayments, currentPage]);
+
+  const handleExportCSV = () => {
+    if (filteredPayments.length === 0) {
+      alert("No payments to export.");
+      return;
+    }
+    const data = filteredPayments.map((p) => ({
+      "Payment ID": p.id,
+      "Trip ID": p.tripId,
+      Type: p.type === "customer_received" ? "Customer Inflow" : "Driver Outflow",
+      Amount: p.amount,
+      Date: p.paymentDate,
+      Mode: p.paymentMode.toUpperCase(),
+      Notes: p.notes || "-",
+    }));
+    exportToCSV(data, `Payments_Ledger_${todayStr}`);
+  };
 
   return (
-    <div className="space-y-6 pb-6">
-      {/* ─── PAGE SUB-HEADER ─── */}
+    <div className="space-y-6 pb-12">
+      {/* ─── 1. Header & Actions ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md tracking-wider uppercase">
-              FINANCE &amp; ACCOUNTS LEDGER
+            <span className="text-[11px] font-bold text-blue-600 tracking-wider uppercase">
+              TREASURY &amp; LEDGER
             </span>
-            <span className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Real-time Sync Active
+            <span className="text-slate-400">•</span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              {payments.length} Recorded Entries
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 leading-tight font-display">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 leading-tight">
             Payment Management
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5 max-w-2xl">
-            Manage customer receipts, driver disbursements, FASTag reconciliations, and daily cash-in-hand vouchers.
+            Record customer collections, driver settlements, advance vouchers, and manage outstanding balances.
           </p>
         </div>
 
-        {/* Action Buttons Top Right */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
             type="button"
-            onClick={() => alert("Exporting current payment ledger to CSV...")}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-slate-200/80 hover:bg-slate-300/80 text-slate-800 text-xs font-semibold shadow-xs transition-all"
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-colors cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-slate-600" />
-            <span>Export Ledger</span>
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export CSV</span>
           </button>
-          <button
-            type="button"
-            onClick={() => alert("Reconciling FASTag and bank statement logs...")}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-slate-200/80 hover:bg-slate-300/80 text-slate-800 text-xs font-semibold shadow-xs transition-all"
+          <Link
+            href="/travel/cashbook"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-colors"
           >
-            <ArrowLeftRight className="w-3.5 h-3.5 text-slate-600" />
-            <span>Quick Reconciliation</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const el = document.getElementById("record-payment-form");
-              if (el) el.scrollIntoView({ behavior: "smooth" });
-            }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#18181B] hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-all"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Record Payment</span>
-          </button>
+            <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Cash Book</span>
+          </Link>
         </div>
       </div>
 
-      {/* ─── 4 KPI CARDS ROW ─── */}
+      {/* Feedback Toast */}
+      {feedback && (
+        <div
+          className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-xs ${
+            feedback.type === "success"
+              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+              : "bg-rose-50 text-rose-800 border border-rose-200"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{feedback.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="text-slate-400 hover:text-slate-600 text-xs font-bold px-2 py-0.5"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* ─── 2. Real KPI Cards ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* 1. Total Payments */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)] flex flex-col justify-between hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.06)] transition-all">
+        {/* TOTAL COLLECTION */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              TOTAL PAYMENTS
+              Total Inflow
             </span>
-            <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
-              <Receipt className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="my-2 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
-              {totalCount || 342}
-            </span>
-            <span className="bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full text-[10px]">
-              +18 today
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-400">All transactions logged this month</p>
-        </div>
-
-        {/* 2. Customer Receipts */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)] flex flex-col justify-between hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.06)] transition-all">
-          <div className="flex items-start justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              CUSTOMER RECEIPTS
-            </span>
-            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <ArrowDownLeft className="w-4 h-4" />
             </div>
           </div>
           <div className="my-2">
-            <span className="text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
-              {totalCustomerReceipts ? formatINR(totalCustomerReceipts) : "₹8,45,200"}
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
+              {formatINR(totalCollections)}
             </span>
           </div>
-          <div className="flex items-center justify-between text-xs pt-0.5">
-            <span className="text-[11px] text-slate-400">Inflows from clients &amp; advances</span>
-            <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full text-[10px] inline-flex items-center gap-0.5">
-              <span>↑</span> +14.2%
+          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500">Customer receipts</span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+              Received
             </span>
           </div>
         </div>
 
-        {/* 3. Driver Outflows */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)] flex flex-col justify-between hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.06)] transition-all">
+        {/* DRIVER PAYOUTS */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              DRIVER OUTFLOWS
+              Driver Payouts
             </span>
-            <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
-              <Wallet className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <ArrowUpRight className="w-4 h-4" />
             </div>
           </div>
           <div className="my-2">
-            <span className="text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
-              {totalDriverPayments ? formatINR(totalDriverPayments) : "₹3,12,800"}
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
+              {formatINR(totalDriverPayouts)}
             </span>
           </div>
-          <div className="flex items-center justify-between text-xs pt-0.5">
-            <span className="text-[11px] text-slate-400">Batta, toll &amp; completed trips</span>
-            <span className="bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full text-[10px]">
-              48 Drivers Paid
+          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500">Disbursed to drivers</span>
+            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+              Disbursed
             </span>
           </div>
         </div>
 
-        {/* 4. Pending Receivables */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)] flex flex-col justify-between hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.06)] transition-all">
+        {/* PENDING DUES */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              PENDING RECEIVABLES
+              Pending Receivables
             </span>
-            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+            <div
+              className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                pendingCustomerDues > 0 ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"
+              }`}
+            >
               <Clock className="w-4 h-4" />
             </div>
           </div>
           <div className="my-2">
-            <span className="text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
-              {pendingCustomerReceivables ? formatINR(pendingCustomerReceivables) : "₹1,24,650"}
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
+              {formatINR(pendingCustomerDues)}
             </span>
           </div>
-          <div className="flex items-center justify-between text-xs pt-0.5">
-            <span className="text-[11px] text-slate-400">Uncollected corporate balances</span>
-            <span className="bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-full text-[10px]">
-              14 Invoices Due
+          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500">Uncollected fares</span>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                pendingCustomerDues > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700"
+              }`}
+            >
+              {pendingCustomerDues > 0 ? "Action needed" : "All cleared"}
+            </span>
+          </div>
+        </div>
+
+        {/* NET CASH BALANCE */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Net Treasury Margin
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="my-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
+              {formatINR(totalCollections - totalDriverPayouts)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500">Collections - Disbursals</span>
+            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
+              Net Balance
             </span>
           </div>
         </div>
       </div>
 
-      {/* ─── MAIN 2-COLUMN SECTION ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* ════ LEFT COLUMN: Record Payment Form + Quick Settlements ════ */}
+      {/* ─── 3. Main 2-Column Content ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT COLUMN: Record Payment Form (5 Cols) */}
         <div className="lg:col-span-5 space-y-4">
-          {/* Record Payment Form Card */}
-          <div
-            id="record-payment-form"
-            className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-sm space-y-4"
-          >
-            {/* Header */}
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-500/20">
-                  <CreditCard className="w-5 h-5" />
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <CreditCard className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900 leading-tight">Record Payment</h2>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Log customer collection or driver payout</p>
+                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">Record Payment Voucher</h2>
+                  <p className="text-[11px] text-slate-400">
+                    Log customer receipt, advance, or driver payout
+                  </p>
                 </div>
               </div>
-              <span className="bg-slate-100 text-slate-500 font-mono text-[10px] font-semibold px-2 py-0.5 rounded-md">
-                Draft #PV-208
-              </span>
             </div>
 
-            {feedback && (
-              <div
-                className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
-                  feedback.type === "success"
-                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                    : "bg-rose-50 text-rose-800 border border-rose-200"
-                }`}
-              >
-                {feedback.type === "success" && <Check className="w-4 h-4" />}
-                {feedback.message}
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-3.5">
-              {/* Field 1: Associated Trip */}
+              {/* Row 1: Payment Direction / Type */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Select Associated Trip <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    required
-                    value={form.tripId}
-                    onChange={(e) => setForm({ ...form, tripId: e.target.value })}
-                    className="w-full h-10 px-3 pr-8 rounded-xl bg-slate-100/80 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none transition-all"
-                  >
-                    <option value="TR-8921">TR-8921 • Pune ➔ Mumbai (Rajesh Kumar)</option>
-                    <option value="TR-8922">TR-8922 • Mumbai Airport Trip (Vikram Singh)</option>
-                    <option value="TR-8918">TR-8918 • Reliance Tech Parks Staff (Anil Deshmukh)</option>
-                    <option value="TR-8919">TR-8919 • Pune ➔ Alibaug Sightseeing (Kavita Sharma)</option>
-                    {trips.map((t) => (
-                      <option key={t.id} value={t.tripNumber || t.id}>
-                        {t.tripNumber || "Trip"} • {t.from} ➔ {t.to} ({t.customerName})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Field 2: Payment Type (Segmented Pill Toggle) */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
                   Payment Type <span className="text-rose-500">*</span>
                 </label>
-                <div className="bg-slate-100 p-1 rounded-full flex items-center gap-1 border border-slate-200/80">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, type: "customer_received" })}
-                    className={`flex-1 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
                       form.type === "customer_received"
-                        ? "bg-[#18181B] text-white shadow-xs"
-                        : "text-slate-600 hover:text-slate-900"
+                        ? "bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
                     }`}
                   >
-                    Customer Inflow
+                    <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Customer Inflow</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, type: "driver_payment" })}
-                    className={`flex-1 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
                       form.type === "driver_payment"
-                        ? "bg-[#18181B] text-white shadow-xs"
-                        : "text-slate-600 hover:text-slate-900"
+                        ? "bg-blue-50 text-blue-800 border-blue-300 shadow-2xs"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
                     }`}
                   >
-                    Driver Outflow
+                    <ArrowUpRight className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Driver Payout</span>
                   </button>
                 </div>
               </div>
 
-              {/* Field 3 & 4: Date & Amount */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Row 2: Linked Trip Selection */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                  Linked Trip Booking
+                </label>
+                <div className="relative">
+                  <select
+                    value={form.tripId}
+                    onChange={(e) => setForm({ ...form, tripId: e.target.value })}
+                    className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none cursor-pointer truncate"
+                  >
+                    <option value="">General / Unlinked Payment</option>
+                    {trips.map((t) => (
+                      <option key={t.id} value={t.tripNumber || t.id}>
+                        #{t.tripNumber || t.id.slice(0, 6)} • {t.customerName} ({t.from} ➔ {t.to})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+                {selectedTrip && (
+                  <p className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
+                    <span>Fare: {formatINR(selectedTrip.totalFare)}</span>
+                    <span className="font-semibold text-amber-700">
+                      Balance Due: {formatINR(selectedTrip.customerBalance)}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {/* Row 3: Amount & Payment Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Date <span className="text-rose-500">*</span>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Amount (₹) <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                    <span className="text-slate-400 font-bold mr-1 text-xs">₹</span>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      placeholder="e.g. 5000"
+                      value={form.amount}
+                      onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                      className="w-full bg-transparent text-xs font-bold text-slate-900 outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Payment Date <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="date"
                     required
                     value={form.paymentDate}
                     onChange={(e) => setForm({ ...form, paymentDate: e.target.value })}
-                    className="w-full h-10 px-3 rounded-xl bg-slate-100/80 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
                   />
                 </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Amount (₹) <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-500">₹</span>
-                    <input
-                      type="number"
-                      required
-                      placeholder="6800"
-                      value={form.amount}
-                      onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                      className="w-full h-10 pl-7 pr-3 rounded-xl bg-slate-100/80 border border-slate-200 text-xs font-bold font-mono-nums text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                    />
-                  </div>
-                </div>
               </div>
 
-              {/* Field 5: Payment Mode */}
+              {/* Row 4: Mode of Payment */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Payment Mode <span className="text-rose-500">*</span>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                  Payment Mode
                 </label>
-                <div className="relative">
-                  <select
-                    value={form.paymentMode}
-                    onChange={(e) => setForm({ ...form, paymentMode: e.target.value as PaymentMode })}
-                    className="w-full h-10 px-3 pr-8 rounded-xl bg-slate-100/80 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none transition-all"
-                  >
-                    <option value="upi">UPI (GPay / PhonePe / Paytm QR)</option>
-                    <option value="cash">Cash In-Hand (Desk Receipt)</option>
-                    <option value="bank_transfer">Bank Transfer (IMPS / NEFT / RTGS)</option>
-                    <option value="card">Corporate Card / Fleet Float</option>
-                    <option value="cheque">Bank Cheque / DD</option>
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                <div className="grid grid-cols-4 gap-2">
+                  {(["upi", "cash", "bank_transfer", "card"] as PaymentMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setForm({ ...form, paymentMode: mode })}
+                      className={`py-1.5 px-2 rounded-xl text-xs font-semibold capitalize border transition-all ${
+                        form.paymentMode === mode
+                          ? "bg-slate-900 text-white border-slate-900 shadow-2xs"
+                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      {mode === "bank_transfer" ? "Bank" : mode.toUpperCase()}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Field 6: Notes / Reference ID */}
+              {/* Row 5: Notes & References */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Notes / Reference ID
+                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                  Voucher Notes / Reference Number
                 </label>
                 <input
                   type="text"
-                  placeholder="UPI Ref #93847281928, Final client settlement"
+                  placeholder="e.g. UPI Ref #98721345, Advance payment received"
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className="w-full h-10 px-3 rounded-xl bg-slate-100/80 border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
               </div>
 
-              {/* Checkbox: Instant SMS/WhatsApp receipt */}
-              <div
-                className="flex items-center gap-2 cursor-pointer select-none pt-1"
-                onClick={() => setSendReceipt(!sendReceipt)}
-              >
-                <div
-                  className={`w-4 h-4 rounded-md flex items-center justify-center transition-all ${
-                    sendReceipt ? "bg-[#2563EB] text-white" : "border border-slate-300 bg-white"
-                  }`}
-                >
-                  {sendReceipt && <Check className="w-3 h-3 stroke-[3]" />}
-                </div>
-                <span className="text-[11px] text-slate-600 font-medium">
-                  Send instant SMS &amp; WhatsApp Receipt to Client &amp; Driver
-                </span>
-              </div>
-
-              {/* Submit & Draft Buttons */}
-              <div className="pt-2 space-y-2">
+              {/* Submit Action */}
+              <div className="pt-1">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 rounded-full bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-sm shadow-blue-500/25 transition-all cursor-pointer"
+                  className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs shadow-emerald-500/20 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{loading ? "Recording Entry..." : "Record Payment Entry"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => alert("Voucher saved as draft #PV-208")}
-                  className="w-full py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs transition-colors cursor-pointer"
-                >
-                  Save Draft Voucher
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{loading ? "Recording..." : "Record Payment Voucher"}</span>
                 </button>
               </div>
             </form>
           </div>
-
-          {/* Driver Quick Settlements Card */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-3.5">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-blue-600" />
-                <h2 className="text-sm font-bold text-slate-900">Driver Quick Settlements</h2>
-              </div>
-              <span className="text-[11px] font-semibold text-slate-400">3 Pending</span>
-            </div>
-
-            <div className="space-y-2.5">
-              {/* Driver 1 */}
-              <div className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50 rounded-xl transition-colors">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 font-bold text-xs text-slate-700 flex items-center justify-center shrink-0">
-                    RK
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 leading-tight">Rajesh Kumar</p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">TR-8921 • Toll &amp; Batta: ₹1,450</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleQuickSettle("Rajesh Kumar", "TR-8921", 1450)}
-                  className="px-3.5 py-1 rounded-full bg-[#2563EB] hover:bg-blue-700 text-white text-[11px] font-semibold shadow-xs shrink-0 transition-all cursor-pointer"
-                >
-                  Settle Now
-                </button>
-              </div>
-
-              {/* Driver 2 */}
-              <div className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50 rounded-xl transition-colors">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 font-bold text-xs text-slate-700 flex items-center justify-center shrink-0">
-                    VS
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 leading-tight">Vikram Singh</p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">TR-8922 • Fuel Outlay: ₹2,100</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleQuickSettle("Vikram Singh", "TR-8922", 2100)}
-                  className="px-3.5 py-1 rounded-full bg-[#2563EB] hover:bg-blue-700 text-white text-[11px] font-semibold shadow-xs shrink-0 transition-all cursor-pointer"
-                >
-                  Settle Now
-                </button>
-              </div>
-
-              {/* Driver 3 */}
-              <div className="flex items-center justify-between gap-3 p-1.5 hover:bg-slate-50 rounded-xl transition-colors">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 font-bold text-xs text-slate-700 flex items-center justify-center shrink-0">
-                    AD
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 leading-tight">Anil Deshmukh</p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">TR-8918 • Trip Balance: ₹950</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleQuickSettle("Anil Deshmukh", "TR-8918", 950)}
-                  className="px-3.5 py-1 rounded-full bg-[#2563EB] hover:bg-blue-700 text-white text-[11px] font-semibold shadow-xs shrink-0 transition-all cursor-pointer"
-                >
-                  Settle Now
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* ════ RIGHT COLUMN: Payment Ledger Feed ════ */}
-        <div className="lg:col-span-7 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-sm space-y-4">
-          {/* Header & Filter Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
-            <div>
+        {/* RIGHT COLUMN: Payments Ledger Feed (7 Cols) */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
+            {/* Header with Search and Filter */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-slate-900 tracking-tight">Payment Ledger Feed</h2>
-                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-              </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Showing latest 5 of {Math.max(342, totalCount)} entries logged
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {/* Search filter pill */}
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search ref, trip #, client..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-48 sm:w-56 h-8 pl-8 pr-3 rounded-full bg-slate-100 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                />
+                <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                <h2 className="text-sm font-bold text-slate-900 tracking-tight">Payment Ledger</h2>
+                <span className="text-xs text-slate-400 font-medium ml-1">
+                  ({filteredPayments.length} entries)
+                </span>
               </div>
 
-              {/* Type Filter dropdown */}
-              <div className="relative">
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="h-8 pl-3 pr-7 rounded-full bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700 appearance-none focus:outline-none cursor-pointer"
-                >
-                  <option value="all">All Types</option>
-                  <option value="inflow">Client Inflows</option>
-                  <option value="outflow">Driver Payouts</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-
-          {/* Ledger Feed Rows */}
-          <div className="space-y-3">
-            {/* Real Firestore items recorded */}
-            {filteredPayments.slice(0, 3).map((payment) => (
-              <div
-                key={payment.id}
-                className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-sm transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-              >
-                <div className="flex items-start gap-3 min-w-0">
-                  <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                      payment.type === "customer_received"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    {payment.type === "customer_received" ? (
-                      <ArrowDownLeft className="w-4 h-4" />
-                    ) : (
-                      <ArrowUpRight className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-extrabold text-slate-900 font-mono-nums">
-                        {formatINR(payment.amount)}
-                      </span>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          payment.type === "customer_received"
-                            ? "bg-blue-50 text-blue-700"
-                            : "bg-slate-100 text-slate-700"
-                        }`}
-                      >
-                        {payment.type === "customer_received" ? "Client Inflow" : "Driver Payout"}
-                      </span>
-                      <span className="text-[11px] text-slate-400">Trip #{payment.tripId}</span>
-                    </div>
-                    <p className="text-xs font-semibold text-slate-900 mt-1 truncate">
-                      {payment.notes || "Trip payment settlement"}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Mode: {payment.paymentMode.toUpperCase()} • {formatDate(payment.paymentDate)}
-                    </p>
-                  </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search trip, mode..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-36 sm:w-44 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
                 </div>
 
-                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0">
-                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    • Verified &amp; Cleared
-                  </span>
-                  <span className="text-[10px] text-slate-400 hover:text-slate-700 mt-1 cursor-pointer">
-                    View Voucher
-                  </span>
+                {/* Type Filter */}
+                <div className="relative">
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => {
+                      setTypeFilter(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="appearance-none bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-7 py-1.5 text-xs font-medium text-slate-700 outline-none cursor-pointer"
+                  >
+                    <option value="all">All Transactions</option>
+                    <option value="customer_received">Customer Inflows</option>
+                    <option value="driver_payment">Driver Payouts</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
-            ))}
+            </div>
 
-            {/* Benchmark Designed Ledger Rows from Screenshot */}
-            {defaultLedgerEntries.map((entry) => (
-              <div
-                key={entry.id}
-                className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-sm transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-              >
-                <div className="flex items-start gap-3 min-w-0">
-                  <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                      entry.iconType === "inflow"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : entry.iconType === "corporate"
-                        ? "bg-blue-50 text-blue-600"
-                        : entry.iconType === "pending"
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-slate-100 text-slate-700"
-                    }`}
+            {/* List of Payments */}
+            {filteredPayments.length === 0 ? (
+              <div className="p-12 text-center flex flex-col items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                  <Wallet className="w-6 h-6" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  {search ? "No matching payment vouchers found" : "No payment records yet"}
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mt-1 mb-4">
+                  {search
+                    ? "Try adjusting your search query or filter."
+                    : "Record your first customer receipt or driver payout using the form on the left."}
+                </p>
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch("");
+                      setTypeFilter("all");
+                    }}
+                    className="text-xs font-semibold text-blue-600 hover:underline"
                   >
-                    {entry.iconType === "inflow" && <ArrowDownLeft className="w-4 h-4" />}
-                    {entry.iconType === "outflow" && <ArrowUpRight className="w-4 h-4" />}
-                    {entry.iconType === "corporate" && <Building2 className="w-4 h-4" />}
-                    {entry.iconType === "fastag" && <Tag className="w-4 h-4" />}
-                    {entry.iconType === "pending" && <Clock className="w-4 h-4" />}
-                  </div>
+                    Clear search filter
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {paginatedPayments.map((payment) => {
+                  const isInflow = payment.type === "customer_received";
 
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-extrabold text-slate-900 font-mono-nums">
-                        {entry.amount}
-                      </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${entry.tagColor}`}>
-                        {entry.tag}
-                      </span>
-                      <span className="text-[11px] text-slate-400">{entry.tripRef}</span>
+                  return (
+                    <div
+                      key={payment.id}
+                      className="bg-slate-50/70 hover:bg-white p-4 rounded-2xl border border-slate-200/80 hover:border-slate-300 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                            isInflow
+                              ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
+                              : "bg-blue-50 text-blue-600 border border-blue-200/60"
+                          }`}
+                        >
+                          {isInflow ? (
+                            <ArrowDownLeft className="w-4 h-4" />
+                          ) : (
+                            <ArrowUpRight className="w-4 h-4" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                isInflow
+                                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                  : "bg-blue-50 text-blue-800 border-blue-200"
+                              }`}
+                            >
+                              {isInflow ? "Customer Receipt" : "Driver Payout"}
+                            </span>
+                            {payment.tripId && (
+                              <span className="text-[11px] font-semibold text-slate-700 font-mono">
+                                #{payment.tripId}
+                              </span>
+                            )}
+                            <span className="text-[11px] text-slate-400">
+                              {formatDate(payment.paymentDate)}
+                            </span>
+                          </div>
+
+                          <div className="text-xs font-bold text-slate-900 mt-1 truncate">
+                            {payment.notes || (isInflow ? "Trip Fare Settlement" : "Driver Dispatch Settlement")}
+                          </div>
+
+                          <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
+                            <span className="bg-slate-100 text-slate-700 font-bold px-1.5 py-0.2 rounded text-[10px] uppercase">
+                              {payment.paymentMode}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Amount & Delete */}
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                        <div className="text-left sm:text-right">
+                          <span
+                            className={`text-base font-extrabold font-mono-nums block ${
+                              isInflow ? "text-emerald-700" : "text-blue-700"
+                            }`}
+                          >
+                            {isInflow ? "+" : "-"}{formatINR(payment.amount)}
+                          </span>
+                          <span className="text-[10px] text-emerald-600 font-semibold">
+                            Verified
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={deletingId === payment.id}
+                          onClick={() => handleDelete(payment)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                          title="Delete Payment"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-xs font-semibold text-slate-900 mt-1 truncate">{entry.title}</p>
-                    <p
-                      className={`text-[10px] mt-0.5 ${
-                        entry.isOverdue ? "text-rose-600 font-semibold" : "text-slate-400"
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span>
+                  Showing {(currentPage - 1) * pageSize + 1} to{" "}
+                  {Math.min(currentPage * pageSize, filteredPayments.length)} of {filteredPayments.length} records
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center transition-colors ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "border border-slate-200 text-slate-700 hover:bg-slate-50"
                       }`}
                     >
-                      {entry.details}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0">
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${entry.statusColor}`}
-                  >
-                    {entry.status}
-                  </span>
-                  {entry.isActionBtn ? (
-                    <button
-                      type="button"
-                      onClick={() => alert("Payment link dispatched to client via SMS & WhatsApp")}
-                      className="mt-1 px-3 py-1 rounded-full bg-[#2563EB] hover:bg-blue-700 text-white text-[10px] font-bold shadow-2xs flex items-center gap-1 cursor-pointer transition-all"
-                    >
-                      <Send className="w-3 h-3" />
-                      <span>{entry.actionText}</span>
+                      {page}
                     </button>
-                  ) : (
-                    <span className="text-[10px] text-slate-400 hover:text-slate-700 mt-1 cursor-pointer flex items-center gap-1">
-                      <FileText className="w-3 h-3" />
-                      <span>{entry.actionText}</span>
-                    </span>
-                  )}
+                  ))}
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* Pagination Strip */}
-          <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs text-slate-500">
-            <span>Page 1 of 69 • 342 Total Ledger Records</span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 text-xs"
-              >
-                &lt;
-              </button>
-              <button
-                type="button"
-                className="w-7 h-7 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-xs font-bold shadow-xs"
-              >
-                1
-              </button>
-              <button
-                type="button"
-                className="w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-700 text-xs"
-              >
-                2
-              </button>
-              <button
-                type="button"
-                className="w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-700 text-xs"
-              >
-                3
-              </button>
-              <span className="px-1 text-slate-400">...</span>
-              <button
-                type="button"
-                className="w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-700 text-xs"
-              >
-                69
-              </button>
-              <button
-                type="button"
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 text-xs"
-              >
-                &gt;
-              </button>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ─── BOTTOM 3 FLOATING FINANCIAL PILL CARDS ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-        {/* Card 1: Daily Cash-In-Hand */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)] flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-              DAILY CASH-IN-HAND
-            </p>
-            <p className="text-2xl font-extrabold text-slate-900 font-mono-nums tracking-tight mt-1">
-              ₹24,800
-            </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Verified at Pune Central Cash Desk</p>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-            <Wallet className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Card 2: FASTag Fleet Pool */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)] flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-              FASTAG FLEET POOL
-            </p>
-            <p className="text-2xl font-extrabold text-slate-900 font-mono-nums tracking-tight mt-1">
-              ₹18,450
-            </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Auto-recharge trigger configured @ ₹5,000</p>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-            <Tag className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Card 3: GST Collected */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)] flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-700" />
-              GST COLLECTED (18% SLAB)
-            </p>
-            <p className="text-2xl font-extrabold text-slate-900 font-mono-nums tracking-tight mt-1">
-              ₹1,52,130
-            </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Tax Liability for October 2026</p>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-            <FileText className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
-
-      {/* ─── AUDIT & WEBHOOK STRIP ─── */}
-      <div className="p-3 bg-white/60 backdrop-blur-xs rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500">
+      {/* ─── 4. Persistent Footer ─── */}
+      <footer className="pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+        <p>© RK Travel Hub • Financial Settlement &amp; Treasury Ledger</p>
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-amber-500" />
-          <span>Payment Gateway Webhooks: 99.98% Success Rate (UPI / IMPS / Cash)</span>
-        </div>
-        <div>
-          <span>GSTIN: 27AABCR8921P1ZT</span>
-          <span className="mx-2">•</span>
-          <span>End of Day Ledger Audit: In Sync</span>
-        </div>
-      </div>
-
-      {/* ─── FOOTER ─── */}
-      <footer className="pt-6 pb-2 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px]">
-            <Bus className="w-3 h-3" />
-          </div>
-          <span className="font-semibold text-slate-700">RK Travel Hub</span>
-          <span>© 2025 RK Travel Logistics Inc.</span>
-        </div>
-        <div className="flex items-center gap-4 text-slate-500">
-          <span className="hover:text-slate-800 cursor-pointer">Privacy Policy</span>
-          <span className="hover:text-slate-800 cursor-pointer">Terms of Service</span>
-          <span className="hover:text-slate-800 cursor-pointer">Support Desk</span>
-          <span className="hover:text-slate-800 cursor-pointer">API Status</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span className="font-medium text-slate-600">Accounting ledger in sync</span>
         </div>
       </footer>
     </div>

@@ -443,7 +443,13 @@ export default function SettingsClient({
               {/* Status indicators footer */}
               <div className="pt-2 border-t border-slate-200/60 flex items-center gap-4 text-[11px] text-slate-500">
                 <span className="flex items-center gap-1.5">
-                  <Database className="w-3.5 h-3.5 text-slate-400" /> 4,812 Documents
+                  <Database className="w-3.5 h-3.5 text-slate-400" />{" "}
+                  {(trips?.length || 0) +
+                    (vehicles?.length || 0) +
+                    (payments?.length || 0) +
+                    (expenses?.length || 0) +
+                    (reminders?.length || 0)}{" "}
+                  Documents
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Lock className="w-3.5 h-3.5 text-slate-400" /> AES-256 GCM

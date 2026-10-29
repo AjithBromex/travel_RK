@@ -18,22 +18,16 @@ import {
   Phone,
   User,
   MapPin,
-  Gauge,
-  Calculator,
-  Play,
-  Link as LinkIcon,
-  MessageSquare,
-  Edit,
-  Printer,
-  FileText,
-  Star,
-  Check,
-  RotateCcw,
-  GitBranch,
   X,
-  Coins,
+  Edit2,
+  Trash2,
+  ArrowRight,
+  Check,
+  AlertCircle,
+  LayoutGrid,
+  List,
 } from "lucide-react";
-import { formatINR, formatDate, calculateTripFare, exportToCSV } from "@/lib/utils";
+import { formatINR, formatDateShort, exportToCSV, calculateTripFare } from "@/lib/utils";
 import type { Trip, Vehicle, TripStatus } from "@/types";
 import { createTrip, updateTrip, deleteTrip } from "@/services/trips.service";
 
@@ -42,181 +36,148 @@ interface TripsClientProps {
   vehicles: Vehicle[];
 }
 
-interface DispatchFeedItem {
-  id: string;
-  tripCode: string;
-  statusBadge: {
-    label: string;
-    type: "en_route" | "confirmed" | "payment_due" | "fulfilled";
-  };
-  timeSubtext: string;
-  grossAmount: number;
-  paymentTag: {
-    label: string;
-    type: "adv" | "paid_full" | "partially" | "closed";
-  };
-  customerName: string;
-  origin: string;
-  destination: string;
-  vehicleLabel: string;
-  driverInitials: string;
-  driverName: string;
-  driverRating: string;
-  rawTrip?: Trip;
-}
-
-const DEFAULT_DISPATCH_ITEMS: DispatchFeedItem[] = [
-  {
-    id: "TR-8921",
-    tripCode: "TR-8921",
-    statusBadge: {
-      label: "En Route (Expwy KM 48)",
-      type: "en_route",
-    },
-    timeSubtext: "Departure: Today, 08:30 AM",
-    grossAmount: 6800,
-    paymentTag: {
-      label: "(Adv: ₹3,000)",
-      type: "adv",
-    },
-    customerName: "Apex Global Logistics",
-    origin: "Pune (Hinjewadi)",
-    destination: "Mumbai BKC Tollway",
-    vehicleLabel: "Vehicle: Toyota Innova Crysta (MH-12-RN-4402)",
-    driverInitials: "RK",
-    driverName: "Rajesh Kumar",
-    driverRating: "4.9",
-  },
-  {
-    id: "TR-8922",
-    tripCode: "TR-8922",
-    statusBadge: {
-      label: "Confirmed Departure",
-      type: "confirmed",
-    },
-    timeSubtext: "Scheduled: Today, 02:00 PM",
-    grossAmount: 4200,
-    paymentTag: {
-      label: "Paid Full",
-      type: "paid_full",
-    },
-    customerName: "Dr. Sunita Deshmukh",
-    origin: "Pune Airport (PNQ)",
-    destination: "Lonavala Highland Resort",
-    vehicleLabel: "Vehicle: Maruti Suzuki Ertiga (MH-14-BT-9108)",
-    driverInitials: "VS",
-    driverName: "Vikram Singh",
-    driverRating: "4.8",
-  },
-  {
-    id: "TR-8920",
-    tripCode: "TR-8920",
-    statusBadge: {
-      label: "Payment Due (₹8,500)",
-      type: "payment_due",
-    },
-    timeSubtext: "Completed Yesterday, 06:15 PM",
-    grossAmount: 14500,
-    paymentTag: {
-      label: "Partially Paid",
-      type: "partially",
-    },
-    customerName: "Reliance Tech Parks (Corp Shuttle)",
-    origin: "BKC Complex Mumbai",
-    destination: "Nashik City Center",
-    vehicleLabel: "Vehicle: Force Urbania 17-Seater (MH-12-UR-3030)",
-    driverInitials: "AS",
-    driverName: "Anand Shinde",
-    driverRating: "5.0",
-  },
-  {
-    id: "TR-8919",
-    tripCode: "TR-8919",
-    statusBadge: {
-      label: "Fulfilled & Settled",
-      type: "fulfilled",
-    },
-    timeSubtext: "Completed 26 Oct",
-    grossAmount: 9800,
-    paymentTag: {
-      label: "Closed",
-      type: "closed",
-    },
-    customerName: "Kavita Sharma & Family",
-    origin: "Thane West",
-    destination: "Shirdi Temple Direct",
-    vehicleLabel: "Vehicle: Toyota Hycross (MH-12-XG-7744)",
-    driverInitials: "GJ",
-    driverName: "Gopal Jadhav",
-    driverRating: "4.9",
-  },
-];
-
 export default function TripsClient({ initialTrips, vehicles }: TripsClientProps) {
-  const [trips, setTrips] = useState<Trip[]>(initialTrips);
+  const [trips, setTrips] = useState<Trip[]>(initialTrips || []);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [editingTripId, setEditingTripId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const formRef = useRef<HTMLDivElement>(null);
 
-  // Form State matching the visual reference
-  const initialFormState = {
-    tripDate: "2026-10-28",
-    vehicleId: vehicles[0]?.id || "v-innova",
-    vehicleName: vehicles[0]?.name ? `${vehicles[0].name} (${vehicles[0].registrationNumber})` : "Toyota Innova Crysta (MH-12-RN-4402)",
-    driverName: "Rajesh Kumar",
-    driverAgreedPay: 1200,
-    customerName: "Ramesh Patil",
-    customerPhone: "+91 98765 43210",
-    from: "Pune",
-    to: "Mumbai",
-    startingKm: 14250,
-    endingKm: 14580,
-    includedKm: 300,
-    extraKmRate: 18,
-    tollAllowance: 480,
-    baseFare: 5500,
-    advanceReceived: 2000,
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const emptyForm = {
+    tripDate: todayStr,
+    vehicleId: vehicles[0]?.id || "",
+    vehicleName: vehicles[0]?.name ? `${vehicles[0].name} (${vehicles[0].registrationNumber})` : "",
+    driverName: "",
+    driverAgreedPay: 0,
+    customerName: "",
+    customerPhone: "",
+    from: "",
+    to: "",
+    startingKm: 0,
+    endingKm: 0,
+    includedKm: 100,
+    extraKmRate: vehicles[0]?.extraKmRate || 15,
+    baseFare: 0,
+    advanceReceived: 0,
     status: "scheduled" as TripStatus,
-    notes: "Executive dispatch for Pune-Mumbai corridor with automated toll clearance.",
+    notes: "",
   };
 
-  const [form, setForm] = useState(initialFormState);
+  const [form, setForm] = useState(emptyForm);
 
-  // Auto calculate bill amount
-  const calculations = useMemo(() => {
+  // Dynamic Real KPIs
+  const totalTripsCount = trips.length;
+  const todayTripsCount = trips.filter((t) => t.tripDate === todayStr).length;
+  const completedTripsCount = trips.filter((t) => t.status === "completed").length;
+  const totalPendingDues = trips.reduce(
+    (sum, t) => sum + (Number(t.customerBalance) > 0 ? Number(t.customerBalance) : 0),
+    0
+  );
+
+  // Auto calculate fare
+  const fareCalcs = useMemo(() => {
     const start = Number(form.startingKm) || 0;
     const end = Number(form.endingKm) || 0;
+    const distance = Math.max(0, end - start);
     const included = Number(form.includedKm) || 0;
+    const extraKm = Math.max(0, distance - included);
     const rate = Number(form.extraKmRate) || 0;
-    const toll = Number(form.tollAllowance) || 0;
+    const extraCharge = extraKm * rate;
     const base = Number(form.baseFare) || 0;
-
-    const actualDist = Math.max(0, end - start);
-    const extraKm = Math.max(0, actualDist - included);
-    const extraCost = extraKm * rate;
-    const totalEstimate = base + extraCost + toll;
+    const totalFare = base + extraCharge;
+    const advance = Number(form.advanceReceived) || 0;
+    const balance = Math.max(0, totalFare - advance);
 
     return {
-      actualDist,
+      distance,
       extraKm,
-      extraCost,
-      totalEstimate: totalEstimate > 0 ? totalEstimate : 6800,
+      extraCharge,
+      totalFare,
+      balance,
     };
-  }, [form.startingKm, form.endingKm, form.includedKm, form.extraKmRate, form.tollAllowance, form.baseFare]);
+  }, [form.startingKm, form.endingKm, form.includedKm, form.extraKmRate, form.baseFare, form.advanceReceived]);
 
-  // Handle vehicle select change
   const handleVehicleChange = (vehicleId: string) => {
     const selected = vehicles.find((v) => v.id === vehicleId);
     setForm((prev) => ({
       ...prev,
       vehicleId,
-      vehicleName: selected ? `${selected.name} (${selected.registrationNumber})` : prev.vehicleName,
+      vehicleName: selected ? `${selected.name} (${selected.registrationNumber})` : "",
       extraKmRate: selected?.extraKmRate || prev.extraKmRate,
     }));
+  };
+
+  const handleEdit = (trip: Trip) => {
+    setEditingTripId(trip.id);
+    setForm({
+      tripDate: trip.tripDate || todayStr,
+      vehicleId: trip.vehicleId || "",
+      vehicleName: trip.vehicleName || "",
+      driverName: trip.driverName || "",
+      driverAgreedPay: trip.driverAgreedPay || 0,
+      customerName: trip.customerName || "",
+      customerPhone: trip.customerPhone || "",
+      from: trip.from || "",
+      to: trip.to || "",
+      startingKm: trip.startingKm || 0,
+      endingKm: trip.endingKm || 0,
+      includedKm: trip.includedKm || 100,
+      extraKmRate: trip.extraKmRate || 15,
+      baseFare: trip.baseFare || 0,
+      advanceReceived: trip.advanceReceived || 0,
+      status: trip.status || "scheduled",
+      notes: trip.notes || "",
+    });
+    if (formRef.current) {
+      formRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTripId(null);
+    setForm(emptyForm);
+  };
+
+  const handleDelete = async (trip: Trip) => {
+    const confirmMessage = `Are you sure you want to delete Trip #${trip.tripNumber || trip.id} for ${trip.customerName}?`;
+    if (!window.confirm(confirmMessage)) return;
+
+    setDeletingId(trip.id);
+    try {
+      await deleteTrip(trip.id);
+      setTrips((prev) => prev.filter((t) => t.id !== trip.id));
+      if (editingTripId === trip.id) {
+        handleCancelEdit();
+      }
+      setFeedback({ message: "Trip deleted successfully.", type: "success" });
+    } catch (err) {
+      console.error("Delete trip error:", err);
+      setFeedback({ message: "Failed to delete trip. Please try again.", type: "error" });
+    } finally {
+      setDeletingId(null);
+      setTimeout(() => setFeedback(null), 4000);
+    }
+  };
+
+  const handleUpdateStatus = async (trip: Trip, newStatus: TripStatus) => {
+    try {
+      await updateTrip(trip.id, { status: newStatus });
+      setTrips((prev) =>
+        prev.map((t) => (t.id === trip.id ? { ...t, status: newStatus } : t))
+      );
+      setFeedback({ message: `Trip status updated to ${newStatus}.`, type: "success" });
+    } catch {
+      alert("Failed to update trip status");
+    } finally {
+      setTimeout(() => setFeedback(null), 3000);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -225,56 +186,58 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     setFeedback(null);
 
     try {
-      const tripData = {
+      const { distance, extraKm, extraCharge, totalFare, balance } = fareCalcs;
+
+      const tripPayload = {
         tripDate: form.tripDate,
         vehicleId: form.vehicleId,
         vehicleName: form.vehicleName,
-        driverName: form.driverName,
-        customerName: form.customerName,
-        customerPhone: form.customerPhone,
-        from: form.from,
-        to: form.to,
-        startingKm: Number(form.startingKm),
-        endingKm: Number(form.endingKm),
-        includedKm: Number(form.includedKm),
-        extraKmRate: Number(form.extraKmRate),
-        baseFare: Number(form.baseFare),
-        extraKmCharge: calculations.extraCost,
-        advanceReceived: Number(form.advanceReceived),
-        driverAgreedPay: Number(form.driverAgreedPay),
-        totalFare: calculations.totalEstimate,
-        customerPaid: Number(form.advanceReceived),
-        customerBalance: calculations.totalEstimate - Number(form.advanceReceived),
+        driverName: form.driverName.trim(),
+        customerName: form.customerName.trim(),
+        customerPhone: form.customerPhone.trim(),
+        from: form.from.trim(),
+        to: form.to.trim(),
+        startingKm: Number(form.startingKm) || 0,
+        endingKm: Number(form.endingKm) || 0,
+        includedKm: Number(form.includedKm) || 0,
+        extraKmRate: Number(form.extraKmRate) || 0,
+        baseFare: Number(form.baseFare) || 0,
+        extraKmCharge: extraCharge,
+        advanceReceived: Number(form.advanceReceived) || 0,
+        driverAgreedPay: Number(form.driverAgreedPay) || 0,
+        totalFare: totalFare,
+        customerPaid: Number(form.advanceReceived) || 0,
+        customerBalance: balance,
         driverPaid: 0,
-        driverBalance: Number(form.driverAgreedPay),
+        driverBalance: Number(form.driverAgreedPay) || 0,
         status: form.status,
-        notes: form.notes,
+        notes: form.notes.trim(),
       };
 
       if (editingTripId) {
-        await updateTrip(editingTripId, tripData);
+        await updateTrip(editingTripId, tripPayload);
         setTrips((prev) =>
-          prev.map((t) => (t.id === editingTripId ? { ...t, ...tripData } : t))
+          prev.map((t) => (t.id === editingTripId ? { ...t, ...tripPayload } : t))
         );
         setFeedback({ message: "Trip details updated successfully!", type: "success" });
         setEditingTripId(null);
       } else {
-        const newId = await createTrip(tripData);
+        const newId = await createTrip(tripPayload);
         const newTrip: Trip = {
           id: newId,
-          tripNumber: `TR-${Math.floor(8920 + Math.random() * 80)}`,
-          ...tripData,
+          tripNumber: `TR-${Math.floor(1000 + Math.random() * 9000)}`,
+          ...tripPayload,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
         setTrips((prev) => [newTrip, ...prev]);
-        setFeedback({ message: "New trip dispatched & recorded to active ledger!", type: "success" });
+        setFeedback({ message: "New trip booked and dispatched successfully!", type: "success" });
       }
 
-      setForm(initialFormState);
+      setForm(emptyForm);
     } catch (err: unknown) {
-      console.error("Trip save error:", err);
-      const msg = (err as Error)?.message || "Failed to schedule trip";
+      console.error("Save trip error:", err);
+      const msg = (err as Error)?.message || "Failed to record trip";
       setFeedback({ message: msg, type: "error" });
     } finally {
       setLoading(false);
@@ -282,116 +245,57 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     }
   };
 
-  // Convert real trips to Feed Item display format
-  const combinedFeedItems = useMemo(() => {
-    if (trips && trips.length > 0) {
-      const mappedDbItems: DispatchFeedItem[] = trips.map((t, idx) => {
-        const gross = Number(t.totalFare) || 6800;
-        const adv = Number(t.advanceReceived) || 0;
-        const isCompleted = t.status === "completed";
-        const isInProgress = t.status === "in_progress";
-
-        let statusBadgeType: DispatchFeedItem["statusBadge"]["type"] = "confirmed";
-        let statusBadgeLabel = "Confirmed Departure";
-
-        if (isInProgress) {
-          statusBadgeType = "en_route";
-          statusBadgeLabel = "En Route (Expwy KM 48)";
-        } else if (isCompleted && t.customerBalance > 0) {
-          statusBadgeType = "payment_due";
-          statusBadgeLabel = `Payment Due (₹${t.customerBalance.toLocaleString("en-IN")})`;
-        } else if (isCompleted) {
-          statusBadgeType = "fulfilled";
-          statusBadgeLabel = "Fulfilled & Settled";
-        }
-
-        let paymentTagType: DispatchFeedItem["paymentTag"]["type"] = "adv";
-        let paymentTagLabel = `(Adv: ₹${adv.toLocaleString("en-IN")})`;
-
-        if (adv >= gross) {
-          paymentTagType = "paid_full";
-          paymentTagLabel = "Paid Full";
-        } else if (adv > 0 && adv < gross) {
-          paymentTagType = "partially";
-          paymentTagLabel = "Partially Paid";
-        } else if (isCompleted && t.customerBalance === 0) {
-          paymentTagType = "closed";
-          paymentTagLabel = "Closed";
-        }
-
-        const initials = (t.driverName || "Driver")
-          .split(" ")
-          .map((n) => n[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2);
-
-        return {
-          id: t.id,
-          tripCode: t.tripNumber ? t.tripNumber : `TR-${8920 + idx}`,
-          statusBadge: {
-            label: statusBadgeLabel,
-            type: statusBadgeType,
-          },
-          timeSubtext: t.tripDate ? `Departure: ${formatDate(t.tripDate)}` : "Departure: Today, 08:30 AM",
-          grossAmount: gross,
-          paymentTag: {
-            label: paymentTagLabel,
-            type: paymentTagType,
-          },
-          customerName: t.customerName || "Corporate Client",
-          origin: t.from || "Pune",
-          destination: t.to || "Mumbai",
-          vehicleLabel: `Vehicle: ${t.vehicleName || "Toyota Innova Crysta (MH-12-RN-4402)"}`,
-          driverInitials: initials || "RK",
-          driverName: t.driverName || "Rajesh Kumar",
-          driverRating: (4.8 + (idx % 3) * 0.1).toFixed(1),
-          rawTrip: t,
-        };
-      });
-
-      return [...mappedDbItems, ...DEFAULT_DISPATCH_ITEMS];
-    }
-    return DEFAULT_DISPATCH_ITEMS;
-  }, [trips]);
-
-  // Filter feed items
-  const filteredFeedItems = useMemo(() => {
-    return combinedFeedItems.filter((item) => {
+  // Filtered trips
+  const filteredTrips = useMemo(() => {
+    return trips.filter((t) => {
       if (search.trim()) {
         const query = search.toLowerCase();
         const matches =
-          item.tripCode.toLowerCase().includes(query) ||
-          item.customerName.toLowerCase().includes(query) ||
-          item.origin.toLowerCase().includes(query) ||
-          item.destination.toLowerCase().includes(query) ||
-          item.driverName.toLowerCase().includes(query);
+          (t.tripNumber && t.tripNumber.toLowerCase().includes(query)) ||
+          t.customerName.toLowerCase().includes(query) ||
+          t.from.toLowerCase().includes(query) ||
+          t.to.toLowerCase().includes(query) ||
+          (t.driverName && t.driverName.toLowerCase().includes(query)) ||
+          (t.vehicleName && t.vehicleName.toLowerCase().includes(query));
         if (!matches) return false;
       }
 
-      if (statusFilter !== "all") {
-        if (statusFilter === "en_route" && item.statusBadge.type !== "en_route") return false;
-        if (statusFilter === "confirmed" && item.statusBadge.type !== "confirmed") return false;
-        if (statusFilter === "payment_due" && item.statusBadge.type !== "payment_due") return false;
-        if (statusFilter === "fulfilled" && item.statusBadge.type !== "fulfilled") return false;
+      if (statusFilter !== "all" && t.status !== statusFilter) {
+        return false;
       }
 
       return true;
     });
-  }, [combinedFeedItems, search, statusFilter]);
+  }, [trips, search, statusFilter]);
+
+  // Pagination
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredTrips.length / pageSize));
+  const paginatedTrips = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredTrips.slice(startIndex, startIndex + pageSize);
+  }, [filteredTrips, currentPage]);
 
   const handleExportCSV = () => {
-    const data = filteredFeedItems.map((item) => ({
-      "Trip Code": item.tripCode,
-      Customer: item.customerName,
-      Origin: item.origin,
-      Destination: item.destination,
-      Vehicle: item.vehicleLabel,
-      Driver: item.driverName,
-      "Gross Fare": item.grossAmount,
-      Status: item.statusBadge.label,
+    if (filteredTrips.length === 0) {
+      alert("No trips to export.");
+      return;
+    }
+    const data = filteredTrips.map((t) => ({
+      "Trip Number": t.tripNumber || t.id,
+      Date: t.tripDate,
+      Customer: t.customerName,
+      Phone: t.customerPhone,
+      From: t.from,
+      To: t.to,
+      Vehicle: t.vehicleName || "-",
+      Driver: t.driverName || "-",
+      "Total Fare (INR)": t.totalFare,
+      "Advance Received": t.advanceReceived,
+      "Customer Balance": t.customerBalance,
+      Status: t.status,
     }));
-    exportToCSV(data, `Dispatch_Trips_${new Date().toISOString().split("T")[0]}`);
+    exportToCSV(data, `Fleet_Trips_${todayStr}`);
   };
 
   const scrollToForm = () => {
@@ -402,53 +306,54 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
   return (
     <div className="space-y-6 pb-12">
-      {/* 1. Page Header with Breadcrumb Subtitle & Quick Actions */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-1">
+      {/* ─── 1. Header & Actions ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
-              Fleet Logistics Console • Maharashtra West Zone
+            <span className="text-[11px] font-bold text-blue-600 tracking-wider uppercase">
+              FLEET DISPATCH &amp; BOOKINGS
+            </span>
+            <span className="text-slate-400">•</span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              {totalTripsCount} Total {totalTripsCount === 1 ? "Trip" : "Trips"}
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-display">
-              Trip Management
-            </h1>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Live Dispatch
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
-            Manage intercity trips, driver assignments, passenger manifests, and route revenue.
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 leading-tight">
+            Trip Management
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5 max-w-2xl">
+            Book, dispatch, and track customer journeys, assigned vehicles, drivers, and fare settlements.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 self-start md:self-auto">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Link
             href="/travel/payments"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-colors"
           >
-            <CreditCard className="w-4 h-4 text-slate-500" />
+            <CreditCard className="w-3.5 h-3.5 text-slate-500" />
             <span>Record Payment</span>
           </Link>
           <button
+            type="button"
             onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-colors cursor-pointer"
           >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span>Export Report</span>
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export CSV</span>
           </button>
           <button
+            type="button"
             onClick={scrollToForm}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm shadow-blue-500/20 transition-all hover:scale-[1.01]"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs shadow-blue-500/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>New Trip Entry</span>
+            <span>New Trip</span>
           </button>
         </div>
       </div>
 
-      {/* Feedback Alert */}
+      {/* Feedback Toast */}
       {feedback && (
         <div
           className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-xs ${
@@ -462,6 +367,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
             <span>{feedback.message}</span>
           </div>
           <button
+            type="button"
             onClick={() => setFeedback(null)}
             className="text-slate-400 hover:text-slate-600 text-xs font-bold px-2 py-0.5"
           >
@@ -470,177 +376,249 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         </div>
       )}
 
-      {/* 2. Top 4 KPI Bento Cards with Accent Lines */}
+      {/* ─── 2. Real KPI Cards ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* TOTAL TRIPS */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Total Trips
-              </span>
-              <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                <Car className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="flex items-baseline gap-2 my-1">
-              <div className="text-3xl font-extrabold text-slate-900 font-display tracking-tight">
-                142
-              </div>
-              <span className="text-xs font-bold text-emerald-600 flex items-center">
-                ↑ +14.2%
-              </span>
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Total Trips
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Car className="w-4 h-4" />
             </div>
           </div>
-          <div>
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs mt-2 text-slate-500 font-medium">
-              <span>All recorded dispatches</span>
-              <span className="text-slate-900 font-bold">Pune Hub</span>
-            </div>
-            <div className="w-full h-1 bg-slate-900 rounded-full mt-2.5" />
+          <div className="my-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
+              {totalTripsCount}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500">All dispatches</span>
+            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              Logged
+            </span>
           </div>
         </div>
 
         {/* TODAY'S TRIPS */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Today&apos;s Trips
-              </span>
-              <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                <Calendar className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="flex items-baseline gap-2 my-1">
-              <div className="text-3xl font-extrabold text-slate-900 font-display tracking-tight">
-                18
-              </div>
-              <span className="text-xs font-bold text-blue-600 flex items-center gap-1">
-                📈 4 Active
-              </span>
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Today&apos;s Schedule
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Calendar className="w-4 h-4" />
             </div>
           </div>
-          <div>
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs mt-2 text-slate-500 font-medium">
-              <span>Trips scheduled today</span>
-              <span className="text-blue-600 font-bold">89% on time</span>
-            </div>
-            <div className="w-full h-1 bg-blue-600 rounded-full mt-2.5" />
+          <div className="my-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
+              {todayTripsCount}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500">Scheduled today</span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+              {todayTripsCount > 0 ? "Active" : "None today"}
+            </span>
           </div>
         </div>
 
-        {/* SCHEDULED */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Scheduled
-              </span>
-              <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-                <Clock className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="flex items-baseline gap-2 my-1">
-              <div className="text-3xl font-extrabold text-slate-900 font-display tracking-tight">
-                06
-              </div>
-              <span className="bg-amber-50 text-amber-800 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                Pending Driver
-              </span>
+        {/* COMPLETED TRIPS */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Completed Trips
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <div>
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs mt-2 text-slate-500 font-medium">
-              <span>Upcoming departures</span>
-              <span className="text-amber-700 font-bold">Next: 14:30</span>
-            </div>
-            <div className="w-full h-1 bg-amber-500 rounded-full mt-2.5" />
+          <div className="my-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
+              {completedTripsCount}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500">Fulfilled routes</span>
+            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+              {totalTripsCount > 0 ? `${Math.round((completedTripsCount / totalTripsCount) * 100)}% done` : "0%"}
+            </span>
           </div>
         </div>
 
-        {/* COMPLETED */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Completed
-              </span>
-              <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="flex items-baseline gap-2 my-1">
-              <div className="text-3xl font-extrabold text-slate-900 font-display tracking-tight">
-                118
-              </div>
-              <span className="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                98.2% SMR
-              </span>
+        {/* PENDING DUES */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Customer Balance
+            </span>
+            <div
+              className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                totalPendingDues > 0 ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"
+              }`}
+            >
+              <Clock className="w-4 h-4" />
             </div>
           </div>
-          <div>
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs mt-2 text-slate-500 font-medium">
-              <span>Successfully fulfilled</span>
-              <span className="text-emerald-700 font-bold">₹6.4L Collected</span>
-            </div>
-            <div className="w-full h-1 bg-emerald-500 rounded-full mt-2.5" />
+          <div className="my-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
+              {formatINR(totalPendingDues)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500">Outstanding</span>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                totalPendingDues > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700"
+              }`}
+            >
+              {totalPendingDues > 0 ? "Pending" : "All cleared"}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* 3. Main 2-Column Layout */}
+      {/* ─── 3. Main 2-Column Content ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: New Trip Entry & Ready Drivers (5 Cols) */}
-        <div ref={formRef} className="lg:col-span-5 space-y-6">
-          {/* Card 1: New Trip Entry Form */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-xs space-y-4">
+        {/* LEFT COLUMN: Add / Edit Trip Form (5 Cols) */}
+        <div ref={formRef} className="lg:col-span-5 space-y-4">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white">
-                  <GitBranch className="w-4 h-4" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Car className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">New Trip Entry</h2>
-                  <p className="text-xs text-slate-500">
-                    Enter trip details to schedule or log a trip
+                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                    {editingTripId ? "Edit Trip Booking" : "New Trip Dispatch"}
+                  </h2>
+                  <p className="text-[11px] text-slate-400">
+                    {editingTripId
+                      ? "Update trip details, odometer, or payment terms"
+                      : "Book route, assign fleet vehicle, and calculate fare"}
                   </p>
                 </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-md text-xs font-mono font-medium bg-slate-100 text-slate-600">
-                Draft #8923
-              </span>
+              {editingTripId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Cancel</span>
+                </button>
+              )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
-              {/* Row 1: Trip Date & Vehicle */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Row 1: Date & Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Trip Date *
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Trip Date <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={form.tripDate}
+                    onChange={(e) => setForm({ ...form, tripDate: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Status
                   </label>
                   <div className="relative">
-                    <input
-                      type="date"
-                      value={form.tripDate}
-                      onChange={(e) => setForm({ ...form, tripDate: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
-                      required
-                    />
+                    <select
+                      value={form.status}
+                      onChange={(e) => setForm({ ...form, status: e.target.value as TripStatus })}
+                      className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none cursor-pointer"
+                    >
+                      <option value="scheduled">Scheduled</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
+              </div>
 
+              {/* Row 2: Customer Name & Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Vehicle *
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Customer Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ramesh Patil"
+                    value={form.customerName}
+                    onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Customer Phone
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. 9876543210"
+                    value={form.customerPhone}
+                    onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Route Origin -> Destination */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Origin (From) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Pune Central"
+                    value={form.from}
+                    onChange={(e) => setForm({ ...form, from: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Destination (To) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Mumbai Airport T2"
+                    value={form.to}
+                    onChange={(e) => setForm({ ...form, to: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Row 4: Vehicle & Driver */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Assigned Vehicle
                   </label>
                   <div className="relative">
                     <select
                       value={form.vehicleId}
                       onChange={(e) => handleVehicleChange(e.target.value)}
-                      className="w-full appearance-none px-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
+                      className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none cursor-pointer truncate"
                     >
-                      <option value="v-innova">Toyota Innova Crysta | MH-12</option>
+                      <option value="">Select vehicle...</option>
                       {vehicles.map((v) => (
                         <option key={v.id} value={v.id}>
                           {v.name} ({v.registrationNumber})
@@ -650,623 +628,473 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
-              </div>
-
-              {/* Row 2: Driver Name & Driver Agreed Pay */}
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Driver Name *
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Driver Name
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={form.driverName}
-                      onChange={(e) => setForm({ ...form, driverName: e.target.value })}
-                      placeholder="e.g. Rajesh Kumar"
-                      className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
-                      required
-                    />
-                    <User className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Driver Agreed Pay (₹)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={form.driverAgreedPay}
-                      onChange={(e) => setForm({ ...form, driverAgreedPay: Number(e.target.value) })}
-                      placeholder="1200"
-                      className="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
-                    />
-                    <span className="text-slate-400 text-xs font-bold absolute left-2.5 top-1/2 -translate-y-1/2">
-                      ₹
-                    </span>
-                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Rajesh Kumar"
+                    value={form.driverName}
+                    onChange={(e) => setForm({ ...form, driverName: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
                 </div>
               </div>
 
-              {/* Row 3: Customer Name & Phone */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Row 5: Km Details */}
+              <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Customer Name *
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Start Km
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={form.customerName}
-                      onChange={(e) => setForm({ ...form, customerName: e.target.value })}
-                      placeholder="Ramesh Patil"
-                      className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
-                      required
-                    />
-                    <FileText className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    value={form.startingKm}
+                    onChange={(e) => setForm({ ...form, startingKm: Number(e.target.value) })}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium text-slate-900 outline-none"
+                  />
                 </div>
-
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Customer Phone
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    End Km
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={form.customerPhone}
-                      onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
-                      placeholder="+91 98765 43210"
-                      className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
-                    />
-                    <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    value={form.endingKm}
+                    onChange={(e) => setForm({ ...form, endingKm: Number(e.target.value) })}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium text-slate-900 outline-none"
+                  />
                 </div>
-              </div>
-
-              {/* Row 4: Origin & Destination */}
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Origin (From) *
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Included Km
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={form.from}
-                      onChange={(e) => setForm({ ...form, from: e.target.value })}
-                      placeholder="Pune"
-                      className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
-                      required
-                    />
-                    <div className="w-2.5 h-2.5 rounded-full border-2 border-emerald-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Destination (To) *
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={form.to}
-                      onChange={(e) => setForm({ ...form, to: e.target.value })}
-                      placeholder="Mumbai"
-                      className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
-                      required
-                    />
-                    <div className="w-2.5 h-2.5 rounded-full border-2 border-blue-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="100"
+                    value={form.includedKm}
+                    onChange={(e) => setForm({ ...form, includedKm: Number(e.target.value) })}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium text-slate-900 outline-none"
+                  />
                 </div>
               </div>
 
-              {/* Inset Box: ODOMETER & KM ALLOWANCE */}
-              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/70 space-y-2.5">
+              {/* Fare & Billing Box */}
+              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-slate-700">
-                    <Gauge className="w-3.5 h-3.5 text-blue-600" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">
-                      Odometer & KM Allowance
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForm((prev) => ({
-                        ...prev,
-                        endingKm: prev.startingKm + prev.includedKm + 30,
-                      }));
-                    }}
-                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
-                  >
-                    Auto Calculate
-                  </button>
+                  <span className="text-xs font-bold text-slate-800">Fare &amp; Billing Calculation</span>
+                  <span className="text-xs font-bold font-mono text-blue-600">
+                    Total: {formatINR(fareCalcs.totalFare)}
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div>
-                    <label className="block text-[10px] text-slate-500 font-medium mb-0.5">
-                      Start KM
-                    </label>
+                    <label className="block text-[10px] text-slate-500 font-medium mb-1">Base Fare (₹)</label>
                     <input
                       type="number"
-                      value={form.startingKm}
-                      onChange={(e) => setForm({ ...form, startingKm: Number(e.target.value) })}
-                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-medium text-slate-900 outline-none"
+                      min={0}
+                      placeholder="0"
+                      value={form.baseFare}
+                      onChange={(e) => setForm({ ...form, baseFare: Number(e.target.value) })}
+                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold font-mono text-slate-900 outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 font-medium mb-0.5">
-                      End KM
-                    </label>
+                    <label className="block text-[10px] text-slate-500 font-medium mb-1">Extra Rate (₹/km)</label>
                     <input
                       type="number"
-                      value={form.endingKm}
-                      onChange={(e) => setForm({ ...form, endingKm: Number(e.target.value) })}
-                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-medium text-slate-900 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 font-medium mb-0.5">
-                      Included KM
-                    </label>
-                    <input
-                      type="number"
-                      value={form.includedKm}
-                      onChange={(e) => setForm({ ...form, includedKm: Number(e.target.value) })}
-                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-medium text-slate-900 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] text-slate-500 font-medium mb-0.5">
-                      Extra KM Rate (₹/km)
-                    </label>
-                    <input
-                      type="number"
+                      min={0}
                       value={form.extraKmRate}
                       onChange={(e) => setForm({ ...form, extraKmRate: Number(e.target.value) })}
-                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-medium text-slate-900 outline-none"
+                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold font-mono text-slate-900 outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 font-medium mb-0.5">
-                      Toll / Fastag Allowance
-                    </label>
+                    <label className="block text-[10px] text-slate-500 font-medium mb-1">Advance (₹)</label>
                     <input
                       type="number"
-                      value={form.tollAllowance}
-                      onChange={(e) => setForm({ ...form, tollAllowance: Number(e.target.value) })}
-                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-medium text-slate-900 outline-none"
+                      min={0}
+                      placeholder="0"
+                      value={form.advanceReceived}
+                      onChange={(e) => setForm({ ...form, advanceReceived: Number(e.target.value) })}
+                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold font-mono text-slate-900 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 font-medium mb-1">Driver Pay (₹)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      value={form.driverAgreedPay}
+                      onChange={(e) => setForm({ ...form, driverAgreedPay: Number(e.target.value) })}
+                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold font-mono text-slate-900 outline-none"
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Inset Box: Estimated Bill Amount */}
-              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/70 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                  <Calculator className="w-4 h-4 text-blue-600" />
-                  <span>Estimated Bill Amount:</span>
-                </div>
-                <div className="text-xl font-extrabold text-slate-900 font-display">
-                  {formatINR(calculations.totalEstimate)}
+                <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500">
+                    Distance: <strong className="text-slate-800">{fareCalcs.distance} km</strong> (Extra: {fareCalcs.extraKm} km = {formatINR(fareCalcs.extraCharge)})
+                  </span>
+                  <span className="text-amber-700 font-bold">
+                    Balance Due: {formatINR(fareCalcs.balance)}
+                  </span>
                 </div>
               </div>
 
-              {/* Form Buttons */}
-              <div className="flex items-center gap-3 pt-1">
+              {/* Notes */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                  Trip Notes / Special Instructions
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Airport pickup, toll included, AC round trip"
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex items-center gap-2 pt-1">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-blue-500/20 transition-all disabled:opacity-50"
+                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Save & Dispatch Trip</span>
+                  <Car className="w-3.5 h-3.5" />
+                  <span>
+                    {loading ? "Saving..." : editingTripId ? "Update Trip Booking" : "Dispatch New Trip"}
+                  </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setFeedback({ message: "Draft saved locally.", type: "success" })}
-                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
-                >
-                  Save Draft
-                </button>
+                {editingTripId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             </form>
           </div>
-
-          {/* Card 2: Ready Drivers in Pune Stand */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                <h3 className="text-xs font-bold text-slate-900">Ready Drivers in Pune Stand</h3>
-              </div>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                8 Available
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-slate-900">Anand Shinde</div>
-                  <div className="text-[11px] text-slate-500">Innova • Wakad</div>
-                </div>
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-slate-900">Santosh More</div>
-                  <div className="text-[11px] text-slate-500">Ertiga • Shivajinagar</div>
-                </div>
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* RIGHT COLUMN: Trips History Live Feed (7 Cols) */}
-        <div className="lg:col-span-7 space-y-6">
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-xs space-y-4">
+        {/* RIGHT COLUMN: Trips Roster / Feed (7 Cols) */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
             {/* Header with Search and Filter */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900">Trips History</h2>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                    Live Feed
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Showing {Math.min(filteredFeedItems.length, 4)} of {filteredFeedItems.length} dispatch records
-                </p>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-600" />
+                <h2 className="text-sm font-bold text-slate-900 tracking-tight">Trip Feed</h2>
+                <span className="text-xs text-slate-400 font-medium ml-1">
+                  ({filteredTrips.length} {filteredTrips.length === 1 ? "trip" : "trips"})
+                </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Search */}
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
-                    placeholder="Search customer, route..."
+                    placeholder="Search trips, customer..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-48 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    className="w-40 sm:w-44 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
                   />
                 </div>
+
+                {/* Status Filter */}
                 <div className="relative">
                   <select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value);
+                      setCurrentPage(1);
+                    }}
                     className="appearance-none bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-7 py-1.5 text-xs font-medium text-slate-700 outline-none cursor-pointer"
                   >
                     <option value="all">All Status</option>
-                    <option value="en_route">En Route</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="payment_due">Payment Due</option>
-                    <option value="fulfilled">Fulfilled</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
                   </select>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
+
+                {/* View Mode Toggle */}
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("list")}
+                    className={`p-1 rounded ${viewMode === "list" ? "bg-white text-slate-900 shadow-xs" : "text-slate-400 hover:text-slate-700"}`}
+                    title="List View"
+                  >
+                    <List className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("grid")}
+                    className={`p-1 rounded ${viewMode === "grid" ? "bg-white text-slate-900 shadow-xs" : "text-slate-400 hover:text-slate-700"}`}
+                    title="Grid View"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* List of Trip Cards */}
-            <div className="space-y-3.5">
-              {filteredFeedItems.slice(0, 4).map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-slate-50/80 hover:bg-white p-4 rounded-2xl border border-slate-100 hover:border-slate-200 hover:shadow-xs transition-all space-y-3"
-                >
-                  {/* Top line of card */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-bold text-blue-600 font-mono">
-                        {item.tripCode}
-                      </span>
+            {/* List / Grid of Trips */}
+            {filteredTrips.length === 0 ? (
+              <div className="p-12 text-center flex flex-col items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                  <Car className="w-6 h-6" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  {search ? "No matching trips found" : "No trips recorded yet"}
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mt-1 mb-4">
+                  {search
+                    ? "Try adjusting your search query or status filter to see other trips."
+                    : "Create your first trip booking to track route mileage, fares, and customer receipts."}
+                </p>
+                {search ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch("");
+                      setStatusFilter("all");
+                    }}
+                    className="text-xs font-semibold text-blue-600 hover:underline"
+                  >
+                    Clear search filter
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={scrollToForm}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create First Trip</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 gap-3" : "space-y-3"}>
+                {paginatedTrips.map((trip) => {
+                  const hasDue = Number(trip.customerBalance) > 0;
+                  const statusColors: Record<string, string> = {
+                    completed: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+                    in_progress: "bg-blue-50 text-blue-700 border-blue-200/60",
+                    scheduled: "bg-amber-50 text-amber-700 border-amber-200/60",
+                    cancelled: "bg-slate-100 text-slate-600 border-slate-200/60",
+                  };
+                  const statusLabel: Record<string, string> = {
+                    completed: "Completed",
+                    in_progress: "In Progress",
+                    scheduled: "Scheduled",
+                    cancelled: "Cancelled",
+                  };
 
-                      {/* Status Badges */}
-                      {item.statusBadge.type === "en_route" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          {item.statusBadge.label}
-                        </span>
-                      )}
-                      {item.statusBadge.type === "confirmed" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                          {item.statusBadge.label}
-                        </span>
-                      )}
-                      {item.statusBadge.type === "payment_due" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                          {item.statusBadge.label}
-                        </span>
-                      )}
-                      {item.statusBadge.type === "fulfilled" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                          <Check className="w-3 h-3 text-emerald-600" />
-                          {item.statusBadge.label}
-                        </span>
-                      )}
+                  return (
+                    <div
+                      key={trip.id}
+                      className="bg-slate-50/70 hover:bg-white p-4 rounded-2xl border border-slate-200/80 hover:border-slate-300 hover:shadow-xs transition-all space-y-3"
+                    >
+                      {/* Top Header of Trip Card */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold font-mono text-slate-900">
+                              #{trip.tripNumber || trip.id.slice(0, 7)}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                statusColors[trip.status] || statusColors.scheduled
+                              }`}
+                            >
+                              {statusLabel[trip.status] || trip.status}
+                            </span>
+                            <span className="text-[11px] text-slate-400">
+                              {formatDateShort(trip.tripDate)}
+                            </span>
+                          </div>
 
-                      <span className="text-[11px] text-slate-400 font-medium">
-                        • {item.timeSubtext}
-                      </span>
-                    </div>
-
-                    {/* Amount & tag */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-extrabold text-slate-900 font-display">
-                        {formatINR(item.grossAmount)}
-                      </span>
-                      {item.paymentTag.type === "adv" && (
-                        <span className="text-[11px] font-semibold text-emerald-600">
-                          {item.paymentTag.label}
-                        </span>
-                      )}
-                      {item.paymentTag.type === "paid_full" && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                          {item.paymentTag.label}
-                        </span>
-                      )}
-                      {item.paymentTag.type === "partially" && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                          {item.paymentTag.label}
-                        </span>
-                      )}
-                      {item.paymentTag.type === "closed" && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          {item.paymentTag.label}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Middle: Customer, Route, Vehicle & Actions */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                    <div>
-                      <div className="text-xs font-bold text-slate-900">{item.customerName}</div>
-                      <div className="text-xs text-blue-600 font-medium mt-0.5 flex items-center gap-1.5">
-                        <span>{item.origin}</span>
-                        <span>➔</span>
-                        <span>{item.destination}</span>
-                      </div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">{item.vehicleLabel}</div>
-                    </div>
-
-                    {/* Right action group */}
-                    <div className="flex items-center gap-3">
-                      {/* Driver Avatar & Name */}
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-slate-200/80 text-slate-700 flex items-center justify-center text-xs font-bold">
-                          {item.driverInitials}
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs font-bold text-slate-900">{item.driverName}</div>
-                          <div className="text-[10px] text-amber-600 font-semibold flex items-center justify-end gap-0.5">
-                            <Star className="w-2.5 h-2.5 fill-current" /> {item.driverRating} Driver
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mt-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>{trip.from || "Origin"}</span>
+                            <span className="text-slate-400">→</span>
+                            <span>{trip.to || "Destination"}</span>
                           </div>
                         </div>
+
+                        {/* Edit and Delete Actions */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(trip)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            title="Edit Trip"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={deletingId === trip.id}
+                            onClick={() => handleDelete(trip)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                            title="Delete Trip"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Action buttons matching screenshot */}
-                      <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
-                        {item.statusBadge.type === "payment_due" ? (
-                          <>
-                            <Link
-                              href="/travel/payments"
-                              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-all"
-                            >
-                              <Coins className="w-3.5 h-3.5" />
-                              <span>Collect</span>
-                            </Link>
-                            <button
-                              onClick={() => window.print()}
-                              className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium transition-all"
-                            >
-                              Invoice
-                            </button>
-                          </>
-                        ) : item.statusBadge.type === "fulfilled" ? (
-                          <>
-                            <button
-                              onClick={() => window.print()}
-                              className="p-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg transition-all"
-                              title="Print log"
-                            >
-                              <Printer className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setFeedback({ message: `Viewing logbook for ${item.tripCode}`, type: "success" })}
-                              className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium transition-all"
-                            >
-                              Logbook
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => navigator.clipboard?.writeText(window.location.href)}
-                              className="p-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg transition-all"
-                              title="Share link"
-                            >
-                              <LinkIcon className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => alert(`Calling driver: ${item.driverName}`)}
-                              className="p-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg transition-all"
-                              title="Call driver"
-                            >
-                              <Phone className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (item.rawTrip) {
-                                  setEditingTripId(item.rawTrip.id);
-                                  setForm({
-                                    tripDate: item.rawTrip.tripDate || "2026-10-28",
-                                    vehicleId: item.rawTrip.vehicleId || "",
-                                    vehicleName: item.rawTrip.vehicleName || "",
-                                    driverName: item.rawTrip.driverName || "",
-                                    driverAgreedPay: item.rawTrip.driverAgreedPay || 1200,
-                                    customerName: item.rawTrip.customerName || "",
-                                    customerPhone: item.rawTrip.customerPhone || "",
-                                    from: item.rawTrip.from || "",
-                                    to: item.rawTrip.to || "",
-                                    startingKm: item.rawTrip.startingKm || 0,
-                                    endingKm: item.rawTrip.endingKm || 0,
-                                    includedKm: item.rawTrip.includedKm || 300,
-                                    extraKmRate: item.rawTrip.extraKmRate || 18,
-                                    tollAllowance: 480,
-                                    baseFare: item.rawTrip.baseFare || 5500,
-                                    advanceReceived: item.rawTrip.advanceReceived || 0,
-                                    status: item.rawTrip.status || "scheduled",
-                                    notes: item.rawTrip.notes || "",
-                                  });
-                                  scrollToForm();
-                                }
-                              }}
-                              className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium transition-all"
-                            >
-                              Details
-                            </button>
-                          </>
-                        )}
+                      {/* Middle Details Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 py-2 border-y border-slate-200/60 text-[11px]">
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Customer</span>
+                          <span className="font-bold text-slate-800 truncate block">
+                            {trip.customerName}
+                          </span>
+                          {trip.customerPhone && (
+                            <span className="text-[10px] text-slate-400 block">{trip.customerPhone}</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Vehicle &amp; Driver</span>
+                          <span className="font-semibold text-slate-700 truncate block">
+                            {trip.vehicleName || "Unassigned"}
+                          </span>
+                          {trip.driverName && (
+                            <span className="text-[10px] text-slate-400 block">{trip.driverName}</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Fare &amp; Status</span>
+                          <span className="font-extrabold text-slate-900 font-mono-nums block">
+                            {formatINR(trip.totalFare || 0)}
+                          </span>
+                          {hasDue ? (
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/50 inline-block mt-0.5">
+                              Due {formatINR(trip.customerBalance)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/50 inline-block mt-0.5">
+                              Paid Full
+                            </span>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Bottom Quick Controls */}
+                      <div className="flex items-center justify-between text-xs pt-0.5">
+                        <div className="flex items-center gap-1.5">
+                          {trip.status !== "completed" && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus(trip, "completed")}
+                              className="text-[10px] font-bold text-emerald-700 hover:bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 transition-colors"
+                            >
+                              ✓ Mark Completed
+                            </button>
+                          )}
+                          {trip.status === "scheduled" && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus(trip, "in_progress")}
+                              className="text-[10px] font-bold text-blue-700 hover:bg-blue-50 px-2 py-1 rounded-lg border border-blue-200 transition-colors"
+                            >
+                              ▶ Start Trip
+                            </button>
+                          )}
+                        </div>
+
+                        <Link
+                          href="/travel/payments"
+                          className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                        >
+                          <span>Settle Payment</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+
+                      {trip.notes && (
+                        <p className="text-[10px] text-slate-400 italic truncate border-t border-slate-100 pt-1">
+                          {trip.notes}
+                        </p>
+                      )}
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Pagination footer matching reference */}
-            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
-              <div>Showing 1 to 4 of 142 operational records</div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  className={`w-7 h-7 rounded-lg font-bold text-xs flex items-center justify-center ${
-                    currentPage === 1
-                      ? "bg-[#18181B] text-white"
-                      : "border border-slate-200 text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  1
-                </button>
-                <button
-                  onClick={() => setCurrentPage(2)}
-                  className={`w-7 h-7 rounded-lg font-bold text-xs flex items-center justify-center ${
-                    currentPage === 2
-                      ? "bg-[#18181B] text-white"
-                      : "border border-slate-200 text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  2
-                </button>
-                <button
-                  onClick={() => setCurrentPage(3)}
-                  className={`w-7 h-7 rounded-lg font-bold text-xs flex items-center justify-center ${
-                    currentPage === 3
-                      ? "bg-[#18181B] text-white"
-                      : "border border-slate-200 text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  3
-                </button>
-                <span className="px-1 text-slate-400">...</span>
-                <button
-                  onClick={() => setCurrentPage(18)}
-                  className="w-7 h-7 rounded-lg border border-slate-200 font-bold text-xs flex items-center justify-center text-slate-700 hover:bg-slate-50"
-                >
-                  18
-                </button>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(18, p + 1))}
-                  className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+                  );
+                })}
               </div>
-            </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span>
+                  Showing {(currentPage - 1) * pageSize + 1} to{" "}
+                  {Math.min(currentPage * pageSize, filteredTrips.length)} of {filteredTrips.length} trips
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center transition-colors ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* 4. Bottom Card: Active Sector Demand (Live Toll Gate Telemetry) */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-              <GitBranch className="w-4 h-4" />
-            </div>
-            <h3 className="text-sm font-bold text-slate-900">Active Sector Demand</h3>
-          </div>
-          <span className="text-xs text-slate-400 font-medium">Live Toll Gate Telemetry</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Sector 1: Pune ⇄ Mumbai Expwy */}
-          <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-100">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-900">Pune ⇄ Mumbai Expwy</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                Clear
-              </span>
-            </div>
-            <div className="text-xl font-extrabold text-slate-900 font-display">68 Trips</div>
-            <div className="text-xs text-slate-500 mt-1">Avg Travel: 3h 15m</div>
-          </div>
-
-          {/* Sector 2: Pune ⇄ Shirdi Direct */}
-          <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-100">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-900">Pune ⇄ Shirdi Direct</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                Moderate
-              </span>
-            </div>
-            <div className="text-xl font-extrabold text-slate-900 font-display">32 Trips</div>
-            <div className="text-xs text-slate-500 mt-1">Avg Travel: 4h 45m</div>
-          </div>
-
-          {/* Sector 3: Airport Feeder (PNQ) */}
-          <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-100">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-900">Airport Feeder (PNQ)</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
-                Surge
-              </span>
-            </div>
-            <div className="text-xl font-extrabold text-slate-900 font-display">24 Trips</div>
-            <div className="text-xs text-slate-500 mt-1">Avg Turnaround: 55m</div>
-          </div>
-        </div>
-      </div>
-
-      {/* 5. Persistent Modern Footer */}
-      <footer className="pt-6 pb-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
-        <div>
-          © 2025 RK Travel Hub • Fleet Logistics & Trip Dispatch Management System
-        </div>
+      {/* ─── 4. Persistent Footer ─── */}
+      <footer className="pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+        <p>© RK Travel Hub • Trip Logistics &amp; Passenger Booking Management</p>
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-500" />
-          <span className="text-slate-600 font-medium">Active Cloud Sync</span>
-          <span className="text-slate-300">•</span>
-          <span className="text-slate-500">System Operational</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span className="font-medium text-slate-600">Dispatches database synchronized</span>
         </div>
       </footer>
     </div>
