@@ -37,11 +37,22 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const userName = userProfile?.displayName || user?.displayName || user?.email?.split("@")[0] || "Administrator";
   const userRole = userProfile?.role || "admin";
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -65,13 +76,17 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 pt-4 pb-2.5 px-3 sm:px-6 lg:px-8 bg-transparent">
-      <div className="max-w-[1520px] mx-auto flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-30 pt-4 pb-2.5 px-3 sm:px-6 lg:px-8 bg-transparent pointer-events-none">
+      <div className="max-w-[1520px] mx-auto flex items-center justify-between gap-3 pointer-events-auto">
         {/* Left: Brand Capsule */}
         <div className="flex items-center gap-2">
           <button
             onClick={onToggleMobileSidebar}
-            className="lg:hidden p-2.5 rounded-full bg-slate-200/90 hover:bg-slate-300 text-slate-700 transition-colors cursor-pointer"
+            className={`lg:hidden p-2.5 rounded-full border transition-[box-shadow,background-color,border-color] duration-250 ease-out text-slate-700 cursor-pointer backdrop-blur-[12px] ${
+              scrolled
+                ? "bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
+                : "bg-slate-200/90 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)]"
+            }`}
             aria-label="Toggle sidebar"
           >
             <Menu className="w-4.5 h-4.5" />
@@ -79,7 +94,11 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
 
           <Link
             href="/travel"
-            className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-slate-200/90 hover:bg-slate-300/80 transition-all text-slate-900 border border-slate-300/50 shadow-xs"
+            className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full border transition-[box-shadow,background-color,border-color] duration-250 ease-out text-slate-900 backdrop-blur-[12px] ${
+              scrolled
+                ? "bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
+                : "bg-slate-200/90 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)]"
+            }`}
           >
             <div className="w-7 h-7 rounded-full bg-[#18181B] text-white flex items-center justify-center">
               <Bus className="w-4 h-4" />
@@ -89,7 +108,13 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
         </div>
 
         {/* Center: Executive Pill Navigation Bar (Desktop) */}
-        <nav className="hidden lg:flex items-center gap-1.5 bg-slate-200/90 p-1.5 rounded-full border border-slate-300/60 shadow-sm">
+        <nav
+          className={`hidden lg:flex items-center gap-1.5 p-1.5 rounded-full border transition-[box-shadow,background-color,border-color] duration-250 ease-out backdrop-blur-[12px] ${
+            scrolled
+              ? "scrolled bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
+              : "bg-slate-200/80 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)]"
+          }`}
+        >
           {navLinks.map((link) => {
             const active = isLinkActive(link.href);
             return (
@@ -120,14 +145,22 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
               placeholder="Search trips, fleet..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-48 lg:w-60 h-9.5 pl-9.5 pr-3.5 bg-slate-200/90 hover:bg-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 border border-slate-300/50 rounded-full text-[13px] text-slate-800 placeholder:text-slate-400 transition-all outline-none"
+              className={`w-48 lg:w-60 h-9.5 pl-9.5 pr-3.5 border rounded-full text-[13px] text-slate-800 placeholder:text-slate-400 transition-[box-shadow,background-color,border-color] duration-250 ease-out outline-none backdrop-blur-[12px] ${
+                scrolled
+                  ? "bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)] focus:bg-white"
+                  : "bg-slate-200/90 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)] focus:bg-white"
+              }`}
             />
           </div>
 
           {/* Mobile search toggle */}
           <button
             onClick={() => setSearchOpen(!searchOpen)}
-            className="sm:hidden p-2.5 rounded-full bg-slate-200/80 text-slate-600 hover:bg-slate-300 transition-colors"
+            className={`sm:hidden p-2.5 rounded-full border transition-[box-shadow,background-color,border-color] duration-250 ease-out text-slate-600 hover:bg-slate-300 backdrop-blur-[12px] ${
+              scrolled
+                ? "bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
+                : "bg-slate-200/80 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)]"
+            }`}
             aria-label="Search"
           >
             <Search className="w-4.5 h-4.5" />
@@ -137,7 +170,11 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
           <Link
             href="/travel/reminders"
             prefetch={true}
-            className="w-9.5 h-9.5 rounded-full bg-slate-200/90 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors relative"
+            className={`w-9.5 h-9.5 rounded-full border flex items-center justify-center text-slate-700 transition-[box-shadow,background-color,border-color] duration-250 ease-out relative backdrop-blur-[12px] ${
+              scrolled
+                ? "bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)] hover:bg-slate-300"
+                : "bg-slate-200/90 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)] hover:bg-slate-300"
+            }`}
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
@@ -148,7 +185,11 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
           <div ref={profileRef} className="relative">
             <button
               onClick={() => setProfileOpen(!profileOpen)}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-slate-200/90 hover:bg-slate-300 transition-colors border border-slate-300/50"
+              className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border transition-[box-shadow,background-color,border-color] duration-250 ease-out backdrop-blur-[12px] ${
+                scrolled
+                  ? "bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)] hover:bg-slate-300"
+                  : "bg-slate-200/90 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)] hover:bg-slate-300"
+              }`}
             >
               <div className="w-6.5 h-6.5 rounded-full bg-[#18181B] text-white flex items-center justify-center font-bold text-xs uppercase">
                 {userName.charAt(0) || "A"}
