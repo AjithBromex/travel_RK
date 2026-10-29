@@ -647,50 +647,7 @@ export default function DashboardClient({
             </div>
           </div>
 
-          {/* Quick Management Shortcuts */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs">
-            <div className="grid grid-cols-2 gap-2">
-              <Link
-                href="/travel/vehicles"
-                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors"
-              >
-                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <Car className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-xs font-semibold text-slate-700 truncate">Vehicles</span>
-              </Link>
 
-              <Link
-                href="/travel/cashbook"
-                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors"
-              >
-                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-xs font-semibold text-slate-700 truncate">Cash Book</span>
-              </Link>
-
-              <Link
-                href="/travel/reports"
-                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors"
-              >
-                <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                  <BarChart3 className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-xs font-semibold text-slate-700 truncate">Reports</span>
-              </Link>
-
-              <Link
-                href="/travel/reminders"
-                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors"
-              >
-                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                  <Bell className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-xs font-semibold text-slate-700 truncate">All Reminders</span>
-              </Link>
-            </div>
-          </div>
         </div>
       </div>
 
