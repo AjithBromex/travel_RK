@@ -96,6 +96,6 @@ export async function getDashboardData(): Promise<{
         return defaultDashboardData
       }
     },
-    { fallback: defaultDashboardData }
+    { fallback: defaultDashboardData, timeoutMs: 8000 }
   )
 }

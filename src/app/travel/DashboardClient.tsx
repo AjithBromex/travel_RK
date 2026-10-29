@@ -7,15 +7,12 @@ import {
   Receipt,
   Wallet,
   Clock,
-  Wrench,
   Plus,
   ArrowUpRight,
   ChevronRight,
   MapPin,
   AlertTriangle,
   CheckCircle2,
-  BookOpen,
-  BarChart3,
   Bell,
   ArrowRight,
   ShieldCheck,
@@ -36,67 +33,22 @@ export default function DashboardClient({
 }: DashboardClientProps) {
   const metrics = initialMetrics;
   const trips = initialTrips || [];
-
-  // Default compliance reminders from alert engine (matching screenshot when empty)
-  const defaultReminders = [
-    {
-      id: "rem-1",
-      badge: "CRITICAL OVERDUE",
-      badgeClass: "text-rose-700 bg-rose-50 border-rose-200",
-      entity: "Toyota Innova Crysta • MH-12-RN-4402",
-      title: "Commercial Fitness Certificate Renewal",
-      dueDate: "Yesterday (27 Oct 2026)",
-      actionText: "Mark Renewed",
-      isOverdue: true,
-    },
-    {
-      id: "rem-2",
-      badge: "DUE IN 3 DAYS",
-      badgeClass: "text-amber-800 bg-amber-50 border-amber-200",
-      entity: "Maruti Ertiga ZXi • MH-14-BT-9108",
-      title: "Major 60,000 KM Service & Brake Pad Replacement",
-      dueDate: "Target: 31 Oct 2026",
-      actionText: "Schedule Service",
-      isOverdue: false,
-    },
-    {
-      id: "rem-3",
-      badge: "DUE IN 5 DAYS",
-      badgeClass: "text-blue-700 bg-blue-50 border-blue-200",
-      entity: "Force Urbania 17S • MH-12-XG-7744",
-      title: "Comprehensive Fleet Insurance Policy Renewal",
-      dueDate: "Expiry: 02 Nov 2026",
-      actionText: "View Policy",
-      isOverdue: false,
-    },
-    {
-      id: "rem-4",
-      badge: "Due in 10 Days",
-      badgeClass: "text-slate-600 bg-slate-100 border-slate-200",
-      entity: "Driver: Rajesh Kumar • Badge #4490",
-      title: "Driver Medical & Commercial Heavy Badge Verification",
-      dueDate: "Deadline: 07 Nov 2026",
-      actionText: "Send SMS",
-      isOverdue: false,
-    },
-  ];
-
-  const hasRealReminders = initialReminders && initialReminders.length > 0;
+  const reminders = initialReminders || [];
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 pb-12">
       {/* ─── HEADER & ACTIONS ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
         <div>
           <div className="inline-flex items-center gap-2 text-[11px] font-bold tracking-wider text-blue-600 uppercase mb-1">
             <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-            <span>OPERATIONS OVERVIEW</span>
+            <span>OPERATIONS HUB</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 leading-tight">
             Welcome back, RK Travel Hub
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
-            Fleet operations, active trips, compliance reminders, and financial performance.
+            Fleet operations, active trips, compliance alerts, and financial daybook.
           </p>
         </div>
 
@@ -129,7 +81,7 @@ export default function DashboardClient({
         </div>
       </div>
 
-      {/* ─── KEY METRICS OVERVIEW (6 FOCUSED CARDS) ─── */}
+      {/* ─── 6 FOCUSED DYNAMIC KPI CARDS ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {/* 1. Total Trips */}
         <Link
@@ -202,7 +154,7 @@ export default function DashboardClient({
             </span>
           </div>
           <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-            <span className="text-[11px] text-slate-500">Fuel &amp; Ops</span>
+            <span className="text-[11px] text-slate-500">Fuel &amp; Outlays</span>
             <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
               Operating
             </span>
@@ -232,7 +184,7 @@ export default function DashboardClient({
             </span>
           </div>
           <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-            <span className="text-[11px] text-slate-500">Net Margin</span>
+            <span className="text-[11px] text-slate-500">Net Surplus</span>
             <span
               className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-0.5 ${
                 (metrics.profitLoss || 0) >= 0
@@ -246,7 +198,7 @@ export default function DashboardClient({
                   Positive
                 </>
               ) : (
-                "Negative"
+                "Deficit"
               )}
             </span>
           </div>
@@ -289,9 +241,7 @@ export default function DashboardClient({
             </span>
             <div
               className={`w-8 h-8 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform ${
-                (metrics.vehicleServiceDue || 0) > 0
-                  ? "bg-rose-50 text-rose-600"
-                  : "bg-amber-50 text-amber-600"
+                reminders.length > 0 ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"
               }`}
             >
               <Bell className="w-4 h-4" />
@@ -299,26 +249,26 @@ export default function DashboardClient({
           </div>
           <div className="my-2.5">
             <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
-              {initialReminders.length || metrics.vehicleServiceDue || 4}
+              {reminders.length}
             </span>
           </div>
           <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
             <span className="text-[11px] text-slate-500">Fleet Alerts</span>
             <span
               className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                (metrics.vehicleServiceDue || 0) > 0
-                  ? "bg-rose-50 text-rose-700"
-                  : "bg-amber-50 text-amber-700"
+                reminders.length > 0
+                  ? "bg-amber-50 text-amber-700"
+                  : "bg-emerald-50 text-emerald-700"
               }`}
             >
-              Active
+              {reminders.length > 0 ? `${reminders.length} Active` : "All Clear"}
             </span>
           </div>
         </Link>
       </div>
 
       {/* ─── MAIN CONTENT SECTION (2 BALANCED COLUMNS) ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* ════ LEFT COLUMN (7 cols): RECENT TRIPS TABLE / FEED ════ */}
         <div className="lg:col-span-7 space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
@@ -329,7 +279,7 @@ export default function DashboardClient({
                   Recent Trips
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Latest scheduled and active dispatches from your fleet
+                  Latest dispatches and scheduled client journeys
                 </p>
               </div>
               <Link
@@ -465,7 +415,7 @@ export default function DashboardClient({
 
         {/* ════ RIGHT COLUMN (5 cols): REMINDERS + FINANCIAL BALANCES ════ */}
         <div className="lg:col-span-5 space-y-5">
-          {/* ─── REMINDERS & SCHEDULES POD ─── */}
+          {/* ─── REMINDERS & COMPLIANCE POD ─── */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-3.5">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
@@ -492,8 +442,33 @@ export default function DashboardClient({
 
             {/* Reminder Items List */}
             <div className="space-y-2.5">
-              {hasRealReminders
-                ? initialReminders.slice(0, 4).map((rem) => (
+              {reminders.length === 0 ? (
+                <div className="py-8 px-4 text-center rounded-xl bg-slate-50/70 border border-dashed border-slate-200">
+                  <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-800">
+                    All Compliances Up to Date
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    No active vehicle maintenance, fitness, or license alerts.
+                  </p>
+                  <Link
+                    href="/travel/reminders"
+                    className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                  >
+                    <Plus className="w-3 h-3 text-blue-600" />
+                    <span>Schedule Reminder</span>
+                  </Link>
+                </div>
+              ) : (
+                reminders.slice(0, 5).map((rem) => {
+                  const todayStr = new Date().toISOString().split("T")[0];
+                  const isOverdue =
+                    rem.status === "overdue" ||
+                    (rem.status === "pending" && rem.dueDate < todayStr);
+
+                  return (
                     <div
                       key={rem.id}
                       className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:bg-slate-100/60 transition-colors flex items-start justify-between gap-3"
@@ -504,55 +479,24 @@ export default function DashboardClient({
                             className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
                               rem.status === "completed"
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : rem.status === "overdue"
+                                : isOverdue
                                 ? "bg-rose-50 text-rose-700 border-rose-200"
                                 : "bg-amber-50 text-amber-800 border-amber-200"
                             }`}
                           >
-                            {rem.status.toUpperCase()}
+                            {rem.status === "completed"
+                              ? "COMPLETED"
+                              : isOverdue
+                              ? "OVERDUE"
+                              : "UPCOMING"}
                           </span>
-                          {rem.relatedEntityId && (
-                            <span className="text-[11px] font-semibold text-slate-700 truncate">
-                              {rem.relatedEntityId}
-                            </span>
-                          )}
                         </div>
                         <p className="text-xs font-bold text-slate-900 truncate leading-tight">
                           {rem.title}
                         </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
+                        <p className="text-[10px] text-slate-500 mt-0.5">
                           Due: {formatDate(rem.dueDate)}
-                        </p>
-                      </div>
-                      <Link
-                        href="/travel/reminders"
-                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 shrink-0 pt-0.5"
-                      >
-                        Details →
-                      </Link>
-                    </div>
-                  ))
-                : defaultReminders.map((rem) => (
-                    <div
-                      key={rem.id}
-                      className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:bg-slate-100/60 transition-colors flex items-start justify-between gap-3"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span
-                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${rem.badgeClass}`}
-                          >
-                            {rem.badge}
-                          </span>
-                          <span className="text-[11px] font-semibold text-slate-700 truncate">
-                            {rem.entity}
-                          </span>
-                        </div>
-                        <p className="text-xs font-bold text-slate-900 truncate leading-tight">
-                          {rem.title}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
-                          {rem.dueDate}
+                          {rem.notes ? ` • ${rem.notes}` : ""}
                         </p>
                       </div>
                       <Link
@@ -562,7 +506,9 @@ export default function DashboardClient({
                         Manage →
                       </Link>
                     </div>
-                  ))}
+                  );
+                })
+              )}
             </div>
 
             <Link
@@ -646,8 +592,6 @@ export default function DashboardClient({
               )}
             </div>
           </div>
-
-
         </div>
       </div>
 
