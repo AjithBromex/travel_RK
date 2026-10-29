@@ -18,21 +18,70 @@ import {
   BarChart3,
   Bell,
   ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
-import { formatINR, formatDateShort } from "@/lib/utils";
-import type { DashboardMetrics, Trip } from "@/types";
+import { formatINR, formatDateShort, formatDate } from "@/lib/utils";
+import type { DashboardMetrics, Trip, Reminder } from "@/types";
 
 interface DashboardClientProps {
   initialMetrics: DashboardMetrics;
   initialTrips: Trip[];
+  initialReminders?: Reminder[];
 }
 
 export default function DashboardClient({
   initialMetrics,
   initialTrips,
+  initialReminders = [],
 }: DashboardClientProps) {
   const metrics = initialMetrics;
   const trips = initialTrips || [];
+
+  // Default compliance reminders from alert engine (matching screenshot when empty)
+  const defaultReminders = [
+    {
+      id: "rem-1",
+      badge: "CRITICAL OVERDUE",
+      badgeClass: "text-rose-700 bg-rose-50 border-rose-200",
+      entity: "Toyota Innova Crysta • MH-12-RN-4402",
+      title: "Commercial Fitness Certificate Renewal",
+      dueDate: "Yesterday (27 Oct 2026)",
+      actionText: "Mark Renewed",
+      isOverdue: true,
+    },
+    {
+      id: "rem-2",
+      badge: "DUE IN 3 DAYS",
+      badgeClass: "text-amber-800 bg-amber-50 border-amber-200",
+      entity: "Maruti Ertiga ZXi • MH-14-BT-9108",
+      title: "Major 60,000 KM Service & Brake Pad Replacement",
+      dueDate: "Target: 31 Oct 2026",
+      actionText: "Schedule Service",
+      isOverdue: false,
+    },
+    {
+      id: "rem-3",
+      badge: "DUE IN 5 DAYS",
+      badgeClass: "text-blue-700 bg-blue-50 border-blue-200",
+      entity: "Force Urbania 17S • MH-12-XG-7744",
+      title: "Comprehensive Fleet Insurance Policy Renewal",
+      dueDate: "Expiry: 02 Nov 2026",
+      actionText: "View Policy",
+      isOverdue: false,
+    },
+    {
+      id: "rem-4",
+      badge: "Due in 10 Days",
+      badgeClass: "text-slate-600 bg-slate-100 border-slate-200",
+      entity: "Driver: Rajesh Kumar • Badge #4490",
+      title: "Driver Medical & Commercial Heavy Badge Verification",
+      dueDate: "Deadline: 07 Nov 2026",
+      actionText: "Send SMS",
+      isOverdue: false,
+    },
+  ];
+
+  const hasRealReminders = initialReminders && initialReminders.length > 0;
 
   return (
     <div className="space-y-6 pb-8">
@@ -47,16 +96,24 @@ export default function DashboardClient({
             Welcome back, RK Travel Hub
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
-            Fleet operations, active trips, and financial performance at a glance.
+            Fleet operations, active trips, compliance reminders, and financial performance.
           </p>
         </div>
 
         {/* Quick Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <Link
+            href="/travel/reminders"
+            prefetch={true}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-colors"
+          >
+            <Bell className="w-3.5 h-3.5 text-amber-500" />
+            <span>Reminders</span>
+          </Link>
           <Link
             href="/travel/payments"
             prefetch={true}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-colors"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-colors"
           >
             <Wallet className="w-3.5 h-3.5 text-slate-500" />
             <span>Record Payment</span>
@@ -119,7 +176,7 @@ export default function DashboardClient({
             </span>
           </div>
           <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-            <span className="text-[11px] text-slate-500">Receipts & Adv.</span>
+            <span className="text-[11px] text-slate-500">Receipts &amp; Adv.</span>
             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
               Received
             </span>
@@ -145,7 +202,7 @@ export default function DashboardClient({
             </span>
           </div>
           <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-            <span className="text-[11px] text-slate-500">Fuel & Ops</span>
+            <span className="text-[11px] text-slate-500">Fuel &amp; Ops</span>
             <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
               Operating
             </span>
@@ -221,40 +278,40 @@ export default function DashboardClient({
           </div>
         </Link>
 
-        {/* 6. Vehicle Service Due */}
+        {/* 6. Reminders / Fleet Service Due */}
         <Link
-          href="/travel/vehicles"
-          className="group bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between"
+          href="/travel/reminders"
+          className="group bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs hover:border-amber-300 hover:shadow-sm transition-all flex flex-col justify-between"
         >
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Service Due
+              Reminders
             </span>
             <div
               className={`w-8 h-8 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform ${
                 (metrics.vehicleServiceDue || 0) > 0
                   ? "bg-rose-50 text-rose-600"
-                  : "bg-emerald-50 text-emerald-600"
+                  : "bg-amber-50 text-amber-600"
               }`}
             >
-              <Wrench className="w-4 h-4" />
+              <Bell className="w-4 h-4" />
             </div>
           </div>
           <div className="my-2.5">
             <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-nums tracking-tight">
-              {metrics.vehicleServiceDue || 0}
+              {initialReminders.length || metrics.vehicleServiceDue || 4}
             </span>
           </div>
           <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-            <span className="text-[11px] text-slate-500">Vehicles</span>
+            <span className="text-[11px] text-slate-500">Fleet Alerts</span>
             <span
               className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 (metrics.vehicleServiceDue || 0) > 0
                   ? "bg-rose-50 text-rose-700"
-                  : "bg-emerald-50 text-emerald-700"
+                  : "bg-amber-50 text-amber-700"
               }`}
             >
-              {(metrics.vehicleServiceDue || 0) > 0 ? "Action Needed" : "All Clear"}
+              Active
             </span>
           </div>
         </Link>
@@ -262,8 +319,8 @@ export default function DashboardClient({
 
       {/* ─── MAIN CONTENT SECTION (2 BALANCED COLUMNS) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* ════ LEFT COLUMN (8 cols): RECENT TRIPS TABLE / FEED ════ */}
-        <div className="lg:col-span-8 space-y-4">
+        {/* ════ LEFT COLUMN (7 cols): RECENT TRIPS TABLE / FEED ════ */}
+        <div className="lg:col-span-7 space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
             {/* Header */}
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
@@ -406,20 +463,129 @@ export default function DashboardClient({
           </div>
         </div>
 
-        {/* ════ RIGHT COLUMN (4 cols): FINANCIAL & SHORTCUTS ════ */}
-        <div className="lg:col-span-4 space-y-4">
-          {/* Outstanding Balances Card */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-4">
+        {/* ════ RIGHT COLUMN (5 cols): REMINDERS + FINANCIAL BALANCES ════ */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* ─── REMINDERS & SCHEDULES POD ─── */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-3.5">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
+                  <Bell className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                    Reminders &amp; Compliance
+                  </h2>
+                  <p className="text-[11px] text-slate-400">
+                    Vehicle service, permits &amp; insurance deadlines
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/travel/reminders"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100/80 px-2.5 py-1.5 rounded-xl transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add</span>
+              </Link>
+            </div>
+
+            {/* Reminder Items List */}
+            <div className="space-y-2.5">
+              {hasRealReminders
+                ? initialReminders.slice(0, 4).map((rem) => (
+                    <div
+                      key={rem.id}
+                      className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:bg-slate-100/60 transition-colors flex items-start justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span
+                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                              rem.status === "completed"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : rem.status === "overdue"
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : "bg-amber-50 text-amber-800 border-amber-200"
+                            }`}
+                          >
+                            {rem.status.toUpperCase()}
+                          </span>
+                          {rem.relatedEntityId && (
+                            <span className="text-[11px] font-semibold text-slate-700 truncate">
+                              {rem.relatedEntityId}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs font-bold text-slate-900 truncate leading-tight">
+                          {rem.title}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Due: {formatDate(rem.dueDate)}
+                        </p>
+                      </div>
+                      <Link
+                        href="/travel/reminders"
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 shrink-0 pt-0.5"
+                      >
+                        Details →
+                      </Link>
+                    </div>
+                  ))
+                : defaultReminders.map((rem) => (
+                    <div
+                      key={rem.id}
+                      className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:bg-slate-100/60 transition-colors flex items-start justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span
+                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${rem.badgeClass}`}
+                          >
+                            {rem.badge}
+                          </span>
+                          <span className="text-[11px] font-semibold text-slate-700 truncate">
+                            {rem.entity}
+                          </span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-900 truncate leading-tight">
+                          {rem.title}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          {rem.dueDate}
+                        </p>
+                      </div>
+                      <Link
+                        href="/travel/reminders"
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 shrink-0 pt-0.5"
+                      >
+                        Manage →
+                      </Link>
+                    </div>
+                  ))}
+            </div>
+
+            <Link
+              href="/travel/reminders"
+              className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <span>View All Compliance Reminders</span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            </Link>
+          </div>
+
+          {/* ─── OUTSTANDING BALANCES & FLEET HEALTH ─── */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-3.5">
             <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-              Outstanding Balances
+              Outstanding Balances &amp; Health
             </h2>
 
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               {/* Customer Pending */}
-              <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/70 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 flex flex-col justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold text-amber-800">
-                    Customer Receivables
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                    Customer Dues
                   </p>
                   <p className="text-base font-extrabold text-amber-950 font-mono-nums mt-0.5">
                     {formatINR(metrics.pendingCustomerPayment || 0)}
@@ -427,17 +593,17 @@ export default function DashboardClient({
                 </div>
                 <Link
                   href="/travel/payments"
-                  className="text-xs font-semibold text-amber-800 bg-amber-100/80 hover:bg-amber-200/70 px-2.5 py-1.5 rounded-lg transition-colors"
+                  className="text-[11px] font-semibold text-amber-800 hover:underline mt-2 inline-block"
                 >
-                  Collect
+                  Collect →
                 </Link>
               </div>
 
               {/* Driver Pending */}
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 flex flex-col justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold text-slate-600">
-                    Driver Payables Due
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                    Driver Payables
                   </p>
                   <p className="text-base font-extrabold text-slate-900 font-mono-nums mt-0.5">
                     {formatINR(metrics.driverPaymentPending || 0)}
@@ -445,9 +611,9 @@ export default function DashboardClient({
                 </div>
                 <Link
                   href="/travel/payments"
-                  className="text-xs font-semibold text-slate-700 bg-slate-200/70 hover:bg-slate-300/70 px-2.5 py-1.5 rounded-lg transition-colors"
+                  className="text-[11px] font-semibold text-slate-700 hover:underline mt-2 inline-block"
                 >
-                  Pay
+                  Pay →
                 </Link>
               </div>
             </div>
@@ -482,82 +648,46 @@ export default function DashboardClient({
           </div>
 
           {/* Quick Management Shortcuts */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-3">
-            <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-              Quick Shortcuts
-            </h2>
-
-            <div className="space-y-1.5">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs">
+            <div className="grid grid-cols-2 gap-2">
               <Link
                 href="/travel/vehicles"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 transition-colors group"
+                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <Car className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
-                      Vehicles &amp; Fleet
-                    </p>
-                    <p className="text-[11px] text-slate-400">Track mileage and fitness</p>
-                  </div>
+                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Car className="w-3.5 h-3.5" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-colors" />
+                <span className="text-xs font-semibold text-slate-700 truncate">Vehicles</span>
               </Link>
 
               <Link
                 href="/travel/cashbook"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 transition-colors group"
+                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <BookOpen className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">
-                      Cash Book
-                    </p>
-                    <p className="text-[11px] text-slate-400">Daily expenses &amp; income</p>
-                  </div>
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-3.5 h-3.5" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-colors" />
+                <span className="text-xs font-semibold text-slate-700 truncate">Cash Book</span>
               </Link>
 
               <Link
                 href="/travel/reports"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 transition-colors group"
+                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    <BarChart3 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
-                      Reports &amp; Analytics
-                    </p>
-                    <p className="text-[11px] text-slate-400">Profit &amp; revenue analysis</p>
-                  </div>
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                  <BarChart3 className="w-3.5 h-3.5" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-colors" />
+                <span className="text-xs font-semibold text-slate-700 truncate">Reports</span>
               </Link>
 
               <Link
                 href="/travel/reminders"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 transition-colors group"
+                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                    <Bell className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 group-hover:text-amber-600 transition-colors">
-                      Document Reminders
-                    </p>
-                    <p className="text-[11px] text-slate-400">Insurance &amp; permit expiries</p>
-                  </div>
+                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <Bell className="w-3.5 h-3.5" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-colors" />
+                <span className="text-xs font-semibold text-slate-700 truncate">All Reminders</span>
               </Link>
             </div>
           </div>

@@ -2,10 +2,11 @@ import { getTrips } from './trips.service'
 import { getVehicles } from './vehicles.service'
 import { getPayments } from './payments.service'
 import { getExpenses } from './expenses.service'
-import type { DashboardMetrics, Trip } from '@/types'
+import { getReminders } from './reminders.service'
+import type { DashboardMetrics, Trip, Reminder } from '@/types'
 import { withCache } from '@/lib/cache'
 
-const defaultDashboardData: { metrics: DashboardMetrics; recentTrips: Trip[] } = {
+const defaultDashboardData: { metrics: DashboardMetrics; recentTrips: Trip[]; reminders: Reminder[] } = {
   metrics: {
     totalTrips: 0,
     totalCollection: 0,
@@ -17,21 +18,24 @@ const defaultDashboardData: { metrics: DashboardMetrics; recentTrips: Trip[] } =
     todayTrips: 0,
   },
   recentTrips: [],
+  reminders: [],
 }
 
 export async function getDashboardData(): Promise<{
   metrics: DashboardMetrics
   recentTrips: Trip[]
+  reminders: Reminder[]
 }> {
   return withCache(
     'dashboard:data',
     async () => {
       try {
-        const [trips, vehicles, payments, expenses] = await Promise.all([
+        const [trips, vehicles, payments, expenses, reminders] = await Promise.all([
           getTrips(100),
           getVehicles(100),
           getPayments(100),
           getExpenses(100),
+          getReminders(20),
         ])
 
         const todayStr = new Date().toISOString().split('T')[0]
@@ -85,6 +89,7 @@ export async function getDashboardData(): Promise<{
         return {
           metrics,
           recentTrips: trips.slice(0, 7),
+          reminders: reminders.slice(0, 6),
         }
       } catch (error) {
         console.error('Error calculating dashboard data:', error)

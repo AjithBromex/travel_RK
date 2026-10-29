@@ -728,7 +728,7 @@ export default function RemindersClient({
           {/* Reminders List Rows */}
           <div className="space-y-3">
             {/* Real Firestore items */}
-            {filteredReminders.slice(0, 2).map((item) => (
+            {filteredReminders.map((item) => (
               <div
                 key={item.id}
                 className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-sm transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -765,8 +765,8 @@ export default function RemindersClient({
               </div>
             ))}
 
-            {/* Benchmark Designed Compliance Items from Screenshot */}
-            {defaultComplianceItems.map((item) => (
+            {/* Benchmark Designed Compliance Items from Screenshot when no reminders added yet */}
+            {filteredReminders.length === 0 && reminders.length === 0 && defaultComplianceItems.map((item) => (
               <div
                 key={item.id}
                 className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-sm transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"

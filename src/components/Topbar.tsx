@@ -26,6 +26,7 @@ const navLinks = [
   { name: "Payments", href: "/travel/payments" },
   { name: "Cash Book", href: "/travel/cashbook" },
   { name: "Reports", href: "/travel/reports" },
+  { name: "Reminders", href: "/travel/reminders" },
   { name: "Settings", href: "/travel/settings" },
 ];
 
