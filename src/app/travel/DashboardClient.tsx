@@ -16,8 +16,6 @@ import {
   Bell,
   ArrowRight,
   ShieldCheck,
-  CreditCard,
-  Calendar,
 } from "lucide-react";
 import { formatINR, formatDateShort, formatDate } from "@/lib/utils";
 import type { DashboardMetrics, Trip, Reminder } from "@/types";

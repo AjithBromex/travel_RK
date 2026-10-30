@@ -15,7 +15,6 @@ import {
   MapPin,
   Calendar,
   CreditCard,
-  FileSpreadsheet,
 } from "lucide-react";
 import type { Trip, Vehicle, Payment, Expense, Reminder } from "@/types";
 

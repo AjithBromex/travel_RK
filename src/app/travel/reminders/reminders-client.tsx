@@ -9,7 +9,6 @@ import {
   Search,
   Check,
   Plus,
-  Calendar,
   Shield,
   Wrench,
   FileText,
@@ -31,6 +30,12 @@ interface RemindersClientProps {
   vehicles: Vehicle[];
 }
 
+function getDefaultDueDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  return d.toISOString().split("T")[0];
+}
+
 export default function RemindersClient({
   initialReminders,
   vehicles,
@@ -42,15 +47,11 @@ export default function RemindersClient({
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  const defaultDueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split("T")[0];
-
   // Clean initial form state
   const initialForm = {
     title: "",
     category: "vehicle_service" as ReminderCategory,
-    dueDate: defaultDueDate,
+    dueDate: getDefaultDueDate(),
     relatedVehicleId: vehicles[0]?.id || "",
     notes: "",
   };
