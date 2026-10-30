@@ -23,6 +23,12 @@ import {
   Calendar,
   X,
   Camera,
+  Crop,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Move,
+  Check,
 } from "lucide-react";
 import {
   formatINR,
@@ -137,6 +143,19 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
   const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
   const [photoProcessing, setPhotoProcessing] = useState(false);
 
+  // Interactive Crop Adjuster State
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [rawPhotoUrl, setRawPhotoUrl] = useState<string>("");
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropPan, setCropPan] = useState({ x: 0, y: 0 });
+  const [cropImgDims, setCropImgDims] = useState<{ width: number; height: number; natW: number; natH: number } | null>(null);
+
+  const cropViewportRef = useRef<HTMLDivElement>(null);
+  const cropImgRef = useRef<HTMLImageElement>(null);
+  const isCropDraggingRef = useRef(false);
+  const cropStartPosRef = useRef({ x: 0, y: 0 });
+  const cropStartPanRef = useRef({ x: 0, y: 0 });
+
   const [form, setForm] = useState(EMPTY_FORM);
 
   // Dynamic real KPIs calculated from real data
@@ -155,20 +174,138 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
       isDocumentExpired(v.pollutionExpiry)
   ).length;
 
-  const handlePhotoUpload = async (file: File) => {
-    try {
-      setPhotoProcessing(true);
-      const croppedUrl = await autoCropToRectangle(file);
-      setForm((prev) => ({ ...prev, photoUrl: croppedUrl }));
-      setFeedback({ message: "Photo auto-cropped to 16:9 rectangle successfully!", type: "success" });
-    } catch (err: unknown) {
-      console.error("Auto crop photo error:", err);
-      const msg = (err as Error)?.message || "Failed to process vehicle photo";
-      setFeedback({ message: msg, type: "error" });
-    } finally {
-      setPhotoProcessing(false);
-      setTimeout(() => setFeedback(null), 3000);
+  const updateCropPan = (newX: number, newY: number, currentZoom = cropZoom) => {
+    if (!cropViewportRef.current || !cropImgDims) return;
+    const W_vp = cropViewportRef.current.clientWidth;
+    const H_vp = cropViewportRef.current.clientHeight;
+
+    const renderW = cropImgDims.width * currentZoom;
+    const renderH = cropImgDims.height * currentZoom;
+
+    const maxPanX = Math.max(0, (renderW - W_vp) / 2);
+    const maxPanY = Math.max(0, (renderH - H_vp) / 2);
+
+    const clampedX = Math.min(maxPanX, Math.max(-maxPanX, newX));
+    const clampedY = Math.min(maxPanY, Math.max(-maxPanY, newY));
+
+    setCropPan({ x: clampedX, y: clampedY });
+  };
+
+  const handleZoomChange = (newZoom: number) => {
+    const clampedZoom = Math.min(3, Math.max(1, Number(newZoom.toFixed(2))));
+    setCropZoom(clampedZoom);
+    updateCropPan(cropPan.x, cropPan.y, clampedZoom);
+  };
+
+  const handleCropImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (!cropViewportRef.current) return;
+    const W_vp = cropViewportRef.current.clientWidth || 540;
+    const H_vp = cropViewportRef.current.clientHeight || Math.round(W_vp * 9 / 16);
+    const natW = img.naturalWidth || W_vp;
+    const natH = img.naturalHeight || H_vp;
+
+    const imgAspect = natW / natH;
+    const vpAspect = W_vp / H_vp;
+
+    let fitScale = 1;
+    if (imgAspect > vpAspect) {
+      fitScale = H_vp / natH;
+    } else {
+      fitScale = W_vp / natW;
     }
+
+    const baseW = natW * fitScale;
+    const baseH = natH * fitScale;
+
+    setCropImgDims({ width: baseW, height: baseH, natW, natH });
+    setCropZoom(1);
+    setCropPan({ x: 0, y: 0 });
+  };
+
+  const handleApplyCrop = () => {
+    if (!cropImgRef.current || !cropViewportRef.current || !cropImgDims) return;
+    const W_vp = cropViewportRef.current.clientWidth;
+    const H_vp = cropViewportRef.current.clientHeight;
+    const { natW, natH } = cropImgDims;
+
+    const imgAspect = natW / natH;
+    const vpAspect = W_vp / H_vp;
+
+    let fitScale = 1;
+    if (imgAspect > vpAspect) {
+      fitScale = H_vp / natH;
+    } else {
+      fitScale = W_vp / natW;
+    }
+
+    const scaleFactor = fitScale * cropZoom;
+
+    const cropNaturalW = W_vp / scaleFactor;
+    const cropNaturalH = H_vp / scaleFactor;
+
+    const centerNaturalX = (natW / 2) - (cropPan.x / scaleFactor);
+    const centerNaturalY = (natH / 2) - (cropPan.y / scaleFactor);
+
+    let cropNaturalX = centerNaturalX - (cropNaturalW / 2);
+    let cropNaturalY = centerNaturalY - (cropNaturalH / 2);
+
+    cropNaturalX = Math.max(0, Math.min(natW - cropNaturalW, cropNaturalX));
+    cropNaturalY = Math.max(0, Math.min(natH - cropNaturalH, cropNaturalY));
+
+    const canvas = document.createElement("canvas");
+    const outWidth = 960;
+    const outHeight = Math.round(outWidth * 9 / 16); // 540
+    canvas.width = outWidth;
+    canvas.height = outHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, outWidth, outHeight);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    ctx.drawImage(
+      cropImgRef.current,
+      cropNaturalX,
+      cropNaturalY,
+      cropNaturalW,
+      cropNaturalH,
+      0,
+      0,
+      outWidth,
+      outHeight
+    );
+
+    const croppedDataUrl = canvas.toDataURL("image/jpeg", 0.88);
+    setForm((prev) => ({ ...prev, photoUrl: croppedDataUrl }));
+    setIsCropModalOpen(false);
+    setFeedback({ message: "Vehicle photo adjusted and cropped successfully!", type: "success" });
+    setTimeout(() => setFeedback(null), 3000);
+  };
+
+  const handlePhotoUpload = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setFeedback({ message: "Please select an image file (JPG, PNG, WEBP)", type: "error" });
+      setTimeout(() => setFeedback(null), 3000);
+      return;
+    }
+
+    setPhotoProcessing(true);
+    const reader = new FileReader();
+    reader.onerror = () => {
+      setPhotoProcessing(false);
+      setFeedback({ message: "Failed to read image file", type: "error" });
+      setTimeout(() => setFeedback(null), 3000);
+    };
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setRawPhotoUrl(dataUrl);
+      setPhotoProcessing(false);
+      setIsCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,8 +325,18 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
     }
   };
 
+  const handleOpenCropAdjuster = () => {
+    if (rawPhotoUrl) {
+      setIsCropModalOpen(true);
+    } else if (form.photoUrl) {
+      setRawPhotoUrl(form.photoUrl);
+      setIsCropModalOpen(true);
+    }
+  };
+
   const handleRemovePhoto = () => {
     setForm((prev) => ({ ...prev, photoUrl: "" }));
+    setRawPhotoUrl("");
   };
 
   const handleEdit = (v: Vehicle) => {
@@ -206,6 +353,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
       pollutionExpiry: v.pollutionExpiry || "",
       photoUrl: v.photoUrl || "",
     });
+    setRawPhotoUrl(v.photoUrl || "");
     if (formRef.current) {
       formRef.current.scrollIntoView({ behavior: "smooth" });
     }
@@ -214,6 +362,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
   const handleCancelEdit = () => {
     setEditingVehicleId(null);
     setForm(EMPTY_FORM);
+    setRawPhotoUrl("");
   };
 
   const handleDelete = async (vehicle: Vehicle) => {
@@ -607,14 +756,23 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                     </div>
 
                     {/* Controls */}
-                    <div className="absolute bottom-2.5 right-2.5 flex items-center gap-2">
+                    <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 flex-wrap justify-end">
+                      <button
+                        type="button"
+                        onClick={handleOpenCropAdjuster}
+                        className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                        title="Adjust crop, zoom and position"
+                      >
+                        <Crop className="w-3.5 h-3.5" />
+                        <span>Adjust Crop</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-xl bg-white/95 hover:bg-white text-slate-900 text-xs font-bold backdrop-blur-md shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl bg-white/95 hover:bg-white text-slate-900 text-xs font-bold backdrop-blur-md shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
                       >
                         <Camera className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Change Photo</span>
+                        <span>Change</span>
                       </button>
                       <button
                         type="button"
@@ -1155,6 +1313,205 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
           <span className="font-medium text-slate-600">Fleet database connected</span>
         </div>
       </footer>
+
+      {/* ─── 5. Interactive Crop Adjustment Modal ─── */}
+      {isCropModalOpen && rawPhotoUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[95vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Crop className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                    Adjust Vehicle Photo Crop
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Drag to reposition • Zoom to frame the vehicle in 16:9 rectangle
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCropModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Viewport Frame */}
+            <div
+              ref={cropViewportRef}
+              onMouseDown={(e) => {
+                isCropDraggingRef.current = true;
+                cropStartPosRef.current = { x: e.clientX, y: e.clientY };
+                cropStartPanRef.current = { ...cropPan };
+              }}
+              onMouseMove={(e) => {
+                if (!isCropDraggingRef.current) return;
+                const dx = e.clientX - cropStartPosRef.current.x;
+                const dy = e.clientY - cropStartPosRef.current.y;
+                updateCropPan(cropStartPanRef.current.x + dx, cropStartPanRef.current.y + dy);
+              }}
+              onMouseUp={() => {
+                isCropDraggingRef.current = false;
+              }}
+              onMouseLeave={() => {
+                isCropDraggingRef.current = false;
+              }}
+              onTouchStart={(e) => {
+                if (e.touches.length === 1) {
+                  isCropDraggingRef.current = true;
+                  cropStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                  cropStartPanRef.current = { ...cropPan };
+                }
+              }}
+              onTouchMove={(e) => {
+                if (!isCropDraggingRef.current || e.touches.length !== 1) return;
+                const dx = e.touches[0].clientX - cropStartPosRef.current.x;
+                const dy = e.touches[0].clientY - cropStartPosRef.current.y;
+                updateCropPan(cropStartPanRef.current.x + dx, cropStartPanRef.current.y + dy);
+              }}
+              onTouchEnd={() => {
+                isCropDraggingRef.current = false;
+              }}
+              onWheel={(e) => {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 0.08 : -0.08;
+                handleZoomChange(cropZoom + delta);
+              }}
+              className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center cursor-grab active:cursor-grabbing select-none border border-slate-800 shadow-inner group"
+            >
+              <img
+                ref={cropImgRef}
+                src={rawPhotoUrl}
+                alt="Vehicle crop source"
+                onLoad={handleCropImageLoad}
+                draggable={false}
+                style={{
+                  transform: `translate(${cropPan.x}px, ${cropPan.y}px) scale(${cropZoom})`,
+                  transformOrigin: "center center",
+                  maxWidth: "none",
+                  maxHeight: "none",
+                  width: cropImgDims ? `${cropImgDims.width}px` : "100%",
+                  height: cropImgDims ? `${cropImgDims.height}px` : "100%",
+                }}
+                className="pointer-events-none transition-transform duration-75 ease-out select-none"
+              />
+
+              {/* 16:9 Rule-of-Thirds Framing Overlay */}
+              <div className="absolute inset-0 pointer-events-none border-2 border-white/70 rounded-2xl">
+                <div className="w-full h-full grid grid-cols-3 grid-rows-3">
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div />
+                </div>
+              </div>
+
+              {/* Status Pills */}
+              <div className="absolute top-2.5 left-2.5 pointer-events-none flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/65 backdrop-blur-md text-[10px] font-bold text-white border border-white/10">
+                  <Crop className="w-3 h-3 text-blue-400" />
+                  16:9 Rectangle
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-black/65 backdrop-blur-md text-[10px] font-semibold text-slate-300 border border-white/10">
+                  <Move className="w-3 h-3 text-slate-400" />
+                  Drag to pan
+                </span>
+              </div>
+            </div>
+
+            {/* Zoom and Reset Controls */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-700 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                  <ZoomIn className="w-3.5 h-3.5 text-blue-600" />
+                  Zoom &amp; Frame
+                </span>
+                <span className="font-mono font-bold text-blue-600 text-xs">
+                  {Math.round(cropZoom * 100)}%
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleZoomChange(cropZoom - 0.15)}
+                  disabled={cropZoom <= 1}
+                  className="p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-40 transition-colors cursor-pointer"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.02}
+                  value={cropZoom}
+                  onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
+                  className="w-full accent-blue-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => handleZoomChange(cropZoom + 0.15)}
+                  disabled={cropZoom >= 3}
+                  className="p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-40 transition-colors cursor-pointer"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCropZoom(1);
+                    setCropPan({ x: 0, y: 0 });
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors shrink-0 cursor-pointer"
+                  title="Center and Reset Zoom"
+                >
+                  <RotateCcw className="w-3 h-3 text-slate-500" />
+                  <span>Reset</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsCropModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyCrop}
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs shadow-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>Apply &amp; Save Crop</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
