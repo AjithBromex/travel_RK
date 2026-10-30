@@ -407,40 +407,39 @@ export default function RemindersClient({
                 />
               </div>
 
-              {/* Category & Due Date */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Category
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={form.category}
-                      onChange={(e) =>
-                        setForm({ ...form, category: e.target.value as ReminderCategory })
-                      }
-                      className="w-full h-10 px-3 pr-7 rounded-xl bg-slate-100/80 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none transition-all"
-                    >
-                      <option value="vehicle_service">Vehicle Service</option>
-                      <option value="documents">Documents &amp; Insurance</option>
-                      <option value="driver">Driver Compliance</option>
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-3.5 pointer-events-none" />
-                  </div>
+              {/* Category */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Category
+                </label>
+                <div className="relative">
+                  <select
+                    value={form.category}
+                    onChange={(e) =>
+                      setForm({ ...form, category: e.target.value as ReminderCategory })
+                    }
+                    className="w-full h-10 px-3 pr-7 rounded-xl bg-slate-100/80 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none transition-all cursor-pointer"
+                  >
+                    <option value="vehicle_service">Vehicle Service</option>
+                    <option value="documents">Documents &amp; Insurance</option>
+                    <option value="driver">Driver Compliance</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-3.5 pointer-events-none" />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Due Date <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={form.dueDate}
-                    onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                    className="w-full h-10 px-3 rounded-xl bg-slate-100/80 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
-                  />
-                </div>
+              {/* Due Date */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Due Date <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={form.dueDate}
+                  onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                  className="w-full h-10 px-3 rounded-xl bg-slate-100/80 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+                />
               </div>
 
               {/* Related Vehicle */}
