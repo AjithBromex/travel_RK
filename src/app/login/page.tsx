@@ -136,730 +136,464 @@ function LoginForm() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#0A1628] flex items-center justify-center overflow-hidden selection:bg-blue-600/30 selection:text-white font-sans">
-      {/* ─────────────────────────────────────────────────────────────
-          DESKTOP VIEW (>= 1024px): Pixel-Perfect 16:9 Canvas Matching Mockup
-          ───────────────────────────────────────────────────────────── */}
-      <div className="hidden lg:flex relative w-full h-screen items-center justify-center">
-        {/* Ambient atmospheric blurred backdrop extending beyond 16:9 */}
-        <div
-          className="absolute inset-0 bg-cover bg-center filter blur-2xl scale-110 opacity-70 pointer-events-none"
-          style={{ backgroundImage: `url('/images/login-mockup-hd.jpg')` }}
+    <div className="relative min-h-screen w-full flex items-center justify-center overflow-x-hidden selection:bg-blue-600/30 selection:text-white font-sans">
+      {/* ─── 1. Cinematic Alpine Mountain Highway Background with Force Traveller ─── */}
+      <div className="fixed inset-0 -z-20">
+        <Image
+          src="/images/login-scenic-bg.jpg"
+          alt="RK Travel Alpine Highway with Force Traveller"
+          fill
+          priority
+          className="object-cover object-center scale-[1.01]"
         />
-        <div className="absolute inset-0 bg-slate-950/25 pointer-events-none" />
-
-        {/* The Exact 16:9 Canvas Container */}
-        <div className="relative w-full h-full max-w-[177.78vh] max-h-[56.25vw] aspect-[16/9] shadow-[0_25px_80px_rgba(0,0,0,0.6)] overflow-hidden">
-          {/* Base Mockup Image: Exactly the User's Image */}
-          <Image
-            src="/images/login-mockup-hd.jpg"
-            alt="RK Travel Hub Login"
-            fill
-            priority
-            className="object-cover object-center select-none"
-          />
-
-          {/* ═════════════════════════════════════════════════════════
-              INTERACTIVE FROSTED GLASS PORTAL CARD OVERLAY
-              Mapped with 100% precision to the right card:
-              left: 61.62%, top: 9.03%, width: 32.71%, height: 82.64%
-              ═════════════════════════════════════════════════════════ */}
-          <div
-            className="absolute z-20"
-            style={{
-              left: "61.62%",
-              top: "9.03%",
-              width: "32.71%",
-              height: "82.64%",
-            }}
-          >
-            {/* When in Reset Mode or Register Mode: Render full opaque frosted card */}
-            {isResetMode || isRegisterMode ? (
-              <div className="w-full h-full bg-white/95 backdrop-blur-3xl rounded-[clamp(20px,2.2vw,36px)] border border-white p-[6%] shadow-2xl flex flex-col justify-between overflow-y-auto">
-                <div>
-                  {/* Card Header */}
-                  <div className="text-center mb-[5%]">
-                    <div className="w-[18%] aspect-square max-w-[64px] mx-auto mb-[2%] relative">
-                      <Image
-                        src="/images/rk-logo-card.png"
-                        alt="RK Logo"
-                        fill
-                        className="object-contain"
-                      />
-                    </div>
-                    <p className="text-[clamp(9px,0.75vw,11px)] font-bold tracking-widest text-slate-800 uppercase">
-                      RK TRAVEL HUB
-                    </p>
-                    <p className="text-[clamp(7px,0.55vw,9px)] font-bold tracking-[0.2em] text-slate-500 uppercase">
-                      TRAVEL BEYOND BORDERS
-                    </p>
-
-                    <h2 className="text-[clamp(16px,1.5vw,22px)] font-black text-slate-900 mt-[3%]">
-                      {isResetMode ? "Reset Password" : "Create Account"}
-                    </h2>
-                    <p className="text-[clamp(10px,0.75vw,12px)] text-slate-500 mt-[1%]">
-                      {isResetMode
-                        ? "Enter your User ID or email to receive reset instructions"
-                        : "Create an administrator account for RK Travel Hub"}
-                    </p>
-                  </div>
-
-                  {/* Feedback Alerts */}
-                  {error && (
-                    <div className="p-[3%] mb-[4%] bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-[clamp(10px,0.75vw,12px)] text-rose-700 font-medium">
-                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                      <p className="leading-tight">{error}</p>
-                    </div>
-                  )}
-                  {successMessage && (
-                    <div className="p-[3%] mb-[4%] bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-[clamp(10px,0.75vw,12px)] text-emerald-700 font-medium">
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                      <p className="leading-tight">{successMessage}</p>
-                    </div>
-                  )}
-
-                  {/* Reset Password Form */}
-                  {isResetMode ? (
-                    <form onSubmit={handlePasswordReset} className="space-y-[4%]">
-                      <div>
-                        <label className="block text-[clamp(10px,0.75vw,12px)] font-bold text-slate-700 mb-[1.5%]">
-                          User ID / Email
-                        </label>
-                        <div className="relative">
-                          <User className="absolute left-[4%] top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input
-                            type="text"
-                            required
-                            placeholder="ADMIN@GMAIL.COM"
-                            value={resetEmail}
-                            onChange={(e) => setResetEmail(e.target.value)}
-                            className="w-full h-[clamp(34px,2.6vw,42px)] pl-[12%] pr-[4%] bg-[#EEF4FB] border border-[#D5E3F3] rounded-[clamp(10px,0.9vw,14px)] text-[clamp(11px,0.85vw,13px)] font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 uppercase transition-all"
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full h-[clamp(38px,3vw,48px)] bg-[#0D62FE] hover:bg-[#0952DC] text-white rounded-[clamp(12px,1vw,16px)] text-[clamp(12px,0.9vw,14px)] font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 transition-all cursor-pointer disabled:opacity-50"
-                      >
-                        {loading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <>
-                            <span>Send Reset Link</span>
-                            <KeyRound className="w-4 h-4" />
-                          </>
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsResetMode(false);
-                          setError("");
-                        }}
-                        className="w-full text-center text-[clamp(10px,0.75vw,12px)] font-bold text-slate-500 hover:text-slate-900 transition-colors flex items-center justify-center gap-1 pt-[2%] cursor-pointer"
-                      >
-                        <ArrowLeft className="w-3.5 h-3.5" />
-                        <span>Back to Sign In</span>
-                      </button>
-                    </form>
-                  ) : (
-                    /* Register Form */
-                    <form onSubmit={handleRegister} className="space-y-[3.5%]">
-                      <div>
-                        <label className="block text-[clamp(10px,0.75vw,12px)] font-bold text-slate-700 mb-[1%]">
-                          Full Name
-                        </label>
-                        <div className="relative">
-                          <User className="absolute left-[4%] top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input
-                            type="text"
-                            required
-                            placeholder="John Doe"
-                            value={displayName}
-                            onChange={(e) => setDisplayName(e.target.value)}
-                            className="w-full h-[clamp(32px,2.4vw,38px)] pl-[12%] pr-[4%] bg-[#EEF4FB] border border-[#D5E3F3] rounded-[clamp(10px,0.8vw,12px)] text-[clamp(11px,0.8vw,13px)] font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[clamp(10px,0.75vw,12px)] font-bold text-slate-700 mb-[1%]">
-                          User ID / Email
-                        </label>
-                        <div className="relative">
-                          <User className="absolute left-[4%] top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input
-                            type="text"
-                            required
-                            placeholder="ADMIN@GMAIL.COM"
-                            value={userId}
-                            onChange={(e) => setUserId(e.target.value)}
-                            className="w-full h-[clamp(32px,2.4vw,38px)] pl-[12%] pr-[4%] bg-[#EEF4FB] border border-[#D5E3F3] rounded-[clamp(10px,0.8vw,12px)] text-[clamp(11px,0.8vw,13px)] font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 uppercase transition-all"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[clamp(10px,0.75vw,12px)] font-bold text-slate-700 mb-[1%]">
-                          Password
-                        </label>
-                        <div className="relative">
-                          <Lock className="absolute left-[4%] top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            required
-                            placeholder="Minimum 6 characters"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full h-[clamp(32px,2.4vw,38px)] pl-[12%] pr-[12%] bg-[#EEF4FB] border border-[#D5E3F3] rounded-[clamp(10px,0.8vw,12px)] text-[clamp(11px,0.8vw,13px)] font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-[4%] top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                          >
-                            {showPassword ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full h-[clamp(36px,2.8vw,44px)] bg-[#0D62FE] hover:bg-[#0952DC] text-white rounded-[clamp(12px,0.9vw,14px)] text-[clamp(12px,0.85vw,14px)] font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 transition-all cursor-pointer disabled:opacity-50 mt-[2%]"
-                      >
-                        {loading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <>
-                            <span>Create Account</span>
-                            <UserPlus className="w-4 h-4" />
-                          </>
-                        )}
-                      </button>
-
-                      <div className="text-center pt-[1%]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsRegisterMode(false);
-                            setError("");
-                          }}
-                          className="text-[clamp(10px,0.75vw,12px)] text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
-                        >
-                          Already have an account?{" "}
-                          <span className="font-bold text-blue-600 hover:underline">
-                            Sign In
-                          </span>
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </div>
-              </div>
-            ) : (
-              /* Normal Sign In Mode: Precision Overlay on Mockup Card */
-              <div className="relative w-full h-full">
-                {/* Floating Notification / Error Banner */}
-                {error && (
-                  <div className="absolute left-[9.55%] right-[9.26%] top-[37%] z-30 p-[2.5%] bg-rose-50/95 border border-rose-200/90 rounded-xl flex items-center gap-2 text-[clamp(10px,0.72vw,12px)] text-rose-800 font-semibold shadow-lg backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                    <p className="leading-tight truncate">{error}</p>
-                  </div>
-                )}
-                {successMessage && (
-                  <div className="absolute left-[9.55%] right-[9.26%] top-[37%] z-30 p-[2.5%] bg-emerald-50/95 border border-emerald-200/90 rounded-xl flex items-center gap-2 text-[clamp(10px,0.72vw,12px)] text-emerald-800 font-semibold shadow-lg backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                    <p className="leading-tight truncate">{successMessage}</p>
-                  </div>
-                )}
-
-                <form onSubmit={handleLogin} className="w-full h-full">
-                  {/* 1. User ID / Email Input Box */}
-                  <div
-                    className="absolute"
-                    style={{
-                      left: "9.55%",
-                      top: "46.01%",
-                      width: "81.19%",
-                      height: "7.98%",
-                    }}
-                  >
-                    <div className="relative w-full h-full">
-                      <User className="absolute left-[4%] top-1/2 -translate-y-1/2 w-[clamp(14px,1vw,18px)] h-[clamp(14px,1vw,18px)] text-slate-500/80 pointer-events-none z-10" />
-                      <input
-                        type="text"
-                        required
-                        value={userId}
-                        onChange={(e) => {
-                          setUserId(e.target.value);
-                          if (error) setError("");
-                        }}
-                        placeholder="ADMIN@GMAIL.COM"
-                        className="w-full h-full pl-[12%] pr-[4%] bg-[#EEF4FB] text-slate-900 font-semibold text-[clamp(11px,0.85vw,14px)] rounded-[clamp(8px,0.8vw,14px)] border border-[#D5E3F3] focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/30 outline-none uppercase placeholder:text-slate-400/90 transition-all shadow-inner"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 2. Forgot Password Clickable Link */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsResetMode(true);
-                      setError("");
-                      setSuccessMessage("");
-                      setResetEmail(userId);
-                    }}
-                    className="absolute right-[9.55%] top-[55.0%] text-[clamp(9px,0.72vw,12px)] font-bold text-[#1E70F5] hover:text-blue-700 hover:underline cursor-pointer transition-colors z-20"
-                  >
-                    Forgot password?
-                  </button>
-
-                  {/* 3. Password Input Box */}
-                  <div
-                    className="absolute"
-                    style={{
-                      left: "9.55%",
-                      top: "58.40%",
-                      width: "81.19%",
-                      height: "7.98%",
-                    }}
-                  >
-                    <div className="relative w-full h-full">
-                      <Lock className="absolute left-[4%] top-1/2 -translate-y-1/2 w-[clamp(14px,1vw,18px)] h-[clamp(14px,1vw,18px)] text-slate-500/80 pointer-events-none z-10" />
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        required
-                        value={password}
-                        onChange={(e) => {
-                          setPassword(e.target.value);
-                          if (error) setError("");
-                        }}
-                        placeholder="••••••••"
-                        className="w-full h-full pl-[12%] pr-[12%] bg-[#EEF4FB] text-slate-900 font-semibold text-[clamp(11px,0.85vw,14px)] rounded-[clamp(8px,0.8vw,14px)] border border-[#D5E3F3] focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/30 outline-none placeholder:text-slate-400/90 transition-all shadow-inner"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-[4%] top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-[clamp(13px,0.9vw,16px)] h-[clamp(13px,0.9vw,16px)]" />
-                        ) : (
-                          <Eye className="w-[clamp(13px,0.9vw,16px)] h-[clamp(13px,0.9vw,16px)]" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 4. Sign In Button */}
-                  <div
-                    className="absolute"
-                    style={{
-                      left: "9.55%",
-                      top: "68.91%",
-                      width: "81.19%",
-                      height: "12.18%",
-                    }}
-                  >
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full h-full bg-[#0D62FE] hover:bg-[#0952DC] active:scale-[0.99] text-white font-bold text-[clamp(13px,1vw,16px)] rounded-[clamp(12px,1.2vw,20px)] shadow-[0_8px_20px_rgba(13,98,254,0.35)] flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      {loading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <>
-                          <span>Sign In</span>
-                          <ChevronRight className="w-[clamp(16px,1.2vw,20px)] h-[clamp(16px,1.2vw,20px)] stroke-[2.75]" />
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* 5. Need to set up access? Create Account Link */}
-                  <div
-                    className="absolute text-center"
-                    style={{
-                      left: "0%",
-                      top: "83.19%",
-                      width: "100%",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsRegisterMode(true);
-                        setError("");
-                        setSuccessMessage("");
-                      }}
-                      className="text-[clamp(10px,0.72vw,12px)] text-slate-600 hover:text-slate-900 cursor-pointer transition-colors"
-                    >
-                      Need to set up access?{" "}
-                      <span className="font-bold text-[#1E70F5] hover:underline">
-                        Create Account
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* 6. Bottom Badge: Enterprise Fleet & Operations Access Only */}
-                  <div
-                    className="absolute flex items-center justify-center"
-                    style={{
-                      left: "0%",
-                      top: "92.02%",
-                      width: "100%",
-                    }}
-                  >
-                    <div className="inline-flex items-center gap-1.5 px-[3.5%] py-[1.2%] bg-white/80 border border-slate-200/80 rounded-full shadow-2xs backdrop-blur-md">
-                      <ShieldCheck className="w-[clamp(11px,0.8vw,14px)] h-[clamp(11px,0.8vw,14px)] text-emerald-600 shrink-0" />
-                      <span className="text-[clamp(8px,0.65vw,10.5px)] font-bold text-slate-700 tracking-tight whitespace-nowrap">
-                        Enterprise Fleet &amp; Operations Access Only
-                      </span>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Directional gradient overlay for maximum readability on the left */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/40 to-slate-950/20 lg:from-slate-950/75 lg:via-slate-950/30 lg:to-transparent" />
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────
-          MOBILE & TABLET VIEW (< 1024px): Seamless Vertical Experience
-          ───────────────────────────────────────────────────────────── */}
-      <div className="lg:hidden relative min-h-screen w-full flex flex-col justify-between p-4 sm:p-6 overflow-y-auto">
-        {/* Mobile Background */}
-        <div className="fixed inset-0 -z-10">
-          <Image
-            src="/images/login-mockup-hd.jpg"
-            alt="RK Travel Background"
-            fill
-            priority
-            className="object-cover object-[35%_center]"
-          />
-          <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs" />
-        </div>
-
-        {/* Top Logo */}
-        <div className="w-full flex items-center justify-center pt-3 pb-4">
-          <div className="flex items-center gap-3 bg-slate-950/60 backdrop-blur-md border border-white/20 px-4 py-2.5 rounded-2xl shadow-xl">
+      {/* ─── 2. Responsive Canvas (Desktop Split & Mobile Stack) ─── */}
+      <div className="relative z-10 w-full max-w-[1440px] min-h-screen mx-auto p-4 sm:p-6 lg:p-12 flex flex-col justify-between">
+        {/* Mobile Header Bar */}
+        <div className="lg:hidden flex items-center justify-between pb-4">
+          <div className="flex items-center gap-3 bg-slate-950/65 backdrop-blur-md border border-white/20 px-3.5 py-2 rounded-2xl shadow-xl">
             <div className="relative w-8 h-8 shrink-0">
               <Image
-                src="/images/rk-logo-card.png"
+                src="/images/rk-logo.png"
                 alt="RK Logo"
                 fill
-                className="object-contain"
+                className="object-contain drop-shadow"
               />
             </div>
             <div>
-              <p className="text-xs font-black text-white tracking-widest uppercase">
+              <p className="text-xs font-black text-white tracking-wider uppercase">
                 RK TRAVEL HUB
               </p>
-              <p className="text-[8px] font-bold text-blue-300 tracking-[0.2em] uppercase">
+              <p className="text-[8px] font-bold text-blue-200 tracking-[0.2em] uppercase">
                 TRAVEL BEYOND BORDERS
               </p>
             </div>
           </div>
         </div>
 
-        {/* Mobile Card */}
-        <div className="w-full max-w-sm mx-auto my-auto bg-white/90 backdrop-blur-2xl rounded-3xl border border-white/80 p-6 shadow-2xl">
-          <div className="text-center mb-5">
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">
-              {isResetMode
-                ? "Reset Password"
-                : isRegisterMode
-                ? "Create Account"
-                : "Travel Portal"}
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              {isResetMode
-                ? "Enter your User ID or email to receive reset instructions"
-                : isRegisterMode
-                ? "Create an administrator account for RK Travel Hub"
-                : "Enter your credentials to access the management portal"}
-            </p>
+        {/* Center Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center my-auto py-4 sm:py-8">
+          {/* ══════════════ LEFT COLUMN: BRANDING & SHOWCASE (DESKTOP) ══════════════ */}
+          <div className="hidden lg:flex lg:col-span-7 flex-col justify-between space-y-9 pr-6">
+            {/* Top Left: Official 3D Metallic Emblem & Wordmark */}
+            <div>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-slate-950/60 backdrop-blur-xl border border-white/25 flex items-center justify-center shadow-2xl p-2 relative group hover:border-blue-400/50 transition-colors">
+                  <div className="relative w-full h-full">
+                    <Image
+                      src="/images/rk-logo.png"
+                      alt="RK Monogram"
+                      fill
+                      priority
+                      className="object-contain drop-shadow-[0_4px_12px_rgba(59,130,246,0.35)]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-black tracking-wider text-white uppercase drop-shadow-md">
+                    RK TRAVEL HUB
+                  </h1>
+                  <p className="text-[11px] font-bold tracking-[0.28em] text-blue-200 uppercase drop-shadow mt-0.5">
+                    TRAVEL BEYOND BORDERS
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Middle: Signature Headline & Slogan */}
+            <div className="space-y-4 pt-2">
+              <div className="space-y-1">
+                <h2 className="text-5xl lg:text-[68px] font-black italic text-white tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-[1.04]">
+                  Safe Journeys
+                </h2>
+                <h2 className="text-5xl lg:text-[68px] font-black italic text-white tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-[1.04]">
+                  Stronger
+                </h2>
+                <h2 className="text-5xl lg:text-[68px] font-black italic text-[#60A5FA] tracking-tight drop-shadow-[0_4px_20px_rgba(96,165,250,0.45)] leading-[1.04]">
+                  Connections
+                </h2>
+              </div>
+
+              {/* Tagline Divider */}
+              <div className="flex items-center gap-3.5 pt-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_#60A5FA]" />
+                  <div className="w-10 h-0.5 bg-blue-400/80 rounded-full" />
+                </div>
+                <p className="text-xs font-bold tracking-[0.25em] text-slate-100 uppercase drop-shadow">
+                  COMFORT &nbsp;|&nbsp; SAFETY &nbsp;|&nbsp; RELIABILITY
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom: 4 Key Value Feature Pills */}
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 pt-6">
+              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-2xl p-3.5 flex items-center gap-3 shadow-xl hover:border-white/30 transition-all">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0 border border-blue-400/30">
+                  <Bus className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-white truncate">Modern Fleet</p>
+                  <p className="text-[10px] text-slate-300 truncate">Well maintained vehicles</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-2xl p-3.5 flex items-center gap-3 shadow-xl hover:border-white/30 transition-all">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/30">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-white truncate">Safe Travel</p>
+                  <p className="text-[10px] text-slate-300 truncate">Your safety, our priority</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-2xl p-3.5 flex items-center gap-3 shadow-xl hover:border-white/30 transition-all">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0 border border-purple-400/30">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-white truncate">Reliable Service</p>
+                  <p className="text-[10px] text-slate-300 truncate">Trusted by many</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-2xl p-3.5 flex items-center gap-3 shadow-xl hover:border-white/30 transition-all">
+                <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-300 flex items-center justify-center shrink-0 border border-sky-400/30">
+                  <MapPin className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-white truncate">Pan India</p>
+                  <p className="text-[10px] text-slate-300 truncate">Travel beyond borders</p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Feedback Alerts */}
-          {error && (
-            <div className="p-3 mb-4 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-xs text-rose-700 font-semibold">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-              <p className="leading-tight">{error}</p>
-            </div>
-          )}
-          {successMessage && (
-            <div className="p-3 mb-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-700 font-semibold">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-              <p className="leading-tight">{successMessage}</p>
-            </div>
-          )}
-
-          {isResetMode ? (
-            <form onSubmit={handlePasswordReset} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  User ID / Email
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="ADMIN@GMAIL.COM"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    className="w-full h-11 pl-10 pr-3 bg-[#EEF4FB] border border-[#D5E3F3] rounded-xl text-xs font-semibold text-slate-900 uppercase outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          {/* ══════════════ RIGHT COLUMN: TRANSLUCENT FROSTED GLASS LOGIN CARD ══════════════ */}
+          <div className="lg:col-span-5 flex justify-center lg:justify-end">
+            <div className="w-full max-w-[440px] bg-white/80 sm:bg-white/85 backdrop-blur-2xl p-7 sm:p-9 rounded-[36px] border border-white/90 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.4)] relative overflow-hidden transition-all">
+              {/* Card Header with User's Official RK Logo */}
+              <div className="mb-6 text-center">
+                <div className="relative w-16 h-16 mx-auto mb-2 flex items-center justify-center">
+                  <Image
+                    src="/images/rk-logo.png"
+                    alt="RK Travel Hub Logo"
+                    fill
+                    priority
+                    className="object-contain drop-shadow-md"
                   />
                 </div>
+
+                <p className="text-xs font-bold tracking-widest text-slate-900 uppercase">
+                  RK TRAVEL HUB
+                </p>
+                <p className="text-[9px] font-bold tracking-[0.2em] text-slate-500 uppercase mt-0.5">
+                  TRAVEL BEYOND BORDERS
+                </p>
+
+                <h2 className="text-2xl sm:text-[26px] font-black tracking-tight text-slate-900 mt-3">
+                  {isResetMode
+                    ? "Reset Password"
+                    : isRegisterMode
+                    ? "Create Account"
+                    : "Travel Portal"}
+                </h2>
+                <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">
+                  {isResetMode
+                    ? "Enter your User ID or email to receive reset instructions"
+                    : isRegisterMode
+                    ? "Create an administrator account for RK Travel Hub"
+                    : "Enter your credentials to access the management portal"}
+                </p>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full h-11 bg-[#0D62FE] hover:bg-[#0952DC] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 transition-all cursor-pointer"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <span>Send Reset Link</span>
-                    <KeyRound className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsResetMode(false);
-                  setError("");
-                }}
-                className="w-full text-center text-xs font-bold text-slate-500 hover:text-slate-900 pt-1 flex items-center justify-center gap-1 cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Sign In</span>
-              </button>
-            </form>
-          ) : isRegisterMode ? (
-            <form onSubmit={handleRegister} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="John Doe"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full h-10 pl-10 pr-3 bg-[#EEF4FB] border border-[#D5E3F3] rounded-xl text-xs font-semibold text-slate-900 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                  />
+              {/* Feedback Alerts */}
+              {successMessage && (
+                <div className="p-3 mb-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-emerald-800 animate-in fade-in duration-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <p className="leading-tight">{successMessage}</p>
                 </div>
-              </div>
+              )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  User ID / Email
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="ADMIN@GMAIL.COM"
-                    value={userId}
-                    onChange={(e) => setUserId(e.target.value)}
-                    className="w-full h-10 pl-10 pr-3 bg-[#EEF4FB] border border-[#D5E3F3] rounded-xl text-xs font-semibold text-slate-900 uppercase outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                  />
+              {error && (
+                <div className="p-3 mb-4 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-rose-800 animate-in fade-in duration-200">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <p className="leading-tight">{error}</p>
                 </div>
-              </div>
+              )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    placeholder="Minimum 6 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-10 pl-10 pr-10 bg-[#EEF4FB] border border-[#D5E3F3] rounded-xl text-xs font-semibold text-slate-900 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                  />
+              {/* Reset Password Form */}
+              {isResetMode ? (
+                <form onSubmit={handlePasswordReset} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      User ID / Email
+                    </label>
+                    <div className="relative group">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="ADMIN@GMAIL.COM"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        className="w-full h-12 pl-11 pr-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
+                      />
+                    </div>
+                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-12 bg-[#1565D8] hover:bg-[#0D57C5] active:scale-[0.99] text-white rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer disabled:opacity-50"
                   >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Eye className="w-4 h-4" />
+                      <>
+                        <span>Send Reset Link</span>
+                        <KeyRound className="w-4 h-4" />
+                      </>
                     )}
                   </button>
-                </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full h-11 bg-[#0D62FE] hover:bg-[#0952DC] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 transition-all cursor-pointer"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <span>Create Account</span>
-                    <UserPlus className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-
-              <div className="text-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsRegisterMode(false);
-                    setError("");
-                  }}
-                  className="text-xs text-slate-500 hover:text-slate-900"
-                >
-                  Already have an account?{" "}
-                  <span className="font-bold text-blue-600 hover:underline">
-                    Sign In
-                  </span>
-                </button>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  User ID / Email
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="ADMIN@GMAIL.COM"
-                    value={userId}
-                    onChange={(e) => setUserId(e.target.value)}
-                    className="w-full h-11 pl-10 pr-3.5 bg-[#EEF4FB] border border-[#D5E3F3] rounded-xl text-xs font-semibold text-slate-900 uppercase outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-slate-700">
-                    Password
-                  </label>
                   <button
                     type="button"
                     onClick={() => {
-                      setIsResetMode(true);
+                      setIsResetMode(false);
                       setError("");
-                      setSuccessMessage("");
-                      setResetEmail(userId);
                     }}
-                    className="text-xs font-bold text-[#1E70F5] hover:underline"
+                    className="w-full text-center text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors flex items-center justify-center gap-1.5 pt-1 cursor-pointer"
                   >
-                    Forgot password?
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back to Sign In</span>
                   </button>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-11 pl-10 pr-10 bg-[#EEF4FB] border border-[#D5E3F3] rounded-xl text-xs font-semibold text-slate-900 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                  />
+                </form>
+              ) : isRegisterMode ? (
+                /* Register Form */
+                <form onSubmit={handleRegister} className="space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Full Name
+                    </label>
+                    <div className="relative group">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="John Doe"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        className="w-full h-11 pl-11 pr-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      User ID / Email
+                    </label>
+                    <div className="relative group">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="ADMIN@GMAIL.COM"
+                        value={userId}
+                        onChange={(e) => setUserId(e.target.value)}
+                        className="w-full h-11 pl-11 pr-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Password
+                    </label>
+                    <div className="relative group">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        placeholder="Minimum 6 characters"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full h-11 pl-11 pr-11 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-12 bg-[#1565D8] hover:bg-[#0D57C5] active:scale-[0.99] text-white rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 mt-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer disabled:opacity-50"
                   >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Eye className="w-4 h-4" />
+                      <>
+                        <span>Create Account</span>
+                        <UserPlus className="w-4 h-4" />
+                      </>
                     )}
                   </button>
-                </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full h-12 bg-[#0D62FE] hover:bg-[#0952DC] text-white rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/30 transition-all cursor-pointer"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <span>Sign In</span>
-                    <ChevronRight className="w-4 h-4 stroke-[2.5]" />
-                  </>
-                )}
-              </button>
+                  <div className="text-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRegisterMode(false);
+                        setError("");
+                      }}
+                      className="text-xs text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+                    >
+                      Already have an account?{" "}
+                      <span className="font-bold text-blue-600 hover:underline">
+                        Sign In
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* Main Sign In Form */
+                <form onSubmit={handleLogin} className="space-y-4">
+                  {/* User ID / Email */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      User ID / Email
+                    </label>
+                    <div className="relative group">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="ADMIN@GMAIL.COM"
+                        value={userId}
+                        onChange={(e) => setUserId(e.target.value)}
+                        className="w-full h-12 pl-11 pr-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
+                      />
+                    </div>
+                  </div>
 
-              <div className="text-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsRegisterMode(true);
-                    setError("");
-                  }}
-                  className="text-xs text-slate-500 hover:text-slate-900"
-                >
-                  Need to set up access?{" "}
-                  <span className="font-bold text-[#1E70F5] hover:underline">
-                    Create Account
-                  </span>
-                </button>
-              </div>
+                  {/* Password & Forgot password */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-slate-700">
+                        Password
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsResetMode(true);
+                          setError("");
+                          setSuccessMessage("");
+                          setResetEmail(userId);
+                        }}
+                        className="text-xs text-blue-600 hover:underline font-bold cursor-pointer"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <div className="relative group">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full h-12 pl-11 pr-11 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="relative my-3">
+                  {/* Sign In Button */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-12 bg-[#1565D8] hover:bg-[#0D57C5] active:scale-[0.99] text-white rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 mt-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <span>Sign In</span>
+                        <ChevronRight className="w-4 h-4 stroke-[2.75]" />
+                      </>
+                    )}
+                  </button>
+
+                  {/* Need to set up access? Create Account */}
+                  <div className="text-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRegisterMode(true);
+                        setError("");
+                      }}
+                      className="text-xs text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                    >
+                      Need to set up access?{" "}
+                      <span className="font-bold text-blue-600 hover:underline">
+                        Create Account
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* OR Divider */}
+              <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
+                  <div className="w-full border-t border-slate-300/70" />
                 </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-400">
-                  <span className="bg-white/90 px-2 rounded-full">OR</span>
+                <div className="relative flex justify-center text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                  <span className="bg-white/80 px-2.5 rounded-full">OR</span>
                 </div>
               </div>
 
+              {/* Enterprise Security Badge */}
               <div className="text-center flex items-center justify-center">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/90 border border-slate-200 rounded-full">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-[10px] font-bold text-slate-700">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/90 border border-slate-200/80 rounded-full shadow-2xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-700">
                     Enterprise Fleet &amp; Operations Access Only
                   </span>
                 </div>
               </div>
-            </form>
-          )}
+            </div>
+          </div>
         </div>
 
-        {/* Mobile Bottom Value Pills */}
-        <div className="grid grid-cols-2 gap-2 pt-4 pb-2">
+        {/* Mobile Bottom Value Badges */}
+        <div className="lg:hidden grid grid-cols-2 gap-2 pt-4 pb-2">
           <div className="bg-slate-950/60 backdrop-blur-md border border-white/15 rounded-xl p-2.5 flex items-center gap-2">
             <Bus className="w-4 h-4 text-blue-400 shrink-0" />
             <div className="min-w-0">
@@ -898,7 +632,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-[#0A1628]">
+        <div className="min-h-screen flex items-center justify-center bg-slate-900">
           <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
         </div>
       }
