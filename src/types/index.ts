@@ -81,6 +81,7 @@ export interface Expense {
   amount: number
   paymentMode: PaymentMode
   tripId?: string
+  tripNumber?: string
   vehicleId?: string
   vehicleName?: string
   notes?: string

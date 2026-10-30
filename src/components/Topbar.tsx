@@ -24,6 +24,7 @@ const navLinks = [
   { name: "Fleet & Vehicles", href: "/travel/vehicles" },
   { name: "Trips", href: "/travel/trips" },
   { name: "Payments", href: "/travel/payments" },
+  { name: "Expenses", href: "/travel/expenses" },
   { name: "Cash Book", href: "/travel/cashbook" },
   { name: "Reports", href: "/travel/reports" },
   { name: "Reminders", href: "/travel/reminders" },

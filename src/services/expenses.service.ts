@@ -61,6 +61,8 @@ export async function createExpense(data: Omit<Expense, 'id' | 'createdAt' | 'up
   })
   invalidateCache('expenses')
   invalidateCache('dashboard')
+  invalidateCache('cashbook')
+  invalidateCache('reports')
   return docRef.id
 }
 
@@ -71,10 +73,14 @@ export async function updateExpense(id: string, data: Partial<Expense>): Promise
   })
   invalidateCache('expenses')
   invalidateCache('dashboard')
+  invalidateCache('cashbook')
+  invalidateCache('reports')
 }
 
 export async function deleteExpense(id: string): Promise<void> {
   await deleteDoc(doc(db, COLLECTION, id))
   invalidateCache('expenses')
   invalidateCache('dashboard')
+  invalidateCache('cashbook')
+  invalidateCache('reports')
 }
