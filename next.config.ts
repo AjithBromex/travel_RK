@@ -8,15 +8,6 @@ const nextConfig: NextConfig = {
       static: 180,
     },
   },
-  async redirects() {
-    return [
-      {
-        source: '/travel/expenses',
-        destination: '/travel/cashbook',
-        permanent: true,
-      },
-    ];
-  },
 };
 
 export default nextConfig;
