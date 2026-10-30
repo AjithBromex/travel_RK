@@ -14,6 +14,7 @@ import {
   Bus,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface TopbarProps {
   onToggleMobileSidebar: () => void;
@@ -95,16 +96,28 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
 
           <Link
             href="/travel"
-            className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full border transition-[box-shadow,background-color,border-color] duration-250 ease-out text-slate-900 backdrop-blur-[12px] ${
+            className={`inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border transition-[box-shadow,background-color,border-color] duration-250 ease-out text-slate-900 backdrop-blur-[12px] ${
               scrolled
                 ? "bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
                 : "bg-slate-200/90 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)]"
             }`}
           >
-            <div className="w-7 h-7 rounded-full bg-[#18181B] text-white flex items-center justify-center">
-              <Bus className="w-4 h-4" />
+            <div className="w-7 h-7 relative shrink-0">
+              <Image
+                src="/images/rk-logo.png"
+                alt="RK Logo"
+                fill
+                className="object-contain"
+              />
             </div>
-            <span className="text-sm font-extrabold tracking-tight text-slate-900">RK Travel</span>
+            <div className="hidden sm:block leading-tight">
+              <span className="text-xs font-black tracking-wider uppercase text-slate-900 block">
+                RK TRAVEL HUB
+              </span>
+              <span className="text-[7.5px] font-bold tracking-[0.2em] uppercase text-slate-500 block">
+                TRAVEL BEYOND BORDERS
+              </span>
+            </div>
           </Link>
         </div>
 
@@ -125,7 +138,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                 prefetch={true}
                 className={`px-3 xl:px-4.5 py-1.5 xl:py-2 rounded-full text-xs xl:text-sm transition-all whitespace-nowrap ${
                   active
-                    ? "bg-[#18181B] text-white font-bold shadow-sm"
+                    ? "bg-[#0B3A78] text-white font-bold shadow-sm"
                     : "text-slate-700 hover:text-slate-950 hover:bg-white/60 font-semibold"
                 }`}
               >
@@ -185,7 +198,9 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-blue-600 rounded-full" />
+            <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+              1
+            </span>
           </Link>
 
           {/* User Profile Capsule */}
