@@ -355,8 +355,53 @@ export default function RemindersClient({
 
       {/* ─── MAIN 2-COLUMN SECTION ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* ════ LEFT COLUMN: Add Reminder Form + Blueprints ════ */}
+        {/* ════ LEFT COLUMN: Blueprints + Add Reminder Form ════ */}
         <div className="lg:col-span-5 space-y-4">
+          {/* Quick Preset Blueprints Card */}
+          <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-3">
+            <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              QUICK PRESET BLUEPRINTS
+            </p>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleApplyPreset("insurance")}
+                className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left text-xs font-semibold text-slate-800 transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <Shield className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="truncate">Insurance Renewal</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleApplyPreset("service")}
+                className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left text-xs font-semibold text-slate-800 transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <Wrench className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="truncate">Periodic Service</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleApplyPreset("fitness")}
+                className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left text-xs font-semibold text-slate-800 transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <FileText className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="truncate">Fitness Cert (FC)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleApplyPreset("license")}
+                className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left text-xs font-semibold text-slate-800 transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <UserCheck className="w-4 h-4 text-purple-600 shrink-0" />
+                <span className="truncate">Driver License</span>
+              </button>
+            </div>
+          </div>
+
           <div
             id="add-reminder-form"
             className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-sm space-y-4"
@@ -451,7 +496,7 @@ export default function RemindersClient({
                   <select
                     value={form.relatedVehicleId}
                     onChange={(e) => setForm({ ...form, relatedVehicleId: e.target.value })}
-                    className="w-full h-10 px-3 pr-7 rounded-xl bg-slate-100/80 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none transition-all"
+                    className="w-full h-10 px-3 pr-7 rounded-xl bg-slate-100/80 border border-slate-200 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none transition-all cursor-pointer"
                   >
                     <option value="">-- General / Non-Vehicle --</option>
                     {vehicles.map((v) => (
@@ -497,51 +542,6 @@ export default function RemindersClient({
                 </button>
               </div>
             </form>
-          </div>
-
-          {/* Quick Preset Blueprints Card */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-3">
-            <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              QUICK PRESET BLUEPRINTS
-            </p>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleApplyPreset("insurance")}
-                className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left text-xs font-semibold text-slate-800 transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <Shield className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="truncate">Insurance Renewal</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleApplyPreset("service")}
-                className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left text-xs font-semibold text-slate-800 transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <Wrench className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="truncate">Periodic Service</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleApplyPreset("fitness")}
-                className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left text-xs font-semibold text-slate-800 transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <FileText className="w-4 h-4 text-rose-600 shrink-0" />
-                <span className="truncate">Fitness Cert (FC)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleApplyPreset("license")}
-                className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-left text-xs font-semibold text-slate-800 transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <UserCheck className="w-4 h-4 text-purple-600 shrink-0" />
-                <span className="truncate">Driver License</span>
-              </button>
-            </div>
           </div>
         </div>
 
