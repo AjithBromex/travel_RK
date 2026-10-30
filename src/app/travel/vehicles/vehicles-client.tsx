@@ -22,6 +22,7 @@ import {
   ArrowRight,
   Calendar,
   X,
+  Camera,
 } from "lucide-react";
 import {
   formatINR,
@@ -42,6 +43,72 @@ interface VehiclesClientProps {
   initialVehicles: Vehicle[];
 }
 
+// Client-side automatic rectangular crop (16:9 landscape aspect ratio)
+async function autoCropToRectangle(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("Please upload an image file (JPG, PNG, WEBP)"));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read image file"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Unable to load selected image"));
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas context is not available"));
+          return;
+        }
+
+        const targetAspect = 16 / 9; // Clean landscape rectangular ratio
+        const imgWidth = img.naturalWidth || img.width;
+        const imgHeight = img.naturalHeight || img.height;
+        const imgAspect = imgWidth / imgHeight;
+
+        let srcX = 0;
+        let srcY = 0;
+        let srcW = imgWidth;
+        let srcH = imgHeight;
+
+        // Auto center-crop to rectangular aspect ratio
+        if (imgAspect > targetAspect) {
+          // Source is wider than target rectangle -> crop horizontal edges centered
+          srcW = Math.round(imgHeight * targetAspect);
+          srcX = Math.round((imgWidth - srcW) / 2);
+        } else {
+          // Source is taller than target rectangle -> crop vertical edges centered
+          srcH = Math.round(imgWidth / targetAspect);
+          srcY = Math.round((imgHeight - srcH) / 2);
+        }
+
+        // Standard crisp rectangular dimensions
+        const outWidth = 960;
+        const outHeight = Math.round(outWidth / targetAspect); // 540
+
+        canvas.width = outWidth;
+        canvas.height = outHeight;
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, outWidth, outHeight);
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+
+        ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, outWidth, outHeight);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        resolve(dataUrl);
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 const EMPTY_FORM = {
   registrationNumber: "",
   name: "",
@@ -52,8 +119,7 @@ const EMPTY_FORM = {
   insuranceExpiry: "",
   permitExpiry: "",
   pollutionExpiry: "",
-  status: "active" as Vehicle["status"],
-  notes: "",
+  photoUrl: "",
 };
 
 export default function VehiclesClient({ initialVehicles }: VehiclesClientProps) {
@@ -67,6 +133,9 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const formRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
 
   const [form, setForm] = useState(EMPTY_FORM);
 
@@ -86,6 +155,43 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
       isDocumentExpired(v.pollutionExpiry)
   ).length;
 
+  const handlePhotoUpload = async (file: File) => {
+    try {
+      setPhotoProcessing(true);
+      const croppedUrl = await autoCropToRectangle(file);
+      setForm((prev) => ({ ...prev, photoUrl: croppedUrl }));
+      setFeedback({ message: "Photo auto-cropped to 16:9 rectangle successfully!", type: "success" });
+    } catch (err: unknown) {
+      console.error("Auto crop photo error:", err);
+      const msg = (err as Error)?.message || "Failed to process vehicle photo";
+      setFeedback({ message: msg, type: "error" });
+    } finally {
+      setPhotoProcessing(false);
+      setTimeout(() => setFeedback(null), 3000);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handlePhotoUpload(file);
+    }
+    e.target.value = "";
+  };
+
+  const handleDropPhoto = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingPhoto(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handlePhotoUpload(file);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setForm((prev) => ({ ...prev, photoUrl: "" }));
+  };
+
   const handleEdit = (v: Vehicle) => {
     setEditingVehicleId(v.id);
     setForm({
@@ -98,8 +204,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
       insuranceExpiry: v.insuranceExpiry || "",
       permitExpiry: v.permitExpiry || "",
       pollutionExpiry: v.pollutionExpiry || "",
-      status: v.status || "active",
-      notes: v.notes || "",
+      photoUrl: v.photoUrl || "",
     });
     if (formRef.current) {
       formRef.current.scrollIntoView({ behavior: "smooth" });
@@ -139,6 +244,10 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
 
     try {
       const normalizedReg = normalizeRegNumber(form.registrationNumber);
+      const existingVehicle = editingVehicleId
+        ? vehicles.find((v) => v.id === editingVehicleId)
+        : null;
+
       const vehiclePayload = {
         name: form.name.trim(),
         type: form.type,
@@ -150,8 +259,9 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
         insuranceExpiry: form.insuranceExpiry || "",
         permitExpiry: form.permitExpiry || "",
         pollutionExpiry: form.pollutionExpiry || "",
-        status: form.status,
-        notes: form.notes.trim(),
+        status: existingVehicle?.status || ("active" as Vehicle["status"]),
+        notes: existingVehicle?.notes || "",
+        photoUrl: form.photoUrl || "",
       };
 
       if (editingVehicleId) {
@@ -459,6 +569,99 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
+              {/* Vehicle Photo Upload Space with Auto Rectangular Crop */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Vehicle Photo</span>
+                  </label>
+                  <span className="text-[10px] text-blue-700 font-semibold bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
+                    Auto-crops to 16:9 rectangle
+                  </span>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+
+                {form.photoUrl ? (
+                  <div className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden border border-slate-200/90 bg-slate-900 shadow-xs group">
+                    <img
+                      src={form.photoUrl}
+                      alt="Vehicle photo"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20" />
+
+                    {/* Badge */}
+                    <div className="absolute top-2.5 left-2.5">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-white border border-white/10">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        16:9 Rectangle Cropped
+                      </span>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="absolute bottom-2.5 right-2.5 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-3 py-1.5 rounded-xl bg-white/95 hover:bg-white text-slate-900 text-xs font-bold backdrop-blur-md shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Change Photo</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="p-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-bold backdrop-blur-md shadow-xs transition-colors cursor-pointer"
+                        title="Remove photo"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingPhoto(true);
+                    }}
+                    onDragLeave={() => setIsDraggingPhoto(false)}
+                    onDrop={handleDropPhoto}
+                    className={`relative aspect-[16/9] w-full rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center p-4 text-center ${
+                      isDraggingPhoto
+                        ? "border-blue-500 bg-blue-50/70 scale-[0.99]"
+                        : "border-slate-200 hover:border-blue-400 bg-slate-50/70 hover:bg-slate-50"
+                    }`}
+                  >
+                    {photoProcessing ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs font-semibold text-blue-600">Auto-cropping rectangle...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2 shadow-xs">
+                          <Camera className="w-5 h-5" />
+                        </div>
+                        <p className="text-xs font-bold text-slate-800">
+                          Click to upload or drag &amp; drop vehicle photo
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Automatically center-crops to landscape rectangle (16:9) • PNG, JPG, WEBP
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
               {/* Row 1: Registration Number & Vehicle Name */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -607,39 +810,6 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                 </div>
               </div>
 
-              {/* Status & Notes */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                    Fleet Status
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={form.status}
-                      onChange={(e) => setForm({ ...form, status: e.target.value as Vehicle["status"] })}
-                      className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none cursor-pointer"
-                    >
-                      <option value="active">Active (Ready for Trips)</option>
-                      <option value="service_due">Service Due</option>
-                      <option value="inactive">Inactive / Standby</option>
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                    Notes / Amenities
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 7-Seater, FASTag ID, Dual AC"
-                    value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
-                  />
-                </div>
-              </div>
 
               {/* Submit / Reset Actions */}
               <div className="flex items-center gap-2 pt-1">
@@ -792,27 +962,49 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                       key={vehicle.id}
                       className="bg-slate-50/70 hover:bg-white p-4 rounded-2xl border border-slate-200/80 hover:border-slate-300 hover:shadow-xs transition-all space-y-3"
                     >
-                      {/* Top Row: Reg number, Status badge, Edit/Delete */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-extrabold text-slate-900 font-mono">
-                              {vehicle.registrationNumber}
-                            </span>
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                isServiceDue
-                                  ? "bg-amber-50 text-amber-800 border-amber-200"
-                                  : vehicle.status === "active"
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                  : "bg-slate-100 text-slate-600 border-slate-200"
-                              }`}
-                            >
-                              {isServiceDue ? "Service Due" : vehicle.status === "active" ? "Active" : "Inactive"}
-                            </span>
-                          </div>
-                          <div className="text-xs font-bold text-slate-800 mt-0.5 truncate">
-                            {vehicle.name} {vehicle.type && <span className="text-slate-400 font-normal">• {vehicle.type}</span>}
+                      {/* Grid Mode Rectangular Banner */}
+                      {viewMode === "grid" && vehicle.photoUrl && (
+                        <div className="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-slate-900 border border-slate-200/80 shadow-2xs">
+                          <img
+                            src={vehicle.photoUrl}
+                            alt={vehicle.name || vehicle.registrationNumber}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+
+                      {/* Top Row: Photo Thumbnail (List Mode), Reg number, Status badge, Edit/Delete */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0">
+                          {viewMode === "list" && vehicle.photoUrl && (
+                            <div className="relative w-20 h-13 sm:w-24 sm:h-15 aspect-[16/9] rounded-xl overflow-hidden bg-slate-900 border border-slate-200/80 shrink-0 shadow-2xs">
+                              <img
+                                src={vehicle.photoUrl}
+                                alt={vehicle.name || vehicle.registrationNumber}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-extrabold text-slate-900 font-mono">
+                                {vehicle.registrationNumber}
+                              </span>
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  isServiceDue
+                                    ? "bg-amber-50 text-amber-800 border-amber-200"
+                                    : vehicle.status === "active"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : "bg-slate-100 text-slate-600 border-slate-200"
+                                }`}
+                              >
+                                {isServiceDue ? "Service Due" : vehicle.status === "active" ? "Active" : "Inactive"}
+                              </span>
+                            </div>
+                            <div className="text-xs font-bold text-slate-800 mt-0.5 truncate">
+                              {vehicle.name} {vehicle.type && <span className="text-slate-400 font-normal">• {vehicle.type}</span>}
+                            </div>
                           </div>
                         </div>
 
@@ -904,11 +1096,6 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                         </div>
                       </div>
 
-                      {vehicle.notes && (
-                        <p className="text-[10px] text-slate-400 italic truncate border-t border-slate-100 pt-1">
-                          {vehicle.notes}
-                        </p>
-                      )}
                     </div>
                   );
                 })}

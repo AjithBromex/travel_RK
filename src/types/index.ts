@@ -13,6 +13,7 @@ export interface Vehicle {
   permitExpiry: string
   pollutionExpiry: string
   status: 'active' | 'inactive' | 'service_due'
+  photoUrl?: string
   notes?: string
   createdAt: string
   updatedAt: string
