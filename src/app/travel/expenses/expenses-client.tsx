@@ -4,9 +4,8 @@ import { useState, useMemo, useRef } from "react";
 import {
   Wallet,
   Fuel,
-  Receipt,
-  List,
   FileText,
+  List,
   Plus,
   Download,
   ChevronDown,
@@ -16,7 +15,6 @@ import {
   Trash2,
   CheckCircle2,
   X,
-  Search,
 } from "lucide-react";
 import { formatINR, formatDateShort, exportToCSV } from "@/lib/utils";
 import type { Expense, ExpenseCategory, PaymentMode, Trip } from "@/types";
@@ -48,7 +46,7 @@ const CATEGORY_CONFIG: Record<
     badgeClass: "bg-blue-50 text-blue-700 border-blue-200",
   },
   food: {
-    label: "Driver Bata",
+    label: "Driver Bata / Food",
     badgeClass: "bg-purple-50 text-purple-700 border-purple-200",
   },
   parking: {
@@ -56,7 +54,7 @@ const CATEGORY_CONFIG: Record<
     badgeClass: "bg-indigo-50 text-indigo-700 border-indigo-200",
   },
   office_expense: {
-    label: "Office / Permit",
+    label: "Permit / Office",
     badgeClass: "bg-slate-100 text-slate-700 border-slate-200",
   },
   other: {
@@ -67,8 +65,8 @@ const CATEGORY_CONFIG: Record<
 
 const MODE_LABELS: Record<PaymentMode, string> = {
   cash: "Cash",
-  upi: "UPI / Online",
-  card: "FASTag / Card",
+  upi: "UPI",
+  card: "Card / FASTag",
   bank_transfer: "Bank Transfer",
   other: "Other",
 };
@@ -95,10 +93,9 @@ export default function ExpensesClient({
     message: string;
     type: "success" | "error";
   } | null>(null);
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const formRef = useRef<HTMLDivElement>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
   // Dynamic real KPIs calculated from real data
   const currentMonthPrefix = new Date().toISOString().slice(0, 7); // e.g. "2026-10"
@@ -132,6 +129,9 @@ export default function ExpensesClient({
     if (formRef.current) {
       formRef.current.scrollIntoView({ behavior: "smooth" });
     }
+    setTimeout(() => {
+      amountInputRef.current?.focus();
+    }, 250);
   };
 
   const handleEdit = (expense: Expense) => {
@@ -153,7 +153,9 @@ export default function ExpensesClient({
   };
 
   const handleDelete = async (expense: Expense) => {
-    const confirmMsg = `Are you sure you want to delete this ${CATEGORY_CONFIG[expense.category]?.label || "expense"} record of ₹${expense.amount}?`;
+    const confirmMsg = `Are you sure you want to delete this ${
+      CATEGORY_CONFIG[expense.category]?.label || "expense"
+    } record of ₹${expense.amount}?`;
     if (!window.confirm(confirmMsg)) return;
 
     setDeletingId(expense.id);
@@ -183,7 +185,10 @@ export default function ExpensesClient({
     e.preventDefault();
     const parsedAmount = Number(form.amount);
     if (!parsedAmount || parsedAmount <= 0) {
-      setFeedback({ message: "Please enter a valid expense amount.", type: "error" });
+      setFeedback({
+        message: "Please enter a valid expense amount.",
+        type: "error",
+      });
       setTimeout(() => setFeedback(null), 3000);
       return;
     }
@@ -244,46 +249,21 @@ export default function ExpensesClient({
     }
   };
 
-  // Filtered expenses
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter((e) => {
-      if (categoryFilter !== "all" && e.category !== categoryFilter) {
-        return false;
-      }
-      if (search.trim()) {
-        const query = search.toLowerCase();
-        const tripNum = (e.tripNumber || "").toLowerCase();
-        const notes = (e.notes || "").toLowerCase();
-        const categoryLabel = (CATEGORY_CONFIG[e.category]?.label || "").toLowerCase();
-        const amountStr = String(e.amount || "");
-        if (
-          !tripNum.includes(query) &&
-          !notes.includes(query) &&
-          !categoryLabel.includes(query) &&
-          !amountStr.includes(query)
-        ) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [expenses, search, categoryFilter]);
-
-  // Pagination
+  // Pagination for populated table
   const pageSize = 8;
-  const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(expenses.length / pageSize));
   const paginatedExpenses = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredExpenses.slice(start, start + pageSize);
-  }, [filteredExpenses, currentPage]);
+    return expenses.slice(start, start + pageSize);
+  }, [expenses, currentPage, pageSize]);
 
   const handleExportCSV = () => {
-    if (filteredExpenses.length === 0) {
+    if (expenses.length === 0) {
       alert("No expense records to export.");
       return;
     }
 
-    const data = filteredExpenses.map((e) => ({
+    const data = expenses.map((e) => ({
       Date: e.expenseDate,
       Trip: e.tripNumber || (e.tripId ? `Trip ${e.tripId}` : "General"),
       Category: CATEGORY_CONFIG[e.category]?.label || e.category,
@@ -293,15 +273,18 @@ export default function ExpensesClient({
       "Recorded On": e.createdAt ? e.createdAt.split("T")[0] : "-",
     }));
 
-    exportToCSV(data, `RK_Travel_Expenses_${new Date().toISOString().split("T")[0]}`);
+    exportToCSV(
+      data,
+      `RK_Travel_Expenses_${new Date().toISOString().split("T")[0]}`
+    );
   };
 
   return (
     <div className="space-y-6 pb-12">
-      {/* ─── 1. Header ─── */}
+      {/* ─── 1. Header (Operations Hub) ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1.5">
             <span className="w-2 h-2 rounded-full bg-blue-600 inline-block" />
             <span className="text-[11px] font-bold text-blue-600 tracking-wider uppercase">
               OPERATIONS HUB
@@ -310,18 +293,18 @@ export default function ExpensesClient({
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 leading-tight">
             Expenses
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 font-normal mt-1">
             Track trip costs, fuel, and operating outlays.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div>
           <button
             type="button"
             onClick={scrollToForm}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs shadow-blue-500/20 transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold shadow-xs shadow-blue-500/20 transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Record Expense</span>
           </button>
         </div>
@@ -330,7 +313,7 @@ export default function ExpensesClient({
       {/* Feedback Toast */}
       {feedback && (
         <div
-          className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-xs ${
+          className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-xs transition-all ${
             feedback.type === "success"
               ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
               : "bg-rose-50 text-rose-800 border border-rose-200"
@@ -353,7 +336,7 @@ export default function ExpensesClient({
       {/* ─── 2. Top 4 KPI Cards ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* TOTAL EXPENSES */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               TOTAL EXPENSES
@@ -362,21 +345,21 @@ export default function ExpensesClient({
               <Wallet className="w-4 h-4" />
             </div>
           </div>
-          <div className="my-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
+          <div className="my-2.5">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {formatINR(totalExpensesMonth)}
             </span>
           </div>
-          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+          <div className="flex items-center justify-between text-xs pt-1">
             <span className="text-[11px] text-slate-500">All categories</span>
-            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
               This Month
             </span>
           </div>
         </div>
 
         {/* DIESEL EXPENSES */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               DIESEL EXPENSES
@@ -385,46 +368,46 @@ export default function ExpensesClient({
               <Fuel className="w-4 h-4" />
             </div>
           </div>
-          <div className="my-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
+          <div className="my-2.5">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {formatINR(dieselExpensesMonth)}
             </span>
           </div>
-          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+          <div className="flex items-center justify-between text-xs pt-1">
             <span className="text-[11px] text-slate-500">Fuel costs</span>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">
               This Month
             </span>
           </div>
         </div>
 
         {/* OTHER EXPENSES */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               OTHER EXPENSES
             </span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Receipt className="w-4 h-4" />
+              <FileText className="w-4 h-4" />
             </div>
           </div>
-          <div className="my-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
+          <div className="my-2.5">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {formatINR(otherExpensesMonth)}
             </span>
           </div>
-          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+          <div className="flex items-center justify-between text-xs pt-1">
             <span className="text-[11px] text-slate-500 truncate mr-1">
               Maintenance, Toll, Food etc.
             </span>
-            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full shrink-0">
+            <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full shrink-0">
               This Month
             </span>
           </div>
         </div>
 
         {/* RECORDS */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-start justify-between">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               RECORDS
@@ -433,14 +416,14 @@ export default function ExpensesClient({
               <List className="w-4 h-4" />
             </div>
           </div>
-          <div className="my-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
+          <div className="my-2.5">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {totalRecords}
             </span>
           </div>
-          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+          <div className="flex items-center justify-between text-xs pt-1">
             <span className="text-[11px] text-slate-500">Total expense records</span>
-            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
+            <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full">
               All Time
             </span>
           </div>
@@ -448,20 +431,20 @@ export default function ExpensesClient({
       </div>
 
       {/* ─── 3. Main 2-Column Content ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: Trip Expenses Form (5 Cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* LEFT COLUMN: Trip Expenses Form (approx 42% / 5 cols) */}
         <div ref={formRef} className="lg:col-span-5 space-y-4">
-          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                   <FileText className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
                     {editingExpenseId ? "Edit Expense" : "Trip Expenses"}
                   </h2>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-xs text-slate-500">
                     Record a new expense for a trip or operation.
                   </p>
                 </div>
@@ -478,18 +461,20 @@ export default function ExpensesClient({
               )}
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3.5">
+            <form onSubmit={handleSubmit} className="space-y-4 pt-1">
               {/* Row 1: Trip & Date */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Trip
                   </label>
                   <div className="relative">
                     <select
                       value={form.tripId}
-                      onChange={(e) => setForm({ ...form, tripId: e.target.value })}
-                      className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
+                      onChange={(e) =>
+                        setForm({ ...form, tripId: e.target.value })
+                      }
+                      className="w-full appearance-none px-3.5 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer"
                     >
                       <option value="">Select trip</option>
                       <option value="general">General / Fleet Expense</option>
@@ -499,20 +484,22 @@ export default function ExpensesClient({
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Date
                   </label>
                   <input
                     type="date"
                     required
                     value={form.expenseDate}
-                    onChange={(e) => setForm({ ...form, expenseDate: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    onChange={(e) =>
+                      setForm({ ...form, expenseDate: e.target.value })
+                    }
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
                   />
                 </div>
               </div>
@@ -520,7 +507,7 @@ export default function ExpensesClient({
               {/* Row 2: Category & Amount */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Category
                   </label>
                   <div className="relative">
@@ -532,32 +519,35 @@ export default function ExpensesClient({
                           category: e.target.value as ExpenseCategory,
                         })
                       }
-                      className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
+                      className="w-full appearance-none px-3.5 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer"
                     >
                       <option value="fuel">Diesel</option>
                       <option value="tolls">Toll / FASTag</option>
                       <option value="maintenance">Maintenance</option>
                       <option value="food">Driver Bata / Food</option>
                       <option value="parking">Parking</option>
-                      <option value="office_expense">Office / Permit</option>
+                      <option value="office_expense">Permit / Office</option>
                       <option value="other">Other</option>
                     </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Amount ₹
                   </label>
                   <input
+                    ref={amountInputRef}
                     type="number"
                     required
                     min={1}
                     placeholder="Enter amount"
                     value={form.amount}
-                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    onChange={(e) =>
+                      setForm({ ...form, amount: e.target.value })
+                    }
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
                   />
                 </div>
               </div>
@@ -565,7 +555,7 @@ export default function ExpensesClient({
               {/* Row 3: Mode & Notes */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Mode
                   </label>
                   <div className="relative">
@@ -577,40 +567,42 @@ export default function ExpensesClient({
                           paymentMode: e.target.value as PaymentMode,
                         })
                       }
-                      className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
+                      className="w-full appearance-none px-3.5 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer"
                     >
                       <option value="cash">Cash</option>
-                      <option value="upi">UPI / Online</option>
-                      <option value="card">FASTag / Card</option>
+                      <option value="upi">UPI</option>
+                      <option value="card">Card / FASTag</option>
                       <option value="bank_transfer">Bank Transfer</option>
                       <option value="other">Other</option>
                     </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Notes
                   </label>
                   <input
                     type="text"
                     placeholder="Add notes (optional)"
                     value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    onChange={(e) =>
+                      setForm({ ...form, notes: e.target.value })
+                    }
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
                   />
                 </div>
               </div>
 
               {/* Submit Button */}
-              <div className="pt-1">
+              <div className="pt-2">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
                   <span>
                     {loading
                       ? "Recording..."
@@ -624,202 +616,161 @@ export default function ExpensesClient({
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Expense Register (7 Cols) */}
+        {/* RIGHT COLUMN: Expense Register (approx 58% / 7 cols) */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
-            {/* Header with Search and Export */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+            {/* Header: Title + Export Button */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                   <List className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
                     Expense Register
                   </h2>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-xs text-slate-500">
                     View and manage all recorded expenses.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search expenses..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-36 sm:w-40 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
-                  />
-                </div>
-
-                {/* Category Filter */}
-                <div className="relative">
-                  <select
-                    value={categoryFilter}
-                    onChange={(e) => {
-                      setCategoryFilter(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    className="appearance-none bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-7 py-1.5 text-xs font-medium text-slate-700 outline-none cursor-pointer"
-                  >
-                    <option value="all">All Categories</option>
-                    <option value="fuel">Diesel</option>
-                    <option value="tolls">Toll / FASTag</option>
-                    <option value="maintenance">Maintenance</option>
-                    <option value="food">Driver Bata</option>
-                    <option value="parking">Parking</option>
-                    <option value="office_expense">Office / Permit</option>
-                    <option value="other">Other</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-
-                {/* Export Button */}
-                <button
-                  type="button"
-                  onClick={handleExportCSV}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200 shadow-2xs transition-colors cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Export</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200 shadow-2xs transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-500" />
+                <span>Export</span>
+              </button>
             </div>
 
-            {/* Content: Empty State or Table */}
-            {filteredExpenses.length === 0 ? (
-              <div className="p-12 text-center flex flex-col items-center justify-center">
-                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 mb-3">
-                  <FileText className="w-6 h-6" />
-                </div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  {search || categoryFilter !== "all"
-                    ? "No matching expense records"
-                    : "No expense records yet"}
-                </h3>
-                <p className="text-xs text-slate-500 max-w-sm mt-1 mb-4">
-                  {search || categoryFilter !== "all"
-                    ? "Try adjusting your search or category filter to find recorded expenses."
-                    : "Start by recording your first trip expense."}
-                </p>
-                {search || categoryFilter !== "all" ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearch("");
-                      setCategoryFilter("all");
-                    }}
-                    className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
-                  >
-                    Clear filter
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={scrollToForm}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Record First Expense</span>
-                  </button>
-                )}
-              </div>
-            ) : (
+            {/* Table Area */}
+            <div className="overflow-hidden border border-slate-100 rounded-xl">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 tracking-wider uppercase">
-                      <th className="py-2.5 px-2">DATE</th>
-                      <th className="py-2.5 px-2">TRIP</th>
-                      <th className="py-2.5 px-2">CATEGORY</th>
-                      <th className="py-2.5 px-2">AMOUNT</th>
-                      <th className="py-2.5 px-2">MODE</th>
-                      <th className="py-2.5 px-2">NOTES</th>
-                      <th className="py-2.5 px-2 text-right">ACTIONS</th>
+                    <tr className="bg-[#f8fafc] text-[11px] font-semibold text-slate-500 tracking-wider uppercase border-b border-slate-100">
+                      <th className="py-3 px-4 whitespace-nowrap">DATE</th>
+                      <th className="py-3 px-3 whitespace-nowrap">TRIP</th>
+                      <th className="py-3 px-3 whitespace-nowrap">CATEGORY</th>
+                      <th className="py-3 px-3 whitespace-nowrap">AMOUNT</th>
+                      <th className="py-3 px-3 whitespace-nowrap">MODE</th>
+                      <th className="py-3 px-3 whitespace-nowrap">NOTES</th>
+                      <th className="py-3 px-4 text-right whitespace-nowrap">
+                        ACTIONS
+                      </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                    {paginatedExpenses.map((expense) => {
-                      const category =
-                        CATEGORY_CONFIG[expense.category] || CATEGORY_CONFIG.other;
 
-                      return (
-                        <tr
-                          key={expense.id}
-                          className="hover:bg-slate-50/70 transition-colors"
-                        >
-                          <td className="py-2.5 px-2 whitespace-nowrap text-slate-600 font-mono text-[11px]">
-                            {formatDateShort(expense.expenseDate)}
-                          </td>
-                          <td className="py-2.5 px-2 whitespace-nowrap">
-                            <span className="font-bold text-slate-800">
-                              {expense.tripNumber ||
-                                (expense.tripId
-                                  ? `Trip #${expense.tripId.slice(0, 6)}`
-                                  : "General")}
-                            </span>
-                            {expense.vehicleName && (
-                              <span className="text-[10px] text-slate-400 block">
-                                {expense.vehicleName}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-2 whitespace-nowrap">
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${category.badgeClass}`}
-                            >
-                              {category.label}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-2 whitespace-nowrap font-bold text-slate-900 font-mono">
-                            ₹{formatINR(expense.amount)}
-                          </td>
-                          <td className="py-2.5 px-2 whitespace-nowrap text-[11px] text-slate-600">
-                            {MODE_LABELS[expense.paymentMode] || expense.paymentMode}
-                          </td>
-                          <td className="py-2.5 px-2 max-w-[140px] truncate text-[11px] text-slate-500">
-                            {expense.notes || "-"}
-                          </td>
-                          <td className="py-2.5 px-2 whitespace-nowrap text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleEdit(expense)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                                title="Edit Expense"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                disabled={deletingId === expense.id}
-                                onClick={() => handleDelete(expense)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50 cursor-pointer"
-                                title="Delete Expense"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                  {expenses.length === 0 ? (
+                    <tbody>
+                      <tr>
+                        <td colSpan={7} className="py-14 text-center">
+                          <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center mb-3">
+                              <FileText className="w-6 h-6 stroke-[1.75]" />
                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
+                            <h3 className="text-sm font-bold text-slate-900">
+                              No expense records yet
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Start by recording your first trip expense.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={scrollToForm}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 mt-4 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-semibold transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                              <span>Record First Expense</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  ) : (
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
+                      {paginatedExpenses.map((expense) => {
+                        const category =
+                          CATEGORY_CONFIG[expense.category] ||
+                          CATEGORY_CONFIG.other;
+
+                        return (
+                          <tr
+                            key={expense.id}
+                            className="hover:bg-slate-50/70 transition-colors"
+                          >
+                            <td className="py-3 px-4 whitespace-nowrap text-slate-600 font-mono text-[11px]">
+                              {formatDateShort(expense.expenseDate)}
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className="font-bold text-slate-900">
+                                {expense.tripNumber ||
+                                  (expense.tripId
+                                    ? `Trip #${expense.tripId.slice(0, 6)}`
+                                    : "General")}
+                              </span>
+                              {expense.vehicleName && (
+                                <span className="text-[10px] text-slate-400 block">
+                                  {expense.vehicleName}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${category.badgeClass}`}
+                              >
+                                {category.label}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap font-bold text-slate-900 font-mono">
+                              ₹{formatINR(expense.amount)}
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap text-[11px] text-slate-600">
+                              {MODE_LABELS[expense.paymentMode] ||
+                                expense.paymentMode}
+                            </td>
+                            <td className="py-3 px-3 max-w-[140px] truncate text-[11px] text-slate-500">
+                              {expense.notes || "-"}
+                            </td>
+                            <td className="py-3 px-4 whitespace-nowrap text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEdit(expense)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                                  title="Edit Expense"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={deletingId === expense.id}
+                                  onClick={() => handleDelete(expense)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50 cursor-pointer"
+                                  title="Delete Expense"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  )}
                 </table>
               </div>
-            )}
+            </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination Controls when there are records */}
             {totalPages > 1 && (
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <div className="pt-2 flex items-center justify-between text-xs text-slate-500">
                 <span>
                   Showing {(currentPage - 1) * pageSize + 1} to{" "}
-                  {Math.min(currentPage * pageSize, filteredExpenses.length)} of{" "}
-                  {filteredExpenses.length} records
+                  {Math.min(currentPage * pageSize, expenses.length)} of{" "}
+                  {expenses.length} records
                 </span>
                 <div className="flex items-center gap-1">
                   <button
@@ -830,24 +781,28 @@ export default function ExpensesClient({
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center transition-colors cursor-pointer ${
-                        currentPage === page
-                          ? "bg-blue-600 text-white"
-                          : "border border-slate-200 text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center transition-colors cursor-pointer ${
+                          currentPage === page
+                            ? "bg-blue-600 text-white"
+                            : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
                   <button
                     type="button"
                     disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
                     className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
