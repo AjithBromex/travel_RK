@@ -388,11 +388,13 @@ export default function DashboardClient({
             {/* Empty State / Populated Trips */}
             {trips.length === 0 ? (
               <div className="p-6 sm:p-8 text-center flex flex-col items-center justify-center my-auto">
-                <div className="relative w-44 h-20 sm:h-24 mb-2">
+                <div className="relative w-56 sm:w-64 h-32 sm:h-36 mb-2">
                   <Image
-                    src="/images/dashboard-empty-trips-hd.png"
+                    src="/images/dashboard-empty-trips-clean.jpg"
                     alt="No trips recorded yet"
                     fill
+                    priority
+                    unoptimized
                     className="object-contain"
                   />
                 </div>
@@ -542,11 +544,12 @@ export default function DashboardClient({
               <div className="pt-2">
                 {reminders.length === 0 ? (
                   <div className="py-5 px-3 text-center flex flex-col items-center justify-center">
-                    <div className="relative w-14 h-12 mb-2">
+                    <div className="relative w-16 h-16 mb-2">
                       <Image
-                        src="/images/dashboard-empty-reminders-hd.png"
+                        src="/images/dashboard-empty-reminders-clean.jpg"
                         alt="Compliances Up to Date"
                         fill
+                        unoptimized
                         className="object-contain"
                       />
                     </div>

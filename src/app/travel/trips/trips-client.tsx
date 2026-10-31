@@ -1059,7 +1059,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
             {filteredTrips.length === 0 ? (
               <div className="py-10 text-center flex flex-col items-center justify-center space-y-3">
                 {/* Illustrated Map & Van Graphic */}
-                <div className="relative w-56 h-26 sm:w-64 sm:h-28 overflow-hidden select-none pointer-events-none">
+                <div className="relative w-56 sm:w-64 h-32 sm:h-36 overflow-hidden select-none pointer-events-none">
                   <Image
                     src="/images/trips-empty-illustration.png"
                     alt="No trips recorded yet"
