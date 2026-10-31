@@ -96,27 +96,32 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
 
           <Link
             href="/travel"
-            className={`inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border transition-[box-shadow,background-color,border-color] duration-250 ease-out text-slate-900 backdrop-blur-[12px] ${
-              scrolled
-                ? "bg-slate-200/95 border-slate-300/70 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
-                : "bg-slate-200/90 border-slate-300/50 shadow-[0_2px_8px_rgba(15,23,42,0.02)]"
-            }`}
+            className="inline-flex items-center gap-2 sm:gap-2.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-[20px] sm:rounded-[22px] bg-[#EAF1F8] hover:bg-[#E2EDF7] border border-[#D5E3F0] shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition-all hover:scale-[1.01] active:scale-[0.99] select-none shrink-0"
           >
-            <div className="w-7 h-7 relative shrink-0">
+            {/* Official 3D Metallic RK Emblem */}
+            <div className="w-7 h-7 sm:w-8.5 sm:h-8.5 relative shrink-0">
               <Image
                 src="/images/rk-logo.png"
-                alt="RK Logo"
+                alt="RK Travel Emblem"
                 fill
-                className="object-contain"
+                priority
+                unoptimized
+                className="object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.12)]"
               />
             </div>
-            <div className="hidden sm:block leading-tight">
-              <span className="text-xs font-black tracking-wider uppercase text-slate-900 block">
-                RK TRAVEL HUB
-              </span>
-              <span className="text-[7.5px] font-bold tracking-[0.2em] uppercase text-slate-500 block">
-                TRAVEL BEYOND BORDERS
-              </span>
+
+            {/* Stacked Wordmark matching exact design reference */}
+            <div className="flex flex-col justify-center leading-none text-left">
+              <div className="flex flex-col text-[10px] sm:text-[11px] font-black tracking-[0.02em] text-[#0A192F] uppercase leading-[1.06]">
+                <span>RK</span>
+                <span>TRAVEL</span>
+                <span>HUB</span>
+              </div>
+              <div className="flex flex-col text-[6.5px] sm:text-[7px] font-bold tracking-[0.16em] text-[#5C728E] uppercase leading-[1.18] mt-0.5">
+                <span>TRAVEL</span>
+                <span>BEYOND</span>
+                <span>BORDERS</span>
+              </div>
             </div>
           </Link>
         </div>

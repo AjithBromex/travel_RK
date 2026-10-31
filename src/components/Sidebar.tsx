@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   LayoutDashboard,
   Bus,
@@ -85,16 +86,21 @@ export default function Sidebar({
       >
         {/* Brand Header */}
         <div className="flex items-center gap-3 px-4 h-[68px] shrink-0 border-b border-slate-800/80">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/20 border border-blue-400/30">
-            <Bus className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 relative shrink-0">
+            <Image
+              src="/images/rk-logo.png"
+              alt="RK Logo"
+              fill
+              className="object-contain"
+            />
           </div>
           {!collapsed && (
-            <div className="overflow-hidden">
-              <h1 className="text-xs font-bold tracking-wider leading-tight text-white uppercase">
-                RK Travel Hub
+            <div className="overflow-hidden leading-none">
+              <h1 className="text-xs font-black tracking-wider text-white uppercase">
+                RK TRAVEL HUB
               </h1>
-              <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase">
-                RK Enterprise
+              <p className="text-[7.5px] text-blue-300/80 font-bold tracking-[0.2em] uppercase mt-0.5">
+                TRAVEL BEYOND BORDERS
               </p>
             </div>
           )}
