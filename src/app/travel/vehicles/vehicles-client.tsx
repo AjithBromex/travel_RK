@@ -161,6 +161,81 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
 
   const [form, setForm] = useState(EMPTY_FORM);
 
+  const DEFAULT_VEHICLE_TYPES = useMemo(
+    () => [
+      { id: "Force Traveller", label: "Force Traveller (26/17 Seats)" },
+      { id: "Tempo Traveller", label: "Tempo Traveller (12/14 Seats)" },
+      { id: "Innova Crysta", label: "Innova Crysta (7/8 Seats)" },
+      { id: "Innova Hycross", label: "Innova Hycross (7 Seats)" },
+      { id: "Toyota Etios", label: "Toyota Etios (4 Seats)" },
+      { id: "Volvo 9600", label: "Volvo 9600 / Coach (45+ Seats)" },
+      { id: "Urbania", label: "Force Urbania (17 Seats)" },
+      { id: "Bolero Neo", label: "Bolero Neo / SUV (7 Seats)" },
+      { id: "Luxury Bus", label: "Luxury Tourist Bus" },
+      { id: "Premium Sedan", label: "Premium Sedan" },
+    ],
+    []
+  );
+
+  const [customVehicleTypes, setCustomVehicleTypes] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("rk_custom_vehicle_types");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return [];
+  });
+
+  const [isAddingNewType, setIsAddingNewType] = useState(false);
+  const [newTypeInput, setNewTypeInput] = useState("");
+
+  const allVehicleTypes = useMemo(() => {
+    const list = [...DEFAULT_VEHICLE_TYPES];
+    const existing = new Set(list.map((t) => t.id.toLowerCase()));
+
+    customVehicleTypes.forEach((t) => {
+      const clean = t.trim();
+      if (clean && !existing.has(clean.toLowerCase())) {
+        existing.add(clean.toLowerCase());
+        list.push({ id: clean, label: clean });
+      }
+    });
+
+    vehicles.forEach((v) => {
+      const clean = (v.type || "").trim();
+      if (clean && !existing.has(clean.toLowerCase())) {
+        existing.add(clean.toLowerCase());
+        list.push({ id: clean, label: clean });
+      }
+    });
+
+    return list;
+  }, [DEFAULT_VEHICLE_TYPES, customVehicleTypes, vehicles]);
+
+  const handleAddNewVehicleType = (typeToAdd?: string) => {
+    const val = (typeToAdd !== undefined ? typeToAdd : newTypeInput).trim();
+    if (!val) {
+      setIsAddingNewType(false);
+      return;
+    }
+
+    if (!customVehicleTypes.some((t) => t.toLowerCase() === val.toLowerCase())) {
+      const updated = [...customVehicleTypes, val];
+      setCustomVehicleTypes(updated);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("rk_custom_vehicle_types", JSON.stringify(updated));
+        } catch {}
+      }
+    }
+
+    setForm((prev) => ({ ...prev, type: val }));
+    setNewTypeInput("");
+    setIsAddingNewType(false);
+    setFeedback({ message: `Added new vehicle type "${val}"`, type: "success" });
+  };
+
   // Dynamic real KPIs calculated from data
   const totalVehicles = vehicles.length;
   const activeVehicles = vehicles.filter((v) => v.status === "active").length;
@@ -1094,28 +1169,96 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
-                    VEHICLE TYPE <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={form.type}
-                      onChange={(e) => setForm({ ...form, type: e.target.value })}
-                      className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
-                    >
-                      <option value="Force Traveller">Force Traveller (26/17 Seats)</option>
-                      <option value="Tempo Traveller">Tempo Traveller (12/14 Seats)</option>
-                      <option value="Innova Crysta">Innova Crysta (7/8 Seats)</option>
-                      <option value="Innova Hycross">Innova Hycross (7 Seats)</option>
-                      <option value="Toyota Etios">Toyota Etios (4 Seats)</option>
-                      <option value="Volvo 9600">Volvo 9600 / Coach (45+ Seats)</option>
-                      <option value="Urbania">Force Urbania (17 Seats)</option>
-                      <option value="Bolero Neo">Bolero Neo / SUV (7 Seats)</option>
-                      <option value="Luxury Bus">Luxury Tourist Bus</option>
-                      <option value="Premium Sedan">Premium Sedan</option>
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">
+                      VEHICLE TYPE <span className="text-rose-500">*</span>
+                    </label>
+                    {!isAddingNewType && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddingNewType(true);
+                          setNewTypeInput("");
+                        }}
+                        className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 cursor-pointer transition-colors"
+                      >
+                        <Plus className="w-3 h-3 stroke-[2.5]" />
+                        <span>Add New Type</span>
+                      </button>
+                    )}
                   </div>
+
+                  {isAddingNewType ? (
+                    <div className="space-y-1.5 animate-in fade-in duration-150">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Type name (e.g. Scania Bus, Thar)"
+                          value={newTypeInput}
+                          onChange={(e) => setNewTypeInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddNewVehicleType();
+                            } else if (e.key === "Escape") {
+                              setIsAddingNewType(false);
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 bg-white border-2 border-blue-500 rounded-xl text-xs font-semibold text-slate-900 outline-none shadow-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAddNewVehicleType()}
+                          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAddingNewType(false);
+                            setNewTypeInput("");
+                          }}
+                          className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                          title="Cancel"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        Type the name and click Save or press Enter.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <select
+                        value={form.type}
+                        onChange={(e) => {
+                          if (e.target.value === "__add_new__") {
+                            setIsAddingNewType(true);
+                            setNewTypeInput("");
+                          } else {
+                            setForm({ ...form, type: e.target.value });
+                          }
+                        }}
+                        className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
+                      >
+                        {allVehicleTypes.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.label}
+                          </option>
+                        ))}
+                        <option disabled className="text-slate-300">
+                          ──────────
+                        </option>
+                        <option value="__add_new__" className="text-blue-600 font-bold">
+                          + Add New Vehicle Type...
+                        </option>
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1324,12 +1467,11 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                     className="appearance-none pl-3 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
                   >
                     <option value="all">All Vehicle Types</option>
-                    <option value="traveller">Traveller</option>
-                    <option value="innova">Innova</option>
-                    <option value="etios">Etios</option>
-                    <option value="volvo">Volvo / Bus</option>
-                    <option value="urbania">Urbania</option>
-                    <option value="bolero">Bolero</option>
+                    {allVehicleTypes.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.id}
+                      </option>
+                    ))}
                   </select>
                   <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
