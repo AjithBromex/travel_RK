@@ -61,8 +61,9 @@ function LoginForm() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId.trim()) {
-      setError("Please enter your User ID or Email.");
+    const cleanUsername = userId.trim().replace(/@gmail\.com$/i, "").replace(/@.*$/, "").trim();
+    if (!cleanUsername) {
+      setError("Please enter your username.");
       return;
     }
     if (!password) {
@@ -75,7 +76,7 @@ function LoginForm() {
     setSuccessMessage("");
 
     try {
-      await signIn(userId, password);
+      await signIn(cleanUsername, password);
       const destination = callbackUrl.startsWith("/travel")
         ? callbackUrl
         : "/travel";
@@ -89,15 +90,18 @@ function LoginForm() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanUsername = userId.trim().replace(/@gmail\.com$/i, "").replace(/@.*$/, "").trim();
+    if (!cleanUsername) {
+      setError("Please enter a username.");
+      return;
+    }
     setLoading(true);
     setError("");
     setSuccessMessage("");
 
     try {
-      const email = userId.includes("@")
-        ? userId
-        : `${userId.toLowerCase()}@rktravelhub.com`;
-      const name = displayName || userId.toUpperCase();
+      const email = `${cleanUsername.toLowerCase()}@gmail.com`;
+      const name = displayName || cleanUsername.toUpperCase();
       await signUp(email, password, name, "admin");
       const destination = callbackUrl.startsWith("/travel")
         ? callbackUrl
@@ -112,8 +116,9 @@ function LoginForm() {
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetEmail) {
-      setError("Please enter your User ID or Email to reset your password.");
+    const cleanUsername = resetEmail.trim().replace(/@gmail\.com$/i, "").replace(/@.*$/, "").trim();
+    if (!cleanUsername) {
+      setError("Please enter your username to reset your password.");
       return;
     }
 
@@ -122,7 +127,8 @@ function LoginForm() {
     setSuccessMessage("");
 
     try {
-      await resetPassword(resetEmail);
+      const email = `${cleanUsername.toLowerCase()}@gmail.com`;
+      await resetPassword(email);
       setSuccessMessage(
         "Password reset email sent! Check your inbox for instructions."
       );
@@ -309,7 +315,7 @@ function LoginForm() {
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">
                   {isResetMode
-                    ? "Enter your User ID or email to receive reset instructions"
+                    ? "Enter your username to receive reset instructions"
                     : isRegisterMode
                     ? "Create an administrator account for RK Travel Hub"
                     : "Enter your credentials to access the management portal"}
@@ -336,18 +342,24 @@ function LoginForm() {
                 <form onSubmit={handlePasswordReset} className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      User ID / Email
+                      Username
                     </label>
                     <div className="relative group">
                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                       <input
                         type="text"
                         required
-                        placeholder="ADMIN@GMAIL.COM"
+                        placeholder="jagan"
                         value={resetEmail}
-                        onChange={(e) => setResetEmail(e.target.value)}
-                        className="w-full h-12 pl-11 pr-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "");
+                          setResetEmail(val);
+                        }}
+                        className="w-full h-12 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
                       />
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none">
+                        @gmail.com
+                      </span>
                     </div>
                   </div>
 
@@ -400,18 +412,24 @@ function LoginForm() {
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      User ID / Email
+                      Username
                     </label>
                     <div className="relative group">
                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                       <input
                         type="text"
                         required
-                        placeholder="ADMIN@GMAIL.COM"
+                        placeholder="jagan"
                         value={userId}
-                        onChange={(e) => setUserId(e.target.value)}
-                        className="w-full h-11 pl-11 pr-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "");
+                          setUserId(val);
+                        }}
+                        className="w-full h-11 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
                       />
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none">
+                        @gmail.com
+                      </span>
                     </div>
                   </div>
 
@@ -477,21 +495,27 @@ function LoginForm() {
               ) : (
                 /* Main Sign In Form */
                 <form onSubmit={handleLogin} className="space-y-4">
-                  {/* User ID / Email */}
+                  {/* Username */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      User ID / Email
+                      Username
                     </label>
                     <div className="relative group">
                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                       <input
                         type="text"
                         required
-                        placeholder="ADMIN@GMAIL.COM"
+                        placeholder="jagan"
                         value={userId}
-                        onChange={(e) => setUserId(e.target.value)}
-                        className="w-full h-12 pl-11 pr-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "");
+                          setUserId(val);
+                        }}
+                        className="w-full h-12 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
                       />
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none">
+                        @gmail.com
+                      </span>
                     </div>
                   </div>
 

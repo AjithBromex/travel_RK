@@ -40,8 +40,8 @@ async function resolveLoginEmail(identifier: string): Promise<string> {
     return profile.email
   }
 
-  // Default fallback internal email pattern for usernames
-  return `${trimmed.toLowerCase()}@rktravelhub.com`
+  // Default fallback email pattern for usernames: @gmail.com
+  return `${trimmed.toLowerCase()}@gmail.com`
 }
 
 /**
