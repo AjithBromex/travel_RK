@@ -26,17 +26,54 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   }
 }
 
+export async function createStaffRecord(
+  uid: string,
+  staffData: {
+    displayName?: string
+    email?: string
+    userId?: string
+    phone?: string
+  }
+): Promise<void> {
+  const now = new Date().toISOString()
+  const cleanId = (staffData.userId || staffData.displayName || staffData.email?.split('@')[0] || '').toUpperCase()
+  try {
+    const staffDocRef = doc(db, 'staff', uid)
+    await setDoc(
+      staffDocRef,
+      {
+        uid,
+        name: staffData.displayName || cleanId || 'Staff Member',
+        displayName: staffData.displayName || cleanId || 'Staff Member',
+        userId: cleanId,
+        username: cleanId,
+        email: staffData.email || '',
+        phone: staffData.phone || '',
+        role: 'staff',
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+      { merge: true }
+    )
+  } catch (err) {
+    console.warn('[Staff] Error creating staff record in Firebase:', err)
+  }
+}
+
 export async function createUserProfile(
   uid: string,
   profile: Partial<UserProfile>
 ): Promise<UserProfile> {
   const now = new Date().toISOString()
+  const role = profile.role || 'staff'
+  const cleanUserId = (profile.userId || profile.displayName || profile.email?.split('@')[0] || '').toUpperCase()
   const newProfile: UserProfile = {
     uid,
     email: profile.email || '',
     displayName: profile.displayName || profile.email?.split('@')[0] || 'User',
-    role: profile.role || 'staff',
-    userId: profile.userId || profile.displayName || profile.email?.split('@')[0]?.toUpperCase(),
+    role,
+    userId: cleanUserId,
     isActive: profile.isActive !== undefined ? profile.isActive : true,
     phone: profile.phone || '',
     createdAt: now,
@@ -46,6 +83,17 @@ export async function createUserProfile(
   try {
     const docRef = doc(db, COLLECTION, uid)
     await setDoc(docRef, newProfile, { merge: true })
+
+    // Also persist a new staff record in Firebase Firestore if role is staff
+    if (role === 'staff') {
+      await createStaffRecord(uid, {
+        displayName: newProfile.displayName,
+        email: newProfile.email,
+        userId: newProfile.userId,
+        phone: newProfile.phone,
+      })
+    }
+
     return newProfile
   } catch (err) {
     console.warn('[Users] Error creating user profile:', err)

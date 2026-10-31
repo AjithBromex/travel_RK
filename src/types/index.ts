@@ -176,3 +176,18 @@ export interface UserProfile {
   createdAt: string
   updatedAt: string
 }
+
+export interface Staff {
+  id?: string
+  uid: string
+  name: string
+  displayName: string
+  userId: string
+  username: string
+  email: string
+  role: 'staff'
+  phone?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}

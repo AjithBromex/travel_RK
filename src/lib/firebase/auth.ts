@@ -87,7 +87,8 @@ export async function signUpUser(
   email: string,
   password: string,
   displayName: string,
-  role: UserRole = 'staff'
+  role: UserRole = 'staff',
+  username?: string
 ): Promise<{ user: User; profile: UserProfile }> {
   const credential = await createUserWithEmailAndPassword(auth, email.trim(), password)
 
@@ -95,11 +96,13 @@ export async function signUpUser(
     await updateProfile(credential.user, { displayName })
   }
 
+  const cleanUserId = (username || displayName || email.split('@')[0]).toUpperCase()
+
   const profile = await createUserProfile(credential.user.uid, {
     email: credential.user.email || email,
     displayName,
-    role,
-    userId: displayName.toUpperCase(),
+    role: role || 'staff',
+    userId: cleanUserId,
   })
 
   setSessionCookie()

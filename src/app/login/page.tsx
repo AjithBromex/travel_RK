@@ -107,8 +107,8 @@ function LoginForm() {
         localStorage.setItem("rk_login_username", cleanUsername);
       }
       const email = `${cleanUsername.toLowerCase()}@gmail.com`;
-      const name = displayName || cleanUsername;
-      await signUp(email, password, name, "admin");
+      const name = displayName.trim() || cleanUsername;
+      await signUp(email, password, name, "staff", cleanUsername);
       const destination = callbackUrl.startsWith("/travel")
         ? callbackUrl
         : "/travel";
@@ -323,7 +323,7 @@ function LoginForm() {
                   {isResetMode
                     ? "Enter your username to receive reset instructions"
                     : isRegisterMode
-                    ? "Create an administrator account for RK Travel Hub"
+                    ? "Create a staff account for RK Travel Hub"
                     : "Enter your credentials to access the management portal"}
                 </p>
               </div>

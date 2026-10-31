@@ -19,7 +19,7 @@ interface AuthContextType {
   userProfile: UserProfile | null
   loading: boolean
   signIn: (identifier: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, displayName: string, role?: UserRole) => Promise<void>
+  signUp: (email: string, password: string, displayName: string, role?: UserRole, username?: string) => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   refreshProfile: () => Promise<void>
@@ -63,9 +63,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!profile) {
             profile = await createUserProfile(currentUser.uid, {
               email: currentUser.email || '',
-              displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Administrator',
-              role: 'admin',
-              userId: currentUser.email?.split('@')[0]?.toUpperCase() || 'ADMIN',
+              displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Staff Member',
+              role: 'staff',
+              userId: currentUser.email?.split('@')[0]?.toUpperCase() || 'STAFF',
             })
           }
           setUserProfile(profile)
@@ -93,9 +93,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string,
     displayName: string,
-    role?: UserRole
+    role?: UserRole,
+    username?: string
   ) => {
-    const { user: signedUpUser, profile } = await signUpUser(email, password, displayName, role)
+    const { user: signedUpUser, profile } = await signUpUser(
+      email,
+      password,
+      displayName,
+      role || 'staff',
+      username
+    )
     setUser(signedUpUser)
     setUserProfile(profile)
   }
