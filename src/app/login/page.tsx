@@ -138,12 +138,16 @@ function LoginForm() {
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-x-hidden selection:bg-blue-600/30 selection:text-white font-sans">
       {/* ─── 1. Cinematic Alpine Mountain Highway Background with Force Traveller ─── */}
-      <div className="fixed inset-0 -z-20">
+      <div
+        className="fixed inset-0 z-0 pointer-events-none bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/images/login-scenic-bg.jpg')" }}
+      >
         <Image
           src="/images/login-scenic-bg.jpg"
           alt="RK Travel Alpine Highway with Force Traveller"
           fill
           priority
+          unoptimized
           className="object-cover object-center scale-[1.01]"
         />
         {/* Directional gradient overlay for maximum readability on the left */}

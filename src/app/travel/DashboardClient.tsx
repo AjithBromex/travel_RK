@@ -50,31 +50,23 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md h-[220px] sm:h-[240px] lg:h-[265px] flex flex-col justify-between bg-slate-950 p-5 sm:p-7 lg:p-9 pb-16 sm:pb-20 lg:pb-22"
+        className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md h-[220px] sm:h-[240px] lg:h-[265px] flex flex-col justify-between p-5 sm:p-7 lg:p-9 pb-16 sm:pb-20 lg:pb-22"
       >
         {/* Photographic Panoramic Highway Background with Van & Alpine Lake */}
-        <div className="absolute inset-0 -z-10">
+        <div
+          className="absolute inset-0 z-0 pointer-events-none bg-cover bg-[center_45%] bg-no-repeat"
+          style={{ backgroundImage: "url('/images/dashboard-scenic-hero.jpg')" }}
+        >
           <Image
             src="/images/dashboard-scenic-hero.jpg"
             alt="Scenic Travel Highway"
             fill
             priority
+            unoptimized
             className="object-cover object-[center_45%]"
           />
-          {/* Subtle directional gradient so text on left is crystal clear */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/45 to-transparent" />
-        </div>
-
-        {/* Cursive Art Overlay on Large Screens: "Journey Beyond Borders" */}
-        <div className="hidden lg:block absolute right-8 top-12 select-none pointer-events-none opacity-90 pr-4">
-          <div className="relative w-40 h-28">
-            <Image
-              src="/images/journey-script-transparent.png"
-              alt="Journey Beyond Borders"
-              fill
-              className="object-contain"
-            />
-          </div>
+          {/* Subtle directional gradient so text on left is crystal clear without darkening the right van */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/20 to-transparent" />
         </div>
 
         {/* Top Floating Action Pill Buttons (Aligned to Right on Desktop) */}

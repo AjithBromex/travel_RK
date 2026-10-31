@@ -12,7 +12,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#F4F7FB] relative selection:bg-blue-600/10 selection:text-blue-600 font-sans">
       {/* High-Performance Hardware-Accelerated Ambient Light Background */}
       <div
-        className="fixed inset-0 pointer-events-none -z-10"
+        className="fixed inset-0 pointer-events-none z-0"
         style={{
           background: `
             radial-gradient(circle 600px at 75% 10%, rgba(219, 234, 254, 0.5), transparent 70%),
@@ -23,7 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       />
 
       {/* Mobile drawer */}
-      <div className="lg:hidden">
+      <div className="lg:hidden relative z-50">
         <Sidebar
           collapsed={collapsed}
           mobileOpen={mobileOpen}
@@ -33,7 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main content area */}
-      <div className="w-full">
+      <div className="w-full relative z-10">
         <Topbar onToggleMobileSidebar={() => setMobileOpen(!mobileOpen)} />
         <main className="p-3 sm:p-5 lg:p-6 min-h-[calc(100vh-68px)] max-w-[1520px] mx-auto">
           {children}
