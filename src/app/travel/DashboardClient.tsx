@@ -59,10 +59,10 @@ export default function DashboardClient({
             alt="Scenic Travel Highway"
             fill
             priority
-            className="object-cover object-[center_35%]"
+            className="object-cover object-[center_45%]"
           />
           {/* Subtle directional gradient so text on left is crystal clear */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/45 to-transparent" />
         </div>
 
         {/* Cursive Art Overlay on Large Screens: "Journey Beyond Borders" */}
