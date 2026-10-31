@@ -899,17 +899,18 @@ export default function ExpensesClient({
                   <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
 
-                {/* Export CSV Button */}
+                {/* Excel Export Button */}
                 <button
                   type="button"
                   onClick={handleExportCSV}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                  title="Export Excel / CSV"
                 >
                   <Download className="w-3 h-3 text-slate-500" />
-                  <span>Export CSV</span>
+                  <span>Excel</span>
                 </button>
 
-                {/* Download PDF Button */}
+                {/* PDF Download Button */}
                 <button
                   type="button"
                   onClick={handleExportPDF}
@@ -917,7 +918,7 @@ export default function ExpensesClient({
                   title="Download Official PDF Report"
                 >
                   <FileText className="w-3 h-3 text-rose-600" />
-                  <span>Download PDF</span>
+                  <span>PDF</span>
                 </button>
               </div>
             </div>

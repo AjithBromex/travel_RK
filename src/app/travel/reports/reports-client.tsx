@@ -310,9 +310,10 @@ export default function ReportsClient({
             type="button"
             onClick={handleExportStatement}
             className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            title="Export Excel / CSV Statement"
           >
             <Download className="w-3.5 h-3.5 text-slate-600" />
-            <span>Export CSV</span>
+            <span>Excel</span>
           </button>
 
           <button
@@ -322,7 +323,7 @@ export default function ReportsClient({
             title="Download Official PDF Statement"
           >
             <FileText className="w-3.5 h-3.5 text-rose-600" />
-            <span>Download PDF</span>
+            <span>PDF</span>
           </button>
         </div>
 
