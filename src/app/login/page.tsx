@@ -76,6 +76,9 @@ function LoginForm() {
     setSuccessMessage("");
 
     try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("rk_login_username", cleanUsername);
+      }
       await signIn(cleanUsername, password);
       const destination = callbackUrl.startsWith("/travel")
         ? callbackUrl
@@ -100,6 +103,9 @@ function LoginForm() {
     setSuccessMessage("");
 
     try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("rk_login_username", cleanUsername);
+      }
       const email = `${cleanUsername.toLowerCase()}@gmail.com`;
       const name = displayName || cleanUsername.toUpperCase();
       await signUp(email, password, name, "admin");

@@ -7,7 +7,7 @@ import {
   User,
 } from 'firebase/auth'
 import { auth } from './config'
-import { getUserProfile, createUserProfile, findUserByUsername } from '@/services/users.service'
+import { getUserProfile, createUserProfile, updateUserProfile, findUserByUsername } from '@/services/users.service'
 import type { UserProfile, UserRole } from '@/types'
 
 export function setSessionCookie() {
@@ -55,16 +55,25 @@ export async function signInUser(
   const credential = await signInWithEmailAndPassword(auth, email, password)
   setSessionCookie()
 
+  const loginUsername =
+    identifier.trim().replace(/@gmail\.com$/i, '').replace(/@.*$/, '') ||
+    credential.user.email?.split('@')[0] ||
+    identifier
+
   // Retrieve user profile
   let profile = await getUserProfile(credential.user.uid)
   if (!profile) {
     // If first-time login without a profile document, auto-provision
     profile = await createUserProfile(credential.user.uid, {
       email: credential.user.email || email,
-      displayName: credential.user.displayName || identifier,
-      userId: identifier.toUpperCase(),
+      displayName: loginUsername,
+      userId: loginUsername,
       role: 'admin',
     })
+  } else if (profile.displayName !== loginUsername && loginUsername) {
+    // Keep profile displayName in sync with the login username
+    profile = { ...profile, displayName: loginUsername, userId: loginUsername }
+    updateUserProfile(credential.user.uid, { displayName: loginUsername, userId: loginUsername }).catch(() => {})
   }
 
   return { user: credential.user, profile }

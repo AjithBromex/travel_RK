@@ -148,6 +148,9 @@ export default function SettingsClient({
     }
     setLoggingOut(true);
     try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("rk_login_username");
+      }
       await signOut();
       router.push("/login");
     } catch (error) {
@@ -161,9 +164,10 @@ export default function SettingsClient({
   };
 
   const displayName =
-    userProfile?.displayName ||
-    user?.displayName ||
+    (typeof window !== "undefined" && localStorage.getItem("rk_login_username")) ||
     user?.email?.split("@")[0] ||
+    userProfile?.userId ||
+    userProfile?.displayName ||
     "admin";
   const userEmail = user?.email || "admin@gmail.com";
   const userRole = userProfile?.role || "ADMIN";

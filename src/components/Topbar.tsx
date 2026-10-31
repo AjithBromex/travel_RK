@@ -82,12 +82,23 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const [clientUsername, setClientUsername] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("rk_login_username");
+      if (stored) {
+        setClientUsername(stored);
+      }
+    }
+  }, []);
+
   const userName =
-    userProfile?.displayName ||
-    user?.displayName ||
+    clientUsername ||
     user?.email?.split("@")[0] ||
+    userProfile?.userId ||
     "Admin";
-  const userRole = userProfile?.role || "Administrator";
+  const userRole = userProfile?.role || "Staff";
 
   // Load urgent & near-date reminders / compliance alerts
   useEffect(() => {
@@ -648,6 +659,9 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                   <button
                     onClick={async () => {
                       setProfileOpen(false);
+                      if (typeof window !== "undefined") {
+                        localStorage.removeItem("rk_login_username");
+                      }
                       await signOut();
                       router.push("/login");
                     }}
