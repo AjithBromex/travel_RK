@@ -171,7 +171,7 @@ export default function SettingsClient({
     "ADMIN";
   const displayName = rawDisplayName.toUpperCase();
   const userEmail = user?.email || "admin@gmail.com";
-  const userRole = userProfile?.role || "ADMIN";
+  const userRole = (userProfile?.role || "Staff").toUpperCase();
 
   return (
     <div className="font-sans max-w-[1440px] mx-auto pb-12 space-y-6">

@@ -467,6 +467,23 @@ function LoginForm() {
                     </div>
                   </div>
 
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Assigned Role
+                    </label>
+                    <div className="relative flex items-center justify-between px-3.5 h-11 bg-[#EEF4FB] border border-slate-200/80 rounded-2xl select-none">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs sm:text-sm font-bold text-slate-900">
+                          Staff
+                        </span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-wider">
+                        Role: Staff
+                      </span>
+                    </div>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={loading}

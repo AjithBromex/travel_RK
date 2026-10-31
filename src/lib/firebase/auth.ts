@@ -69,7 +69,7 @@ export async function signInUser(
       email: credential.user.email || email,
       displayName: loginUsername,
       userId: loginUsername,
-      role: 'admin',
+      role: 'staff',
     })
   } else if (profile.displayName !== loginUsername && loginUsername) {
     // Keep profile displayName in sync with the login username
