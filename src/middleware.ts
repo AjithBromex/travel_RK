@@ -44,7 +44,9 @@ export function middleware(req: NextRequest) {
   const path = nextUrl.pathname
 
   // Check for admin session cookie
-  const adminCookie = cookies.get('firebase_admin_session')?.value
+  const adminCookie =
+    cookies.get('rk_admin_session')?.value ||
+    cookies.get('firebase_admin_session')?.value
   const hasValidAdminSession = isValidAdminSession(adminCookie)
 
   // Check for standard user session cookie
