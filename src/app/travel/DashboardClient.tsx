@@ -40,15 +40,17 @@ export default function DashboardClient({
   const reminders = initialReminders || [];
 
   return (
-    <div className="space-y-4 sm:space-y-5 pb-10 font-sans max-w-[1440px] mx-auto">
+    <div className="font-sans max-w-[1440px] mx-auto pb-10">
       {/* ─────────────────────────────────────────────────────────────
-          1. CINEMATIC SCENIC HERO BANNER (1:1 with Mockup Reference)
+          1. CINEMATIC SCENIC HERO BANNER
+             Expanded bottom padding so the 4 KPI cards float halfway
+             over the asphalt road and van, exactly as in the mockup!
           ───────────────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-lg h-[180px] sm:h-[195px] lg:h-[210px] flex items-center bg-slate-950"
+        transition={{ duration: 0.35 }}
+        className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md h-[220px] sm:h-[240px] lg:h-[265px] flex flex-col justify-between bg-slate-950 p-5 sm:p-7 lg:p-9 pb-16 sm:pb-20 lg:pb-22"
       >
         {/* Photographic Panoramic Highway Background with Van & Alpine Lake */}
         <div className="absolute inset-0 -z-10">
@@ -64,7 +66,7 @@ export default function DashboardClient({
         </div>
 
         {/* Cursive Art Overlay on Large Screens: "Journey Beyond Borders" */}
-        <div className="hidden lg:block absolute right-8 top-1/2 -translate-y-1/2 select-none pointer-events-none opacity-90 pr-4">
+        <div className="hidden lg:block absolute right-8 top-12 select-none pointer-events-none opacity-90 pr-4">
           <div className="relative w-40 h-28">
             <Image
               src="/images/journey-script-transparent.png"
@@ -75,113 +77,119 @@ export default function DashboardClient({
           </div>
         </div>
 
-        {/* Content Wrapper */}
-        <div className="relative z-10 w-full p-5 sm:p-7 lg:p-9 flex flex-col justify-between h-full">
-          {/* Top Floating Action Pill Buttons (Aligned to Right on Desktop) */}
-          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 flex-wrap w-full order-last sm:order-first">
-            <Link
-              href="/travel/reminders"
-              prefetch={true}
-              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Bell className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
-              <span>Reminders</span>
-              {reminders.length > 0 && (
-                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold">
-                  {reminders.length}
-                </span>
-              )}
-            </Link>
+        {/* Top Floating Action Pill Buttons (Aligned to Right on Desktop) */}
+        <div className="relative z-10 flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 flex-wrap w-full">
+          <Link
+            href="/travel/reminders"
+            prefetch={true}
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Bell className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
+            <span>Reminders</span>
+            {reminders.length > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold">
+                {reminders.length}
+              </span>
+            )}
+          </Link>
 
-            <Link
-              href="/travel/payments"
-              prefetch={true}
-              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Receipt className="w-3.5 h-3.5 text-slate-600" />
-              <span>Record Payment</span>
-            </Link>
+          <Link
+            href="/travel/payments"
+            prefetch={true}
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Receipt className="w-3.5 h-3.5 text-slate-600" />
+            <span>Record Payment</span>
+          </Link>
 
-            <Link
-              href="/travel/trips"
-              prefetch={true}
-              className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-[#0D62FE] hover:bg-[#0952DC] text-white font-bold text-xs shadow-md shadow-blue-500/35 transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[2.75]" />
-              <span>New Trip</span>
-            </Link>
-          </div>
+          <Link
+            href="/travel/trips"
+            prefetch={true}
+            className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-[#0D62FE] hover:bg-[#0952DC] text-white font-bold text-xs shadow-md shadow-blue-500/35 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.75]" />
+            <span>New Trip</span>
+          </Link>
+        </div>
 
-          {/* Operations Hub Welcome Title with Official 3D RK Emblem */}
-          <div className="max-w-xl">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-6 h-6 rounded-lg bg-slate-900/80 backdrop-blur-md border border-white/20 p-0.5 relative shrink-0 shadow-sm">
-                <Image
-                  src="/images/rk-logo.png"
-                  alt="RK Travel Hub"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-              <p className="text-[10px] sm:text-[11px] font-extrabold tracking-[0.2em] text-blue-200/95 uppercase drop-shadow">
-                OPERATIONS HUB
-              </p>
+        {/* Operations Hub Welcome Title with Official 3D RK Emblem */}
+        <div className="relative z-10 max-w-xl">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-6 h-6 rounded-lg bg-slate-900/80 backdrop-blur-md border border-white/20 p-0.5 relative shrink-0 shadow-sm">
+              <Image
+                src="/images/rk-logo.png"
+                alt="RK Travel Hub"
+                fill
+                className="object-contain"
+              />
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-[36px] font-black tracking-tight text-white leading-tight drop-shadow-md">
-              Welcome back, <br className="hidden sm:inline" />
-              <span>RK Travel </span>
-              <span className="text-[#38BDF8]">Hub</span>
-            </h1>
-            <p className="text-xs sm:text-[13px] text-slate-200 font-medium mt-1 max-w-md drop-shadow line-clamp-1 sm:line-clamp-none">
-              Fleet operations, active trips, compliance alerts, and financial daybook.
+            <p className="text-[10px] sm:text-[11px] font-extrabold tracking-[0.2em] text-blue-200/95 uppercase drop-shadow">
+              OPERATIONS HUB
             </p>
           </div>
+          <h1 className="text-2xl sm:text-3xl lg:text-[36px] font-black tracking-tight text-white leading-tight drop-shadow-md">
+            Welcome back, <br className="hidden sm:inline" />
+            <span>RK Travel </span>
+            <span className="text-[#38BDF8]">Hub</span>
+          </h1>
+          <p className="text-xs sm:text-[13px] text-slate-200 font-medium mt-1 max-w-md drop-shadow line-clamp-1 sm:line-clamp-none">
+            Fleet operations, active trips, compliance alerts, and financial daybook.
+          </p>
         </div>
       </motion.div>
 
       {/* ─────────────────────────────────────────────────────────────
-          2. TOP 4 HORIZONTAL METRIC CARDS (Exact 84px Equal Heights)
+          2. TOP 4 HORIZONTAL METRIC CARDS (Exact 1:1 Overlap on Hero)
+             Positioned with -mt-10 sm:-mt-12 lg:-mt-14 relative z-20
+             to float halfway over the bottom of the scenic road & van!
           ───────────────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4"
+        transition={{ duration: 0.35, delay: 0.08 }}
+        className="relative z-20 px-1 sm:px-2 -mt-10 sm:-mt-12 lg:-mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4"
       >
         {/* CARD 1: TOTAL TRIPS */}
         <Link
           href="/travel/trips"
-          className="group bg-white rounded-[20px] p-4 border border-slate-200/70 shadow-[0_2px_10px_rgba(15,23,42,0.03)] hover:shadow-md hover:border-blue-300 transition-all flex items-center justify-between relative overflow-hidden h-[84px]"
+          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
-          <div className="absolute right-12 bottom-0 w-24 h-9 pointer-events-none opacity-40">
-            <svg viewBox="0 0 100 35" className="w-full h-full fill-none stroke-blue-500 stroke-2">
-              <path d="M0 28 Q 25 12, 50 22 T 100 8" />
+          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+            <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="waveBlueGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.45" />
+                  <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path d="M0 34 C 20 32, 40 14, 55 16 C 70 18, 80 28, 100 20" stroke="#3B82F6" strokeWidth="2.2" strokeLinecap="round" />
+              <path d="M0 34 C 20 32, 40 14, 55 16 C 70 18, 80 28, 100 20 L 100 40 L 0 40 Z" fill="url(#waveBlueGrad)" />
             </svg>
           </div>
 
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-[15px] bg-[#E8F1FC] text-[#1A68F8] flex items-center justify-center shrink-0">
-              <Bus className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-[16px] bg-[#EAF2FD] text-[#1A68F8] flex items-center justify-center shrink-0">
+              <Bus className="w-5 h-5 stroke-[2.2]" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">
+              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
                 TOTAL TRIPS
               </span>
-              <span className="text-2xl font-extrabold text-[#0A1E3F] font-mono tracking-tight leading-tight block">
+              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
                 {metrics.totalTrips || 0}
               </span>
-              <span className="text-[10px] text-slate-400 block truncate">
+              <span className="text-[11px] font-medium text-slate-400 block truncate mt-1">
                 Booked Trips
               </span>
             </div>
           </div>
 
           <div className="flex flex-col items-end justify-between h-full shrink-0 relative z-10">
-            <div className="w-6 h-6 rounded-full bg-blue-50/80 text-blue-500 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full bg-[#EEF5FE] text-[#1A68F8] flex items-center justify-center">
               <Car className="w-3.5 h-3.5" />
             </div>
-            <span className="text-[10px] font-bold text-blue-700 bg-[#EBF3FE] px-2.5 py-0.5 rounded-full border border-blue-100">
+            <span className="text-[10px] font-extrabold text-[#1A68F8] bg-[#EEF5FE] px-3 py-0.5 rounded-full border border-blue-100/70">
               {metrics.todayTrips || 0} today
             </span>
           </div>
@@ -190,37 +198,44 @@ export default function DashboardClient({
         {/* CARD 2: COLLECTION */}
         <Link
           href="/travel/payments"
-          className="group bg-white rounded-[20px] p-4 border border-slate-200/70 shadow-[0_2px_10px_rgba(15,23,42,0.03)] hover:shadow-md hover:border-emerald-300 transition-all flex items-center justify-between relative overflow-hidden h-[84px]"
+          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
-          <div className="absolute right-12 bottom-0 w-24 h-9 pointer-events-none opacity-40">
-            <svg viewBox="0 0 100 35" className="w-full h-full fill-none stroke-emerald-500 stroke-2">
-              <path d="M0 30 Q 25 15, 50 25 T 100 10" />
+          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+            <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="waveGreenGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10B981" stopOpacity="0.45" />
+                  <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path d="M0 32 C 20 30, 42 16, 60 18 C 75 20, 85 26, 100 16" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" />
+              <path d="M0 32 C 20 30, 42 16, 60 18 C 75 20, 85 26, 100 16 L 100 40 L 0 40 Z" fill="url(#waveGreenGrad)" />
             </svg>
           </div>
 
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-[15px] bg-[#E8F8F0] text-[#10B981] flex items-center justify-center shrink-0 font-black text-xl">
+            <div className="w-12 h-12 rounded-[16px] bg-[#E8F8F0] text-[#10B981] flex items-center justify-center shrink-0 font-black text-2xl">
               ₹
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">
+              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
                 COLLECTION
               </span>
-              <span className="text-2xl font-extrabold text-[#0A1E3F] font-mono tracking-tight leading-tight block">
+              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
                 {formatINR(metrics.totalCollection || 0)}
               </span>
-              <span className="text-[10px] text-slate-400 block truncate">
+              <span className="text-[11px] font-medium text-slate-400 block truncate mt-1">
                 Receipts &amp; Adv.
               </span>
             </div>
           </div>
 
           <div className="flex flex-col items-end justify-between h-full shrink-0 relative z-10">
-            <div className="w-6 h-6 rounded-full bg-emerald-50/80 text-emerald-600 flex items-center justify-center">
-              <TrendingUp className="w-3.5 h-3.5" />
+            <div className="w-6 h-6 rounded-full bg-[#E6F8EF] text-[#10B981] flex items-center justify-center">
+              <TrendingUp className="w-3.5 h-3.5 stroke-[2.5]" />
             </div>
-            <span className="text-[10px] font-bold text-emerald-700 bg-[#E6F8EF] px-2.5 py-0.5 rounded-full border border-emerald-100">
+            <span className="text-[10px] font-extrabold text-[#10B981] bg-[#E6F8EF] px-3 py-0.5 rounded-full border border-emerald-100/70">
               Received
             </span>
           </div>
@@ -229,37 +244,44 @@ export default function DashboardClient({
         {/* CARD 3: EXPENSES */}
         <Link
           href="/travel/expenses"
-          className="group bg-white rounded-[20px] p-4 border border-slate-200/70 shadow-[0_2px_10px_rgba(15,23,42,0.03)] hover:shadow-md hover:border-amber-300 transition-all flex items-center justify-between relative overflow-hidden h-[84px]"
+          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
-          <div className="absolute right-12 bottom-0 w-24 h-9 pointer-events-none opacity-40">
-            <svg viewBox="0 0 100 35" className="w-full h-full fill-none stroke-amber-500 stroke-2">
-              <path d="M0 26 Q 30 14, 60 22 T 100 8" />
+          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+            <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="waveAmberGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.45" />
+                  <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path d="M0 30 C 25 28, 48 18, 65 20 C 80 22, 88 28, 100 22" stroke="#F59E0B" strokeWidth="2.2" strokeLinecap="round" />
+              <path d="M0 30 C 25 28, 48 18, 65 20 C 80 22, 88 28, 100 22 L 100 40 L 0 40 Z" fill="url(#waveAmberGrad)" />
             </svg>
           </div>
 
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-[15px] bg-[#FEF5E7] text-[#F59E0B] flex items-center justify-center shrink-0">
-              <Fuel className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-[16px] bg-[#FEF5E7] text-[#F59E0B] flex items-center justify-center shrink-0">
+              <Fuel className="w-5 h-5 stroke-[2.2]" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">
+              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
                 EXPENSES
               </span>
-              <span className="text-2xl font-extrabold text-[#0A1E3F] font-mono tracking-tight leading-tight block">
+              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
                 {formatINR(metrics.totalExpenses || 0)}
               </span>
-              <span className="text-[10px] text-slate-400 block truncate">
+              <span className="text-[11px] font-medium text-slate-400 block truncate mt-1">
                 Fuel &amp; Outlays
               </span>
             </div>
           </div>
 
           <div className="flex flex-col items-end justify-between h-full shrink-0 relative z-10">
-            <div className="w-6 h-6 rounded-full bg-amber-50/80 text-amber-600 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full bg-[#FEF3D6] text-[#D97706] flex items-center justify-center">
               <Receipt className="w-3.5 h-3.5" />
             </div>
-            <span className="text-[10px] font-bold text-amber-800 bg-[#FEF3D6] px-2.5 py-0.5 rounded-full border border-amber-200/60">
+            <span className="text-[10px] font-extrabold text-[#D97706] bg-[#FEF3D6] px-3 py-0.5 rounded-full border border-amber-200/70">
               Operating
             </span>
           </div>
@@ -268,50 +290,57 @@ export default function DashboardClient({
         {/* CARD 4: NET PROFIT */}
         <Link
           href="/travel/reports"
-          className="group bg-white rounded-[20px] p-4 border border-slate-200/70 shadow-[0_2px_10px_rgba(15,23,42,0.03)] hover:shadow-md hover:border-indigo-300 transition-all flex items-center justify-between relative overflow-hidden h-[84px]"
+          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-indigo-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
-          <div className="absolute right-12 bottom-0 w-24 h-9 pointer-events-none opacity-40">
-            <svg viewBox="0 0 100 35" className="w-full h-full fill-none stroke-indigo-500 stroke-2">
-              <path d="M0 24 Q 30 10, 60 18 T 100 6" />
+          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+            <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="wavePurpleGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366F1" stopOpacity="0.45" />
+                  <stop offset="100%" stopColor="#6366F1" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path d="M0 32 C 20 30, 42 14, 58 16 C 74 18, 86 26, 100 18" stroke="#6366F1" strokeWidth="2.2" strokeLinecap="round" />
+              <path d="M0 32 C 20 30, 42 14, 58 16 C 74 18, 86 26, 100 18 L 100 40 L 0 40 Z" fill="url(#wavePurpleGrad)" />
             </svg>
           </div>
 
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-[15px] bg-[#EEF0FE] text-[#6366F1] flex items-center justify-center shrink-0">
-              <BarChart3 className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-[16px] bg-[#EEF0FE] text-[#6366F1] flex items-center justify-center shrink-0">
+              <BarChart3 className="w-5 h-5 stroke-[2.2]" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">
+              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
                 NET PROFIT
               </span>
               <span
-                className={`text-2xl font-extrabold font-mono tracking-tight leading-tight block ${
-                  (metrics.profitLoss || 0) >= 0 ? "text-[#0A1E3F]" : "text-rose-600"
+                className={`text-2xl sm:text-[26px] font-black font-mono tracking-tight leading-none mt-1 block ${
+                  (metrics.profitLoss || 0) >= 0 ? "text-slate-900" : "text-rose-600"
                 }`}
               >
                 {formatINR(metrics.profitLoss || 0)}
               </span>
-              <span className="text-[10px] text-slate-400 block truncate">
+              <span className="text-[11px] font-medium text-slate-400 block truncate mt-1">
                 Net Surplus
               </span>
             </div>
           </div>
 
           <div className="flex flex-col items-end justify-between h-full shrink-0 relative z-10">
-            <div className="w-6 h-6 rounded-full bg-indigo-50/80 text-indigo-600 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full bg-[#EAEBFE] text-[#6366F1] flex items-center justify-center">
               <Wallet className="w-3.5 h-3.5" />
             </div>
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-0.5 ${
+              className={`text-[10px] font-extrabold px-3 py-0.5 rounded-full border inline-flex items-center gap-0.5 ${
                 (metrics.profitLoss || 0) >= 0
-                  ? "bg-[#EAEBFE] text-indigo-700 border-indigo-100"
+                  ? "bg-[#EAEBFE] text-[#4F46E5] border-indigo-100/70"
                   : "bg-rose-50 text-rose-700 border-rose-100"
               }`}
             >
               {(metrics.profitLoss || 0) >= 0 ? (
                 <>
-                  <ArrowUpRight className="w-3 h-3 stroke-[2.5]" />
+                  <ArrowUpRight className="w-3 h-3 stroke-[2.75]" />
                   <span>Positive</span>
                 </>
               ) : (
@@ -331,20 +360,20 @@ export default function DashboardClient({
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 items-stretch"
+        transition={{ duration: 0.35, delay: 0.15 }}
+        className="mt-4 sm:mt-5 grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 items-stretch"
       >
         {/* ════ COLUMN 1 (6 cols on lg): RECENT TRIPS & DISPATCH ════ */}
         <div className="md:col-span-12 lg:col-span-6 flex flex-col">
-          <div className="bg-white rounded-[22px] border border-slate-200/70 shadow-[0_2px_12px_rgba(15,23,42,0.03)] overflow-hidden flex flex-col justify-between flex-1 min-h-[300px]">
+          <div className="bg-white rounded-[22px] border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] overflow-hidden flex flex-col justify-between flex-1 min-h-[300px]">
             {/* Header */}
             <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-[14px] bg-[#E8F1FC] text-[#1A68F8] flex items-center justify-center">
-                  <Bus className="w-4 h-4" />
+                  <Bus className="w-4 h-4 stroke-[2.2]" />
                 </div>
                 <div>
-                  <h2 className="text-sm sm:text-base font-extrabold text-[#0A1E3F] tracking-tight">
+                  <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
                     Recent Trips
                   </h2>
                   <p className="text-[11px] text-slate-400">
@@ -372,7 +401,7 @@ export default function DashboardClient({
                     className="object-contain"
                   />
                 </div>
-                <h3 className="text-sm sm:text-base font-extrabold text-[#0A1E3F]">
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
                   No trips recorded yet
                 </h3>
                 <p className="text-xs text-slate-500 max-w-sm mt-1 mb-4 leading-relaxed">
@@ -488,7 +517,7 @@ export default function DashboardClient({
 
         {/* ════ COLUMN 2 (3 cols on lg): REMINDERS & COMPLIANCE ════ */}
         <div className="md:col-span-6 lg:col-span-3 flex flex-col">
-          <div className="bg-white rounded-[22px] p-4 sm:p-5 border border-slate-200/70 shadow-[0_2px_12px_rgba(15,23,42,0.03)] space-y-3 flex flex-col justify-between flex-1 min-h-[300px]">
+          <div className="bg-white rounded-[22px] p-4 sm:p-5 border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] space-y-3 flex flex-col justify-between flex-1 min-h-[300px]">
             <div>
               {/* Header */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -497,7 +526,7 @@ export default function DashboardClient({
                     <Bell className="w-4 h-4 fill-amber-500/10" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-extrabold text-[#0A1E3F] tracking-tight">
+                    <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
                       Reminders
                     </h2>
                     <p className="text-[11px] text-slate-400">
@@ -526,7 +555,7 @@ export default function DashboardClient({
                         className="object-contain"
                       />
                     </div>
-                    <p className="text-xs sm:text-sm font-extrabold text-[#0A1E3F]">
+                    <p className="text-xs sm:text-sm font-extrabold text-slate-900">
                       Compliances Up to Date
                     </p>
                     <p className="text-[10px] text-slate-500 mt-0.5">
@@ -593,7 +622,7 @@ export default function DashboardClient({
             {/* Bottom Full-Width Soft Gray Bar */}
             <Link
               href="/travel/reminders"
-              className="w-full py-2.5 rounded-xl bg-[#F0F4F8] hover:bg-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1 transition-colors mt-auto"
+              className="w-full py-2.5 rounded-xl bg-[#F0F4F8] hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 transition-colors mt-auto"
             >
               <span>View All Reminders</span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
@@ -603,15 +632,15 @@ export default function DashboardClient({
 
         {/* ════ COLUMN 3 (3 cols on lg): OUTSTANDING BALANCES & HEALTH ════ */}
         <div className="md:col-span-6 lg:col-span-3 flex flex-col">
-          <div className="bg-white rounded-[22px] p-4 sm:p-5 border border-slate-200/70 shadow-[0_2px_12px_rgba(15,23,42,0.03)] space-y-3 flex flex-col justify-between flex-1 min-h-[300px]">
+          <div className="bg-white rounded-[22px] p-4 sm:p-5 border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] space-y-3 flex flex-col justify-between flex-1 min-h-[300px]">
             <div>
               {/* Header */}
               <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
                 <div className="w-9 h-9 rounded-[14px] bg-[#E8F1FC] text-[#1A68F8] flex items-center justify-center">
-                  <Clock className="w-4 h-4" />
+                  <Clock className="w-4 h-4 stroke-[2.2]" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-extrabold text-[#0A1E3F] tracking-tight">
+                  <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
                     Balances &amp; Health
                   </h2>
                   <p className="text-[11px] text-slate-400">
