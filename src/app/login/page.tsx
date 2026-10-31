@@ -108,7 +108,20 @@ function LoginForm() {
       }
       const email = `${cleanUsername.toLowerCase()}@gmail.com`;
       const name = displayName.trim() || cleanUsername;
-      await signUp(email, password, name, "staff", cleanUsername);
+
+      try {
+        await signUp(email, password, name, "staff", cleanUsername);
+      } catch (signupErr: unknown) {
+        const errCode = (signupErr as { code?: string })?.code;
+        if (errCode === "auth/email-already-in-use") {
+          // User already exists in Firebase Auth (e.g. Firestore doc was deleted).
+          // Attempt sign in to restore the profile document and log in seamlessly.
+          await signIn(cleanUsername, password);
+        } else {
+          throw signupErr;
+        }
+      }
+
       const destination = callbackUrl.startsWith("/travel")
         ? callbackUrl
         : "/travel";
