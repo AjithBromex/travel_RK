@@ -29,104 +29,28 @@ interface ReportsClientProps {
   payments: Payment[];
 }
 
-// 4 Top Performing Vehicles matching mockup
-const TOP_VEHICLES_DATA = [
-  {
-    rank: 1,
-    regNumber: "KL 15 AE 4725",
-    image: "/images/report-veh-1.png",
-    trips: 32,
-    revenue: 248500,
-    expenses: 162300,
-    profit: 86200,
-    margin: "34.7%",
-  },
-  {
-    rank: 2,
-    regNumber: "KL 07 CF 2211",
-    image: "/images/report-veh-2.png",
-    trips: 28,
-    revenue: 196400,
-    expenses: 121800,
-    profit: 74600,
-    margin: "38.0%",
-  },
-  {
-    rank: 3,
-    regNumber: "KL 22 TR 1100",
-    image: "/images/report-veh-3.png",
-    trips: 26,
-    revenue: 172300,
-    expenses: 114200,
-    profit: 58100,
-    margin: "33.7%",
-  },
-  {
-    rank: 4,
-    regNumber: "KL 39 LP 7788",
-    image: "/images/report-veh-4.png",
-    trips: 18,
-    revenue: 120600,
-    expenses: 92400,
-    profit: 28200,
-    margin: "23.4%",
-  },
-];
+interface TopVehicleItem {
+  rank: number;
+  regNumber: string;
+  name?: string;
+  image: string;
+  trips: number;
+  revenue: number;
+  expenses: number;
+  profit: number;
+  margin: string;
+}
 
-// 4 Corridors matching mockup
-const TOP_ROUTES_DATA = [
-  {
-    rank: 1,
-    route: "Kochi → Bangalore",
-    image: "/images/report-route-1.png",
-    trips: 28,
-    revenue: 248500,
-    expenses: 162300,
-    profit: 86200,
-    margin: "34.7%",
-  },
-  {
-    rank: 2,
-    route: "Calicut → Coimbatore",
-    image: "/images/report-route-2.png",
-    trips: 24,
-    revenue: 196400,
-    expenses: 121800,
-    profit: 74600,
-    margin: "38.0%",
-  },
-  {
-    rank: 3,
-    route: "Trivandrum → Chennai",
-    image: "/images/report-route-3.png",
-    trips: 20,
-    revenue: 172300,
-    expenses: 114200,
-    profit: 58100,
-    margin: "33.7%",
-  },
-  {
-    rank: 4,
-    route: "Mangalore → Mysore",
-    image: "/images/report-route-4.png",
-    trips: 18,
-    revenue: 120600,
-    expenses: 92400,
-    profit: 28200,
-    margin: "23.4%",
-  },
-];
-
-// 7 Bar intervals matching mockup (Revenue vs Expenses)
-const MONTHLY_CHART_BARS = [
-  { label: "1 Oct", revenue: 85, expense: 45 },
-  { label: "5 Oct", revenue: 140, expense: 95 },
-  { label: "10 Oct", revenue: 110, expense: 80 },
-  { label: "15 Oct", revenue: 165, expense: 125 },
-  { label: "20 Oct", revenue: 190, expense: 140 },
-  { label: "25 Oct", revenue: 135, expense: 95 },
-  { label: "30 Oct", revenue: 175, expense: 115 },
-];
+interface TopRouteItem {
+  rank: number;
+  route: string;
+  image: string;
+  trips: number;
+  revenue: number;
+  expenses: number;
+  profit: number;
+  margin: string;
+}
 
 export default function ReportsClient({
   trips,
@@ -140,8 +64,8 @@ export default function ReportsClient({
   const [routeFilter, setRouteFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Dynamic calculations with mockup fallback defaults
-  const totalTripsCount = trips.length > 8 ? trips.length : 128;
+  // Dynamic calculations strictly from actual data with 0 fallbacks
+  const totalTripsCount = trips.length;
 
   const realRevenue = useMemo(() => {
     const paymentSum = payments
@@ -155,14 +79,124 @@ export default function ReportsClient({
     return expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   }, [expenses]);
 
-  const displayRevenue = trips.length > 8 ? realRevenue : 986500;
-  const displayExpenses = expenses.length > 8 ? realExpenses : 642300;
+  const displayRevenue = realRevenue;
+  const displayExpenses = realExpenses;
   const displayProfit = displayRevenue - displayExpenses;
-  const displayMargin = ((displayProfit / displayRevenue) * 100).toFixed(1);
+  const displayMargin = displayRevenue > 0 ? ((displayProfit / displayRevenue) * 100).toFixed(1) : "0.0";
 
-  const avgRevPerTrip = Math.round(displayRevenue / totalTripsCount) || 7708;
-  const avgExpPerTrip = Math.round(displayExpenses / totalTripsCount) || 5017;
-  const profitPerTrip = avgRevPerTrip - avgExpPerTrip || 2691;
+  const avgRevPerTrip = totalTripsCount > 0 ? Math.round(displayRevenue / totalTripsCount) : 0;
+  const avgExpPerTrip = totalTripsCount > 0 ? Math.round(displayExpenses / totalTripsCount) : 0;
+  const profitPerTrip = avgRevPerTrip - avgExpPerTrip;
+
+  // Real Top Performing Vehicles
+  const topVehicles = useMemo<TopVehicleItem[]>(() => {
+    if (trips.length === 0) return [];
+    const map = new Map<string, { regNumber: string; name: string; trips: number; revenue: number; expenses: number }>();
+    for (const t of trips) {
+      const key = t.vehicleId || t.vehicleName || "Unknown Vehicle";
+      const veh = vehicles.find((v) => v.id === t.vehicleId || v.registrationNumber === t.vehicleName);
+      const reg = veh?.registrationNumber || t.vehicleName || "Unassigned";
+      const name = veh?.name || t.vehicleName || "Vehicle";
+      const current = map.get(key) || { regNumber: reg, name, trips: 0, revenue: 0, expenses: 0 };
+      current.trips += 1;
+      current.revenue += Number(t.totalFare) || 0;
+      map.set(key, current);
+    }
+    for (const e of expenses) {
+      if (e.vehicleId || e.vehicleName) {
+        const key = e.vehicleId || e.vehicleName || "";
+        const current = map.get(key);
+        if (current) {
+          current.expenses += Number(e.amount) || 0;
+        }
+      }
+    }
+    return Array.from(map.values())
+      .sort((a, b) => (b.revenue - b.expenses) - (a.revenue - a.expenses))
+      .slice(0, 4)
+      .map((item, idx) => {
+        const profit = item.revenue - item.expenses;
+        const margin = item.revenue > 0 ? `${((profit / item.revenue) * 100).toFixed(1)}%` : "0.0%";
+        return {
+          rank: idx + 1,
+          regNumber: item.regNumber,
+          name: item.name,
+          image: "/images/report-veh-1.png",
+          trips: item.trips,
+          revenue: item.revenue,
+          expenses: item.expenses,
+          profit,
+          margin,
+        };
+      });
+  }, [trips, vehicles, expenses]);
+
+  // Real Top Corridor Performance
+  const topRoutes = useMemo<TopRouteItem[]>(() => {
+    if (trips.length === 0) return [];
+    const map = new Map<string, { route: string; trips: number; revenue: number; expenses: number }>();
+    for (const t of trips) {
+      const route = `${t.from || "Origin"} → ${t.to || "Destination"}`;
+      const current = map.get(route) || { route, trips: 0, revenue: 0, expenses: 0 };
+      current.trips += 1;
+      current.revenue += Number(t.totalFare) || 0;
+      map.set(route, current);
+    }
+    for (const e of expenses) {
+      if (e.tripId) {
+        const trip = trips.find((t) => t.id === e.tripId || t.tripNumber === e.tripId);
+        if (trip) {
+          const route = `${trip.from || "Origin"} → ${trip.to || "Destination"}`;
+          const current = map.get(route);
+          if (current) {
+            current.expenses += Number(e.amount) || 0;
+          }
+        }
+      }
+    }
+    return Array.from(map.values())
+      .sort((a, b) => (b.revenue - b.expenses) - (a.revenue - a.expenses))
+      .slice(0, 4)
+      .map((item, idx) => {
+        const profit = item.revenue - item.expenses;
+        const margin = item.revenue > 0 ? `${((profit / item.revenue) * 100).toFixed(1)}%` : "0.0%";
+        return {
+          rank: idx + 1,
+          route: item.route,
+          image: "/images/report-route-1.png",
+          trips: item.trips,
+          revenue: item.revenue,
+          expenses: item.expenses,
+          profit,
+          margin,
+        };
+      });
+  }, [trips, expenses]);
+
+  // Real Category Breakdown
+  const categoryBreakdown = useMemo(() => {
+    const total = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    if (total === 0) return [];
+    const catMap: Record<string, { label: string; color: string; amount: number }> = {
+      fuel: { label: "Fuel", color: "#0D62FE", amount: 0 },
+      tolls: { label: "Toll Charges", color: "#10B981", amount: 0 },
+      driver_bata: { label: "Driver Pay", color: "#F97316", amount: 0 },
+      maintenance: { label: "Maintenance", color: "#EF4444", amount: 0 },
+      food: { label: "Food & Tea", color: "#EC4899", amount: 0 },
+      office_expense: { label: "Office & Admin", color: "#8B5CF6", amount: 0 },
+      other: { label: "Other", color: "#64748B", amount: 0 },
+    };
+    for (const e of expenses) {
+      const cat = e.category in catMap ? e.category : "other";
+      catMap[cat].amount += Number(e.amount) || 0;
+    }
+    return Object.values(catMap)
+      .filter((c) => c.amount > 0)
+      .map((c) => ({
+        ...c,
+        percentage: Number(((c.amount / total) * 100).toFixed(1)),
+      }));
+  }, [expenses]);
 
   const handleResetFilters = () => {
     setDateFrom("2026-10-01");
@@ -526,34 +560,39 @@ export default function ReportsClient({
               </div>
             </div>
 
-            {/* Responsive Dual Bar Chart */}
-            <div className="relative h-48 w-full flex items-end justify-between pt-6 pb-2 px-2 border-b border-slate-100">
-              {/* Y Axis Guide Lines */}
-              <div className="absolute inset-x-0 top-0 border-b border-dashed border-slate-100 text-[9px] text-slate-400 pl-1">₹ 2L</div>
-              <div className="absolute inset-x-0 top-1/4 border-b border-dashed border-slate-100 text-[9px] text-slate-400 pl-1">₹ 1.5L</div>
-              <div className="absolute inset-x-0 top-2/4 border-b border-dashed border-slate-100 text-[9px] text-slate-400 pl-1">₹ 1L</div>
-              <div className="absolute inset-x-0 top-3/4 border-b border-dashed border-slate-100 text-[9px] text-slate-400 pl-1">₹ 50K</div>
+            {/* Responsive Dual Bar Chart / Empty State */}
+            {trips.length === 0 && expenses.length === 0 ? (
+              <div className="h-48 w-full flex flex-col items-center justify-center text-center text-slate-400 py-6 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
+                  <BarChart3 className="w-5 h-5 stroke-[1.8]" />
+                </div>
+                <p className="text-xs font-bold text-slate-700">No Revenue or Expense Activity</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Trends will render automatically as bookings and expenses are logged.</p>
+              </div>
+            ) : (
+              <div className="relative h-48 w-full flex items-end justify-between pt-6 pb-2 px-2 border-b border-slate-100">
+                {/* Y Axis Guide Lines */}
+                <div className="absolute inset-x-0 top-0 border-b border-dashed border-slate-100 text-[9px] text-slate-400 pl-1">High</div>
+                <div className="absolute inset-x-0 top-2/4 border-b border-dashed border-slate-100 text-[9px] text-slate-400 pl-1">Mid</div>
+                <div className="absolute inset-x-0 bottom-0 border-b border-dashed border-slate-100 text-[9px] text-slate-400 pl-1">₹ 0</div>
 
-              {MONTHLY_CHART_BARS.map((bar, idx) => (
-                <div key={idx} className="flex flex-col items-center gap-1.5 z-10 w-full max-w-[40px]">
-                  <div className="flex items-end gap-1 h-36">
-                    {/* Revenue Bar */}
+                <div className="flex flex-col items-center gap-1.5 z-10 w-full max-w-[80px] mx-auto">
+                  <div className="flex items-end gap-2 h-36">
                     <div
-                      className="w-2.5 sm:w-3 bg-[#0D62FE] rounded-t-xs hover:opacity-90 transition-all cursor-pointer"
-                      style={{ height: `${(bar.revenue / 200) * 100}%` }}
-                      title={`Revenue: ₹${bar.revenue * 1000}`}
+                      className="w-4 bg-[#0D62FE] rounded-t-xs hover:opacity-90 transition-all cursor-pointer"
+                      style={{ height: `${Math.min(100, Math.max(10, (displayRevenue / Math.max(displayRevenue, displayExpenses, 1)) * 100))}%` }}
+                      title={`Revenue: ${formatINR(displayRevenue)}`}
                     />
-                    {/* Expense Bar */}
                     <div
-                      className="w-2.5 sm:w-3 bg-[#F97316] rounded-t-xs hover:opacity-90 transition-all cursor-pointer"
-                      style={{ height: `${(bar.expense / 200) * 100}%` }}
-                      title={`Expenses: ₹${bar.expense * 1000}`}
+                      className="w-4 bg-[#F97316] rounded-t-xs hover:opacity-90 transition-all cursor-pointer"
+                      style={{ height: `${Math.min(100, Math.max(10, (displayExpenses / Math.max(displayRevenue, displayExpenses, 1)) * 100))}%` }}
+                      title={`Expenses: ${formatINR(displayExpenses)}`}
                     />
                   </div>
-                  <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">{bar.label}</span>
+                  <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">Current Period</span>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -575,75 +614,64 @@ export default function ReportsClient({
             </div>
 
             {/* Donut Chart & Legend Side-by-Side */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
-              {/* Donut SVG with Center Label */}
-              <div className="relative w-36 h-36 flex items-center justify-center shrink-0">
-                <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
-                  {/* Segment 1: Fuel (42.3%) -> #0D62FE */}
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#0D62FE" strokeWidth="16" strokeDasharray="100.8 138" strokeDashoffset="0" />
-                  {/* Segment 2: Toll (18.6%) -> #10B981 */}
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#10B981" strokeWidth="16" strokeDasharray="44.4 194" strokeDashoffset="-100.8" />
-                  {/* Segment 3: Driver Pay (16.2%) -> #F97316 */}
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#F97316" strokeWidth="16" strokeDasharray="38.6 200" strokeDashoffset="-145.2" />
-                  {/* Segment 4: Batta (9.8%) -> #EC4899 */}
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#EC4899" strokeWidth="16" strokeDasharray="23.4 215" strokeDashoffset="-183.8" />
-                  {/* Segment 5: Maintenance (8.1%) -> #EF4444 */}
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#EF4444" strokeWidth="16" strokeDasharray="19.3 219" strokeDashoffset="-207.2" />
-                  {/* Segment 6: Food & Misc (5.0%) -> #8B5CF6 */}
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#8B5CF6" strokeWidth="16" strokeDasharray="12 226" strokeDashoffset="-226.5" />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-xs font-black text-slate-900 font-mono-nums">₹ 6,42,300</span>
-                  <span className="text-[9px] text-slate-400 font-semibold">Total Expenses</span>
+            {categoryBreakdown.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <div className="w-14 h-14 rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center mb-2.5 text-slate-300">
+                  <Fuel className="w-6 h-6 stroke-[1.5]" />
                 </div>
+                <p className="text-xs font-bold text-slate-700">No Operating Expenses Recorded</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Category distribution will appear here once expenses are logged.</p>
               </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+                {/* Donut SVG with Center Label */}
+                <div className="relative w-36 h-36 flex items-center justify-center shrink-0">
+                  <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+                    {categoryBreakdown.map((item, idx) => {
+                      const totalCircumference = 238.76;
+                      const segmentLength = (item.percentage / 100) * totalCircumference;
+                      const accumulatedPercentage = categoryBreakdown
+                        .slice(0, idx)
+                        .reduce((sum, c) => sum + c.percentage, 0);
+                      const offset = -((accumulatedPercentage / 100) * totalCircumference);
 
-              {/* Legend List */}
-              <div className="space-y-1.5 w-full text-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#0D62FE]" />
-                    <span className="text-slate-600">Fuel</span>
+                      return (
+                        <circle
+                          key={item.label}
+                          cx="50"
+                          cy="50"
+                          r="38"
+                          fill="none"
+                          stroke={item.color}
+                          strokeWidth="16"
+                          strokeDasharray={`${segmentLength} ${totalCircumference - segmentLength}`}
+                          strokeDashoffset={offset}
+                        />
+                      );
+                    })}
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
+                    <span className="text-xs font-black text-slate-900 font-mono-nums truncate max-w-full">
+                      {formatINR(displayExpenses)}
+                    </span>
+                    <span className="text-[9px] text-slate-400 font-semibold">Total Expenses</span>
                   </div>
-                  <span className="font-bold text-slate-900 font-mono-nums">42.3%</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#10B981]" />
-                    <span className="text-slate-600">Toll Charges</span>
-                  </div>
-                  <span className="font-bold text-slate-900 font-mono-nums">18.6%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#F97316]" />
-                    <span className="text-slate-600">Driver Pay</span>
-                  </div>
-                  <span className="font-bold text-slate-900 font-mono-nums">16.2%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#EC4899]" />
-                    <span className="text-slate-600">Batta / Allowance</span>
-                  </div>
-                  <span className="font-bold text-slate-900 font-mono-nums">9.8%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
-                    <span className="text-slate-600">Maintenance</span>
-                  </div>
-                  <span className="font-bold text-slate-900 font-mono-nums">8.1%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#8B5CF6]" />
-                    <span className="text-slate-600">Food &amp; Misc</span>
-                  </div>
-                  <span className="font-bold text-slate-900 font-mono-nums">5.0%</span>
+
+                {/* Legend List */}
+                <div className="space-y-1.5 w-full text-xs">
+                  {categoryBreakdown.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="text-slate-600">{item.label}</span>
+                      </div>
+                      <span className="font-bold text-slate-900 font-mono-nums">{item.percentage}%</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -664,7 +692,7 @@ export default function ReportsClient({
               </div>
             </div>
 
-            {/* 4 Metrics in 2x2 Grid matching mockup */}
+            {/* 4 Metrics in 2x2 Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
               {/* Avg Revenue */}
               <div className="p-3 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-start gap-2.5">
@@ -675,7 +703,7 @@ export default function ReportsClient({
                   <p className="text-[10px] font-bold text-slate-500 leading-tight">Avg. Revenue per Trip</p>
                   <p className="text-sm font-black text-slate-900 font-mono-nums mt-0.5">{formatINR(avgRevPerTrip)}</p>
                   <span className="inline-flex items-center text-[9px] font-extrabold text-emerald-700 mt-0.5">
-                    ↑ 12%
+                    {displayRevenue > 0 ? "Realized" : "₹0 Base"}
                   </span>
                 </div>
               </div>
@@ -688,8 +716,8 @@ export default function ReportsClient({
                 <div>
                   <p className="text-[10px] font-bold text-slate-500 leading-tight">Avg. Expense per Trip</p>
                   <p className="text-sm font-black text-slate-900 font-mono-nums mt-0.5">{formatINR(avgExpPerTrip)}</p>
-                  <span className="inline-flex items-center text-[9px] font-extrabold text-rose-700 mt-0.5">
-                    ↑ 6%
+                  <span className="inline-flex items-center text-[9px] font-extrabold text-slate-500 mt-0.5">
+                    {displayExpenses > 0 ? "Operating" : "₹0 Base"}
                   </span>
                 </div>
               </div>
@@ -702,8 +730,8 @@ export default function ReportsClient({
                 <div>
                   <p className="text-[10px] font-bold text-slate-500 leading-tight">Profit per Trip</p>
                   <p className="text-sm font-black text-slate-900 font-mono-nums mt-0.5">{formatINR(profitPerTrip)}</p>
-                  <span className="inline-flex items-center text-[9px] font-extrabold text-emerald-700 mt-0.5">
-                    ↑ 24%
+                  <span className={`inline-flex items-center text-[9px] font-extrabold mt-0.5 ${profitPerTrip >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                    {totalTripsCount > 0 ? (profitPerTrip >= 0 ? "Surplus" : "Deficit") : "₹0 Base"}
                   </span>
                 </div>
               </div>
@@ -716,8 +744,8 @@ export default function ReportsClient({
                 <div>
                   <p className="text-[10px] font-bold text-slate-500 leading-tight">Profit Margin</p>
                   <p className="text-sm font-black text-slate-900 font-mono-nums mt-0.5">{displayMargin}%</p>
-                  <span className="inline-flex items-center text-[9px] font-extrabold text-emerald-700 mt-0.5">
-                    ↑ 15%
+                  <span className={`inline-flex items-center text-[9px] font-extrabold mt-0.5 ${Number(displayMargin) >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                    {displayRevenue > 0 ? (Number(displayMargin) >= 0 ? "Profitable" : "Deficit") : "0.0% Base"}
                   </span>
                 </div>
               </div>
@@ -759,28 +787,41 @@ export default function ReportsClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {TOP_VEHICLES_DATA.map((v) => (
-                  <tr key={v.rank} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-2.5 text-slate-400 font-bold">{v.rank}</td>
-                    <td className="py-3 px-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="relative w-8 h-4.5 rounded-xs overflow-hidden shrink-0 border border-slate-100">
-                          <Image src={v.image} alt={v.regNumber} fill unoptimized className="object-cover" />
-                        </div>
-                        <span className="font-bold text-slate-800">{v.regNumber}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-2.5 text-center font-bold text-slate-700">{v.trips}</td>
-                    <td className="py-3 px-2.5 font-bold text-slate-800 font-mono-nums">{formatINR(v.revenue)}</td>
-                    <td className="py-3 px-2.5 font-bold text-slate-500 font-mono-nums">{formatINR(v.expenses)}</td>
-                    <td className="py-3 px-2.5 font-bold text-emerald-600 font-mono-nums">{formatINR(v.profit)}</td>
-                    <td className="py-3 px-2.5 text-right">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                        {v.margin}
-                      </span>
+                {topVehicles.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-10 text-center text-slate-400 text-xs">
+                      No vehicle performance data recorded yet.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  topVehicles.map((v) => (
+                    <tr key={v.rank} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-2.5 text-slate-400 font-bold">{v.rank}</td>
+                      <td className="py-3 px-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="relative w-8 h-4.5 rounded-xs overflow-hidden shrink-0 border border-slate-100 bg-slate-100 flex items-center justify-center">
+                            <Bus className="w-3.5 h-3.5 text-blue-600" />
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-800 block">{v.regNumber}</span>
+                            {v.name && v.name !== v.regNumber && (
+                              <span className="text-[10px] text-slate-400 block">{v.name}</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-2.5 text-center font-bold text-slate-700">{v.trips}</td>
+                      <td className="py-3 px-2.5 font-bold text-slate-800 font-mono-nums">{formatINR(v.revenue)}</td>
+                      <td className="py-3 px-2.5 font-bold text-slate-500 font-mono-nums">{formatINR(v.expenses)}</td>
+                      <td className="py-3 px-2.5 font-bold text-emerald-600 font-mono-nums">{formatINR(v.profit)}</td>
+                      <td className="py-3 px-2.5 text-right">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                          {v.margin}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -815,28 +856,36 @@ export default function ReportsClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {TOP_ROUTES_DATA.map((r) => (
-                  <tr key={r.rank} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-2.5 text-slate-400 font-bold">{r.rank}</td>
-                    <td className="py-3 px-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="relative w-8 h-4.5 rounded-xs overflow-hidden shrink-0 border border-slate-100">
-                          <Image src={r.image} alt={r.route} fill unoptimized className="object-cover" />
-                        </div>
-                        <span className="font-bold text-slate-800">{r.route}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-2.5 text-center font-bold text-slate-700">{r.trips}</td>
-                    <td className="py-3 px-2.5 font-bold text-slate-800 font-mono-nums">{formatINR(r.revenue)}</td>
-                    <td className="py-3 px-2.5 font-bold text-slate-500 font-mono-nums">{formatINR(r.expenses)}</td>
-                    <td className="py-3 px-2.5 font-bold text-emerald-600 font-mono-nums">{formatINR(r.profit)}</td>
-                    <td className="py-3 px-2.5 text-right">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                        {r.margin}
-                      </span>
+                {topRoutes.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-10 text-center text-slate-400 text-xs">
+                      No corridor performance data recorded yet.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  topRoutes.map((r) => (
+                    <tr key={r.rank} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-2.5 text-slate-400 font-bold">{r.rank}</td>
+                      <td className="py-3 px-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="relative w-8 h-4.5 rounded-xs overflow-hidden shrink-0 border border-slate-100 bg-slate-100 flex items-center justify-center">
+                            <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                          </div>
+                          <span className="font-bold text-slate-800">{r.route}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-2.5 text-center font-bold text-slate-700">{r.trips}</td>
+                      <td className="py-3 px-2.5 font-bold text-slate-800 font-mono-nums">{formatINR(r.revenue)}</td>
+                      <td className="py-3 px-2.5 font-bold text-slate-500 font-mono-nums">{formatINR(r.expenses)}</td>
+                      <td className="py-3 px-2.5 font-bold text-emerald-600 font-mono-nums">{formatINR(r.profit)}</td>
+                      <td className="py-3 px-2.5 text-right">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                          {r.margin}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

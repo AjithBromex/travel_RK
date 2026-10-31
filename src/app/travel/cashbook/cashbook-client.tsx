@@ -55,114 +55,6 @@ interface DisplayCashBookItem {
   notes?: string;
 }
 
-// 8 Default realistic sample cash book transactions matching user mockup
-const DEFAULT_DEMO_CASHBOOK: DisplayCashBookItem[] = [
-  {
-    id: "demo-cb-1",
-    date: "2026-10-30",
-    direction: "inflow",
-    typeTitle: "Customer Payment",
-    typeSubtitle: "Ramesh Travels",
-    tripNumber: "T0045",
-    tripRoute: "Kochi → Bangalore",
-    amount: 18000,
-    paymentMode: "upi",
-    balance: 86500,
-    notes: "Direct UPI collection",
-  },
-  {
-    id: "demo-cb-2",
-    date: "2026-10-29",
-    direction: "outflow",
-    typeTitle: "Fuel Expense",
-    typeSubtitle: "Diesel - HP Pump",
-    tripNumber: "",
-    tripRoute: "",
-    amount: 5200,
-    paymentMode: "cash",
-    balance: 68500,
-    notes: "Diesel fill 52L",
-  },
-  {
-    id: "demo-cb-3",
-    date: "2026-10-29",
-    direction: "outflow",
-    typeTitle: "Toll Charges",
-    typeSubtitle: "Expressway",
-    tripNumber: "T0044",
-    tripRoute: "Calicut → Coimbatore",
-    amount: 1250,
-    paymentMode: "upi",
-    balance: 73700,
-    notes: "FASTag recharge & cash toll",
-  },
-  {
-    id: "demo-cb-4",
-    date: "2026-10-28",
-    direction: "inflow",
-    typeTitle: "Advance Payment",
-    typeSubtitle: "Suresh & Co.",
-    tripNumber: "T0043",
-    tripRoute: "Trivandrum → Chennai",
-    amount: 12500,
-    paymentMode: "bank_transfer",
-    balance: 74950,
-    notes: "Booking advance 50%",
-  },
-  {
-    id: "demo-cb-5",
-    date: "2026-10-27",
-    direction: "outflow",
-    typeTitle: "Driver Settlement",
-    typeSubtitle: "Rajesh Kumar",
-    tripNumber: "T0042",
-    tripRoute: "Mangalore → Mysore",
-    amount: 10000,
-    paymentMode: "cash",
-    balance: 62450,
-    notes: "Bata & agreed driver salary",
-  },
-  {
-    id: "demo-cb-6",
-    date: "2026-10-27",
-    direction: "outflow",
-    typeTitle: "Food & Refreshments",
-    typeSubtitle: "Driver team",
-    tripNumber: "T0042",
-    tripRoute: "Mangalore → Mysore",
-    amount: 1800,
-    paymentMode: "cash",
-    balance: 72450,
-    notes: "Highway meal allowance",
-  },
-  {
-    id: "demo-cb-7",
-    date: "2026-10-26",
-    direction: "inflow",
-    typeTitle: "Customer Payment",
-    typeSubtitle: "Ajith Travels",
-    tripNumber: "T0041",
-    tripRoute: "Mumbai → Pune",
-    amount: 7200,
-    paymentMode: "upi",
-    balance: 74250,
-    notes: "Final settlement",
-  },
-  {
-    id: "demo-cb-8",
-    date: "2026-10-26",
-    direction: "outflow",
-    typeTitle: "Maintenance",
-    typeSubtitle: "Brake Service",
-    tripNumber: "",
-    tripRoute: "",
-    amount: 4500,
-    paymentMode: "bank_transfer",
-    balance: 67050,
-    notes: "Pad replacement",
-  },
-];
-
 const MODE_META: Record<PaymentMode, { label: string; badgeClass: string }> = {
   upi: { label: "UPI", badgeClass: "bg-purple-50 text-purple-700" },
   cash: { label: "Cash", badgeClass: "bg-emerald-50 text-emerald-700" },
@@ -175,7 +67,7 @@ export default function CashBookClient({
   initialEntries,
   trips = [],
 }: CashBookClientProps) {
-  // Map raw initialEntries to DisplayCashBookItems if available, otherwise use DEFAULT_DEMO_CASHBOOK
+  // Map raw initialEntries to DisplayCashBookItems if available, otherwise start with empty array
   const [items, setItems] = useState<DisplayCashBookItem[]>(() => {
     if (initialEntries && initialEntries.length > 0) {
       return initialEntries.map((e) => {
@@ -196,7 +88,7 @@ export default function CashBookClient({
         };
       });
     }
-    return DEFAULT_DEMO_CASHBOOK;
+    return [];
   });
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -222,24 +114,22 @@ export default function CashBookClient({
 
   const amountInputRef = useRef<HTMLInputElement>(null);
 
-  // Dynamic Real KPIs with graceful mockup fallbacks
+  // Dynamic Real KPIs strictly from actual items
   const totalCashIn = useMemo(() => {
-    const sum = items
+    return items
       .filter((i) => i.direction === "inflow")
       .reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
-    return items.length > 8 ? sum : (sum || 248500);
   }, [items]);
 
   const totalCashOut = useMemo(() => {
-    const sum = items
+    return items
       .filter((i) => i.direction === "outflow")
       .reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
-    return items.length > 8 ? sum : (sum || 162000);
   }, [items]);
 
   const netCashFlow = totalCashIn - totalCashOut;
-  const displayNetCashFlow = items.length > 8 ? netCashFlow : 86500;
-  const displayTotalTransactions = items.length > 8 ? items.length : 48;
+  const displayNetCashFlow = netCashFlow;
+  const displayTotalTransactions = items.length;
 
   // Filtered items
   const filteredItems = useMemo(() => {
@@ -360,7 +250,7 @@ export default function CashBookClient({
       }
 
       // Calculate new running balance
-      const currentHeadBalance = items[0]?.balance || 86500;
+      const currentHeadBalance = items[0]?.balance || 0;
       const newBalance =
         formDirection === "inflow"
           ? currentHeadBalance + parsedAmount

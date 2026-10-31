@@ -85,121 +85,7 @@ const MODE_META: Record<PaymentMode, { label: string; badgeClass: string }> = {
   other: { label: "Other", badgeClass: "bg-slate-100 text-slate-700" },
 };
 
-// 8 Default realistic sample expenses matching user mockup if fresh database
-const DEFAULT_DEMO_EXPENSES: Expense[] = [
-  {
-    id: "demo-exp-1",
-    tripId: "T0045",
-    tripNumber: "T0045",
-    expenseDate: "2026-10-30",
-    category: "fuel",
-    amount: 8500,
-    paymentMode: "upi",
-    description: "Fuel fill at BP, 62.5L",
-    notes: "Fuel fill at BP, 62.5L",
-    vehicleName: "Kochi → Bangalore",
-    createdAt: "2026-10-30T09:00:00Z",
-    updatedAt: "2026-10-30T09:00:00Z",
-  },
-  {
-    id: "demo-exp-2",
-    tripId: "T0044",
-    tripNumber: "T0044",
-    expenseDate: "2026-10-29",
-    category: "tolls",
-    amount: 1250,
-    paymentMode: "cash",
-    description: "NH toll charges",
-    notes: "NH toll charges",
-    vehicleName: "Calicut → Coimbatore",
-    createdAt: "2026-10-29T11:00:00Z",
-    updatedAt: "2026-10-29T11:00:00Z",
-  },
-  {
-    id: "demo-exp-3",
-    tripId: "T0044",
-    tripNumber: "T0044",
-    expenseDate: "2026-10-29",
-    category: "food",
-    amount: 780,
-    paymentMode: "cash",
-    description: "Driver food & tea",
-    notes: "Driver food & tea",
-    vehicleName: "Calicut → Coimbatore",
-    createdAt: "2026-10-29T14:30:00Z",
-    updatedAt: "2026-10-29T14:30:00Z",
-  },
-  {
-    id: "demo-exp-4",
-    tripId: "T0043",
-    tripNumber: "T0043",
-    expenseDate: "2026-10-28",
-    category: "maintenance",
-    amount: 4500,
-    paymentMode: "bank_transfer",
-    description: "Brake service",
-    notes: "Brake service",
-    vehicleName: "Trivandrum → Chennai",
-    createdAt: "2026-10-28T16:00:00Z",
-    updatedAt: "2026-10-28T16:00:00Z",
-  },
-  {
-    id: "demo-exp-5",
-    tripId: "T0042",
-    tripNumber: "T0042",
-    expenseDate: "2026-10-27",
-    category: "fuel",
-    amount: 7200,
-    paymentMode: "upi",
-    description: "Fuel fill, 55L",
-    notes: "Fuel fill, 55L",
-    vehicleName: "Mangalore → Mysore",
-    createdAt: "2026-10-27T08:15:00Z",
-    updatedAt: "2026-10-27T08:15:00Z",
-  },
-  {
-    id: "demo-exp-6",
-    tripId: "",
-    tripNumber: "",
-    expenseDate: "2026-10-27",
-    category: "office_expense",
-    amount: 1800,
-    paymentMode: "cash",
-    description: "Staff refreshments",
-    notes: "Staff refreshments",
-    vehicleName: "",
-    createdAt: "2026-10-27T17:00:00Z",
-    updatedAt: "2026-10-27T17:00:00Z",
-  },
-  {
-    id: "demo-exp-7",
-    tripId: "T0041",
-    tripNumber: "T0041",
-    expenseDate: "2026-10-26",
-    category: "tolls",
-    amount: 900,
-    paymentMode: "upi",
-    description: "Expressway toll",
-    notes: "Expressway toll",
-    vehicleName: "Mumbai → Pune",
-    createdAt: "2026-10-26T10:00:00Z",
-    updatedAt: "2026-10-26T10:00:00Z",
-  },
-  {
-    id: "demo-exp-8",
-    tripId: "T0041",
-    tripNumber: "T0041",
-    expenseDate: "2026-10-26",
-    category: "other",
-    amount: 1100,
-    paymentMode: "cash",
-    description: "Misc expenses",
-    notes: "Misc expenses",
-    vehicleName: "Mumbai → Pune",
-    createdAt: "2026-10-26T12:00:00Z",
-    updatedAt: "2026-10-26T12:00:00Z",
-  },
-];
+const DEFAULT_DEMO_EXPENSES: Expense[] = [];
 
 const EMPTY_FORM = {
   tripId: "",
@@ -216,8 +102,7 @@ export default function ExpensesClient({
   trips,
 }: ExpensesClientProps) {
   const [expenses, setExpenses] = useState<Expense[]>(() => {
-    if (initialExpenses && initialExpenses.length > 0) return initialExpenses;
-    return DEFAULT_DEMO_EXPENSES;
+    return initialExpenses || [];
   });
 
   const [form, setForm] = useState(EMPTY_FORM);
@@ -239,7 +124,7 @@ export default function ExpensesClient({
 
   const currentMonthPrefix = new Date().toISOString().slice(0, 7);
 
-  // Dynamic Real KPIs with mockup fallbacks
+  // Dynamic Real KPIs (strictly real data)
   const thisMonthExpenses = useMemo(() => {
     return expenses.filter(
       (e) => e.expenseDate && e.expenseDate.startsWith(currentMonthPrefix)
@@ -258,30 +143,30 @@ export default function ExpensesClient({
 
   const realOtherMonth = Math.max(0, realTotalMonth - realDieselMonth);
 
-  const displayTotalMonth = expenses.length > 8 ? realTotalMonth : (realTotalMonth || 124850);
-  const displayDieselMonth = expenses.length > 8 ? realDieselMonth : (realDieselMonth || 68300);
-  const displayOtherMonth = expenses.length > 8 ? realOtherMonth : (realOtherMonth || 56550);
-  const displayTotalRecords = expenses.length > 8 ? expenses.length : 48;
+  const displayTotalMonth = realTotalMonth;
+  const displayDieselMonth = realDieselMonth;
+  const displayOtherMonth = realOtherMonth;
+  const displayTotalRecords = expenses.length;
 
-  // Category breakdown amounts & percentages for the 5 bottom cards
+  // Category breakdown amounts & percentages for the bottom cards
   const categoryBreakdown = useMemo(() => {
     const dieselAmt = expenses
       .filter((e) => e.category === "fuel")
-      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 68300;
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const tollAmt = expenses
       .filter((e) => e.category === "tolls")
-      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 12450;
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const maintAmt = expenses
       .filter((e) => e.category === "maintenance")
-      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 24200;
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const foodAmt = expenses
       .filter((e) => e.category === "food")
-      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 8350;
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const otherAmt = expenses
       .filter((e) => e.category === "office_expense" || e.category === "other" || e.category === "parking")
-      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 11550;
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-    const totalSum = dieselAmt + tollAmt + maintAmt + foodAmt + otherAmt || 124850;
+    const totalSum = dieselAmt + tollAmt + maintAmt + foodAmt + otherAmt;
 
     return {
       diesel: { amount: dieselAmt, pct: ((dieselAmt / totalSum) * 100).toFixed(1) },

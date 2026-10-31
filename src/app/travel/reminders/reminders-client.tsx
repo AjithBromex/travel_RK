@@ -57,88 +57,6 @@ export interface ReminderItem {
   isCustom?: boolean;
 }
 
-const DEFAULT_MOCK_REMINDERS: ReminderItem[] = [
-  {
-    id: "rem-1",
-    dueDate: "2026-11-05",
-    title: "Insurance Renewal",
-    subtitle: "Vehicle insurance expiry",
-    category: "Insurance",
-    vehicleReg: "KL 15 AE 4725",
-    vehicleModel: "Volvo 9600",
-    vehicleImage: "/images/fleet-volvo.jpg",
-    status: "overdue",
-    reminderType: "one_time",
-    notes: "Commercial fleet comprehensive policy renewal & claim coverage check.",
-  },
-  {
-    id: "rem-2",
-    dueDate: "2026-11-10",
-    title: "Periodic Service",
-    subtitle: "Engine oil & filter change",
-    category: "Vehicle Service",
-    vehicleReg: "KL 07 CF 2211",
-    vehicleModel: "Innova Crysta",
-    vehicleImage: "/images/fleet-crysta.jpg",
-    status: "upcoming",
-    reminderType: "one_time",
-    notes: "Engine oil, transmission fluid, brake pads, and tyre rotation check.",
-  },
-  {
-    id: "rem-3",
-    dueDate: "2026-11-12",
-    title: "Fitness Certificate",
-    subtitle: "RC fitness renewal",
-    category: "Compliance",
-    vehicleReg: "KL 22 TR 1100",
-    vehicleModel: "Force Traveller",
-    vehicleImage: "/images/fleet-traveller.jpg",
-    status: "upcoming",
-    reminderType: "one_time",
-    notes: "RTO commercial inspection, tax slip verification, and speed governor test.",
-  },
-  {
-    id: "rem-4",
-    dueDate: "2026-11-15",
-    title: "Permit Renewal",
-    subtitle: "Stage carriage permit",
-    category: "Permit",
-    vehicleReg: "KL 39 LP 7788",
-    vehicleModel: "Bolero Neo",
-    vehicleImage: "/images/fleet-bolero.jpg",
-    status: "upcoming",
-    reminderType: "one_time",
-    notes: "All India tourist permit renewal & quarterly road tax clearance.",
-  },
-  {
-    id: "rem-5",
-    dueDate: "2026-11-20",
-    title: "Driver License",
-    subtitle: "Driver license expiry",
-    category: "Driver Compliance",
-    vehicleReg: "Rajesh Kumar",
-    vehicleModel: "Driver",
-    vehicleImage: "/images/driver-rajesh.jpg",
-    isDriver: true,
-    status: "upcoming",
-    reminderType: "one_time",
-    notes: "Heavy transport license renewal badge & annual medical fitness filing.",
-  },
-  {
-    id: "rem-6",
-    dueDate: "2026-11-28",
-    title: "Battery Check",
-    subtitle: "Battery health inspection",
-    category: "Maintenance",
-    vehicleReg: "KL 11 BG 9933",
-    vehicleModel: "Tempo Traveller",
-    vehicleImage: "/images/fleet-tempo.jpg",
-    status: "upcoming",
-    reminderType: "repeat",
-    notes: "Battery acid level check, alternator charging rate, and terminal greasing.",
-  },
-];
-
 function formatDisplayDate(dateStr: string): string {
   try {
     const [year, month, day] = dateStr.split("-");
@@ -163,13 +81,13 @@ export default function RemindersClient({
   initialReminders,
   vehicles,
 }: RemindersClientProps) {
-  // Convert initialReminders from Firestore into ReminderItem format, merging with default mock if needed
+  // Convert initialReminders from Firestore into ReminderItem format (strictly real data)
   const [items, setItems] = useState<ReminderItem[]>(() => {
     if (!initialReminders || initialReminders.length === 0) {
-      return DEFAULT_MOCK_REMINDERS;
+      return [];
     }
 
-    const firestoreItems: ReminderItem[] = initialReminders.map((r) => {
+    return initialReminders.map((r) => {
       const matchedVeh = vehicles.find((v) => v.id === r.relatedEntityId);
       let cat: ReminderItem["category"] = "Vehicle Service";
       if (r.category === "documents") cat = "Insurance";
@@ -194,16 +112,6 @@ export default function RemindersClient({
         isCustom: true,
       };
     });
-
-    // If Firestore has only 1-2 items, keep default mock reminders for a complete UI presentation
-    const existingIds = new Set(firestoreItems.map((f) => f.id));
-    const merged = [...firestoreItems];
-    for (const d of DEFAULT_MOCK_REMINDERS) {
-      if (!existingIds.has(d.id)) {
-        merged.push(d);
-      }
-    }
-    return merged;
   });
 
   // Filters & Search
@@ -650,9 +558,11 @@ export default function RemindersClient({
                 <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
                   TOTAL ALERTS
                 </span>
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-full">
-                  ↑ 20%
-                </span>
+                {totalCount > 0 && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-full">
+                    {totalCount} Total
+                  </span>
+                )}
               </div>
               <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
                 {totalCount}
@@ -665,7 +575,7 @@ export default function RemindersClient({
 
           <div className="self-end pb-1 z-10">
             <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#EBF3FE] text-[#1A68F8] text-[10px] font-extrabold">
-              12 Active
+              {totalCount > 0 ? `${items.filter((i) => i.status !== "completed").length} Active` : "0 Active"}
             </span>
           </div>
         </div>
@@ -706,7 +616,7 @@ export default function RemindersClient({
           <div className="flex flex-col items-end justify-between h-full py-1 z-10">
             <Clock className="w-3.5 h-3.5 text-slate-400" />
             <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#EBF3FE] text-[#1A68F8] text-[10px] font-extrabold">
-              On Track
+              {upcomingCount > 0 ? "On Track" : "0 Scheduled"}
             </span>
           </div>
         </div>
@@ -736,9 +646,11 @@ export default function RemindersClient({
                 <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
                   COMPLETED
                 </span>
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-full">
-                  ↑ 32%
-                </span>
+                {completedCount > 0 && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-full">
+                    {completedCount} Done
+                  </span>
+                )}
               </div>
               <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
                 {completedCount}
@@ -751,7 +663,7 @@ export default function RemindersClient({
 
           <div className="self-end pb-1 z-10">
             <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#ECFDF5] text-[#059669] text-[10px] font-extrabold">
-              Archived
+              {completedCount > 0 ? "Archived" : "0 Done"}
             </span>
           </div>
         </div>
@@ -781,9 +693,11 @@ export default function RemindersClient({
                 <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
                   OVERDUE ALERTS
                 </span>
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded-full">
-                  ↑ 100%
-                </span>
+                {overdueCount > 0 && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded-full">
+                    Action Required
+                  </span>
+                )}
               </div>
               <span className="text-2xl sm:text-[26px] font-black text-rose-600 font-mono tracking-tight leading-none mt-1 block">
                 {overdueCount}
@@ -798,9 +712,13 @@ export default function RemindersClient({
             <button
               type="button"
               onClick={() => setStatusFilter("overdue")}
-              className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#FFF1F2] text-[#E11D48] text-[10px] font-extrabold hover:bg-rose-100 transition-colors cursor-pointer"
+              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold transition-colors cursor-pointer ${
+                overdueCount > 0
+                  ? "bg-[#FFF1F2] text-[#E11D48] hover:bg-rose-100"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              }`}
             >
-              Needs Attention
+              {overdueCount > 0 ? "Needs Attention" : "Clear"}
             </button>
           </div>
         </div>
@@ -1076,22 +994,12 @@ export default function RemindersClient({
                     }
                     className="w-full h-10 pl-9 pr-7 rounded-xl bg-slate-50 border border-slate-200/90 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none transition-all cursor-pointer"
                   >
-                    <option value="">Select vehicle</option>
-                    {vehicles.length > 0 ? (
-                      vehicles.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.registrationNumber} ({v.name})
-                        </option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="KL 15 AE 4725">KL 15 AE 4725 (Volvo 9600)</option>
-                        <option value="KL 07 CF 2211">KL 07 CF 2211 (Innova Crysta)</option>
-                        <option value="KL 22 TR 1100">KL 22 TR 1100 (Force Traveller)</option>
-                        <option value="KL 39 LP 7788">KL 39 LP 7788 (Bolero Neo)</option>
-                        <option value="KL 11 BG 9933">KL 11 BG 9933 (Tempo Traveller)</option>
-                      </>
-                    )}
+                    <option value="">-- No vehicle selected --</option>
+                    {vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.registrationNumber} ({v.name})
+                      </option>
+                    ))}
                   </select>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-3.5 pointer-events-none" />
                 </div>
@@ -1288,9 +1196,13 @@ export default function RemindersClient({
                     <td colSpan={6} className="py-12 text-center">
                       <div className="max-w-xs mx-auto space-y-2">
                         <Bell className="w-8 h-8 text-slate-300 mx-auto" />
-                        <p className="text-xs font-bold text-slate-700">No reminders match your criteria</p>
+                        <p className="text-xs font-bold text-slate-700">
+                          {items.length === 0 ? "No reminders scheduled yet" : "No reminders match your criteria"}
+                        </p>
                         <p className="text-[11px] text-slate-400">
-                          Try adjusting your search query, or clear the category and status filters.
+                          {items.length === 0
+                            ? "Use the form on the left or click a quick template above to schedule your first reminder."
+                            : "Try adjusting your search query, or clear the category and status filters."}
                         </p>
                       </div>
                     </td>

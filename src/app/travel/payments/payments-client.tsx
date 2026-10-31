@@ -63,7 +63,7 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
 
   const [form, setForm] = useState(emptyForm);
 
-  // Dynamic Real KPIs with graceful mockup fallbacks if ledger is fresh
+  // Dynamic Real KPIs strictly from actual payments & trips data
   const realTotalInflow = payments
     .filter((p) => p.type === "customer_received")
     .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
@@ -77,9 +77,9 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
     0
   );
 
-  const displayTotalInflow = payments.length > 0 ? realTotalInflow : (realTotalInflow || 248500);
-  const displayDriverPayouts = payments.length > 0 ? realDriverPayouts : (realDriverPayouts || 162000);
-  const displayPendingDues = trips.length > 0 ? realPendingDues : (realPendingDues || 38500);
+  const displayTotalInflow = realTotalInflow;
+  const displayDriverPayouts = realDriverPayouts;
+  const displayPendingDues = realPendingDues;
   const displayNetMargin = displayTotalInflow - displayDriverPayouts;
 
   const handleSubmit = async (e: React.FormEvent) => {
