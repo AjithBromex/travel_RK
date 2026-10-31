@@ -311,7 +311,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={onToggleMobileSidebar}
-              className="lg:hidden p-2 rounded-full bg-white/95 border border-slate-200/90 hover:bg-slate-100 text-slate-700 cursor-pointer shadow-xs transition-colors"
+              className="xl:hidden p-2 rounded-full bg-white/95 border border-slate-200/90 hover:bg-slate-100 text-slate-700 cursor-pointer shadow-xs transition-colors"
               aria-label="Toggle navigation"
             >
               <Menu className="w-4 h-4" />
@@ -319,7 +319,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
 
             <Link
               href="/travel"
-              className={`inline-flex items-center gap-2.5 px-3.5 py-1.5 sm:py-2 rounded-full border transition-all hover:scale-[1.01] active:scale-[0.99] select-none shrink-0 backdrop-blur-md ${
+              className={`inline-flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full border transition-all hover:scale-[1.01] active:scale-[0.99] select-none shrink-0 backdrop-blur-md ${
                 scrolled
                   ? "bg-white/95 border-slate-300/90 shadow-[0_6px_20px_rgba(15,23,42,0.08)]"
                   : "bg-white/95 border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)]"
@@ -340,7 +340,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                 <span className="text-[12px] sm:text-[13px] font-black tracking-tight text-[#0F172A] uppercase leading-none">
                   RK TRAVEL HUB
                 </span>
-                <span className="text-[7.5px] sm:text-[8px] font-extrabold tracking-[0.16em] text-slate-400 uppercase mt-0.5 leading-none">
+                <span className="hidden min-[360px]:inline-block text-[7.5px] sm:text-[8px] font-extrabold tracking-[0.16em] text-slate-400 uppercase mt-0.5 leading-none">
                   TRAVEL BEYOND BORDERS
                 </span>
               </div>
@@ -349,7 +349,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
 
           {/* 2. CENTER: DEDICATED PILL-SHAPED NAVBAR (MATCHING REFERENCE MOCKUP EXACTLY) */}
           <nav
-            className={`hidden lg:flex items-center gap-1 p-1 sm:p-1.5 rounded-full border transition-all duration-200 backdrop-blur-md shrink-0 ${
+            className={`hidden xl:flex items-center gap-1 p-1 sm:p-1.5 rounded-full border transition-all duration-200 backdrop-blur-md shrink-0 ${
               scrolled
                 ? "bg-white/95 border-slate-300/90 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
                 : "bg-white/95 border-slate-200/90 shadow-[0_4px_20px_rgba(15,23,42,0.06)]"
@@ -507,7 +507,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
 
               {/* Reminders Floating Popup Dropdown */}
               {notificationsOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white/98 backdrop-blur-2xl rounded-2xl border border-slate-200 shadow-2xl overflow-hidden z-50 animate-fade-in origin-top-right">
+                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-24px)] sm:w-96 max-w-[380px] bg-white/98 backdrop-blur-2xl rounded-2xl border border-slate-200 shadow-2xl overflow-hidden z-50 animate-fade-in origin-top-right">
                   {/* Header */}
                   <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white">
                     <div className="flex items-center gap-2">
@@ -677,8 +677,8 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
           </div>
         </div>
 
-        {/* Mobile / Tablet Dedicated Pill-shaped Navbar Strip (< lg) */}
-        <div className="lg:hidden w-full overflow-x-auto no-scrollbar pt-1 pb-0.5 flex justify-center">
+        {/* Mobile / Tablet Dedicated Pill-shaped Navbar Strip (< xl) */}
+        <div className="xl:hidden w-full overflow-x-auto no-scrollbar pt-1 pb-0.5 flex justify-start xl:justify-center px-1">
           <nav className="inline-flex items-center gap-1 p-1 rounded-full bg-white/95 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.06)] backdrop-blur-md whitespace-nowrap">
             {navLinks.map((link) => {
               const active = isLinkActive(link.href);

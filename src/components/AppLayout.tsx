@@ -23,7 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       />
 
       {/* Mobile drawer */}
-      <div className="lg:hidden relative z-50">
+      <div className="xl:hidden relative z-50">
         <Sidebar
           collapsed={collapsed}
           mobileOpen={mobileOpen}

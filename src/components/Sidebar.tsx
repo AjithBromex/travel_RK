@@ -68,20 +68,18 @@ export default function Sidebar({
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs xl:hidden"
           onClick={onCloseMobile}
         />
       )}
 
-      {/* Sidebar with Dark Frosted Glass */}
+      {/* Sidebar with Dark Frosted Glass Drawer */}
       <aside
         className={`
           fixed top-0 left-0 z-50 h-screen flex flex-col
-          bg-[#0A0F1D]/92 backdrop-blur-xl text-slate-100 transition-all duration-300 ease-in-out border-r border-slate-800/70
+          bg-[#0A0F1D]/95 backdrop-blur-xl text-slate-100 transition-all duration-300 ease-in-out border-r border-slate-800/70
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0
-          ${collapsed ? "lg:w-[72px]" : "lg:w-[260px]"}
-          w-[260px]
+          w-[280px] max-w-[85vw]
         `}
       >
         {/* Brand Header */}
@@ -94,17 +92,15 @@ export default function Sidebar({
               className="object-contain"
             />
           </div>
-          {!collapsed && (
-            <div className="overflow-hidden leading-none">
-              <h1 className="text-xs font-black tracking-wider text-white uppercase">
-                RK TRAVEL HUB
-              </h1>
-            </div>
-          )}
-          {/* Mobile close */}
+          <div className="overflow-hidden leading-none">
+            <h1 className="text-xs font-black tracking-wider text-white uppercase">
+              RK TRAVEL HUB
+            </h1>
+          </div>
+          {/* Drawer close */}
           <button
             onClick={onCloseMobile}
-            className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 lg:hidden cursor-pointer"
+            className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
             aria-label="Close sidebar"
           >
             <X className="w-5 h-5" />
@@ -158,23 +154,6 @@ export default function Sidebar({
           })}
         </nav>
 
-        {/* Collapse toggle (desktop only) */}
-        <div className="px-3 py-2 border-t border-slate-800/80">
-          <button
-            onClick={onToggleCollapse}
-            className="hidden lg:flex items-center justify-center w-full h-9 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-xs gap-2"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <>
-                <ChevronLeft className="w-4 h-4" />
-                <span className="text-[11px] font-medium text-slate-400">Collapse</span>
-              </>
-            )}
-          </button>
-        </div>
 
         {/* Bottom operational status */}
         <div className="px-3.5 py-3 border-t border-slate-800/80 bg-slate-950/40">

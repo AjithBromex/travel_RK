@@ -1295,7 +1295,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     key={trip.id}
                     className="bg-slate-50/70 hover:bg-white p-3 sm:p-4 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:shadow-xs transition-all flex items-center justify-between gap-3"
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-black font-mono text-slate-900">
                           {trip.tripNumber || trip.id.slice(0, 8)}

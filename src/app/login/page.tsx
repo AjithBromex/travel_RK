@@ -167,7 +167,7 @@ function LoginForm() {
       </div>
 
       {/* ─── 2. Responsive Canvas (Desktop Split & Mobile Stack) ─── */}
-      <div className="relative z-10 w-full max-w-[1440px] min-h-screen mx-auto p-4 sm:p-6 lg:p-12 flex flex-col justify-between">
+      <div className="relative z-10 w-full max-w-[1440px] min-h-screen mx-auto p-3 sm:p-6 lg:p-12 flex flex-col justify-between">
         {/* Mobile Header Bar */}
         <div className="lg:hidden flex items-center justify-between pb-4">
           <div className="flex items-center gap-3 bg-slate-950/65 backdrop-blur-md border border-white/20 px-3.5 py-2 rounded-2xl shadow-xl">
@@ -292,7 +292,7 @@ function LoginForm() {
 
           {/* ══════════════ RIGHT COLUMN: TRANSLUCENT FROSTED GLASS LOGIN CARD ══════════════ */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
-            <div className="w-full max-w-[440px] bg-white/80 sm:bg-white/85 backdrop-blur-2xl p-7 sm:p-9 rounded-[36px] border border-white/90 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.4)] relative overflow-hidden transition-all">
+            <div className="w-full max-w-[440px] bg-white/80 sm:bg-white/85 backdrop-blur-2xl p-5 sm:p-8 md:p-9 rounded-[28px] sm:rounded-[36px] border border-white/90 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.4)] relative overflow-hidden transition-all">
               {/* Card Header with User's Official RK Logo */}
               <div className="mb-6 text-center">
                 <div className="relative w-16 h-16 mx-auto mb-2 flex items-center justify-center">
