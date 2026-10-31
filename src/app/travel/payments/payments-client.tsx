@@ -733,12 +733,13 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
             {/* ══════════════ CONTENT: EMPTY STATE OR LEDGER ROWS ══════════════ */}
             {filteredPayments.length === 0 ? (
               <div className="py-8 sm:py-10 text-center flex flex-col items-center justify-center space-y-4">
-                {/* Illustration with bus, mountain lake, and blue rupee document */}
-                <div className="relative w-full max-w-[340px] h-[115px] mx-auto overflow-hidden">
+                {/* Illustration with bus, mountain highway, and blue rupee invoice document */}
+                <div className="relative w-full max-w-[380px] sm:max-w-[440px] h-[140px] sm:h-[165px] mx-auto overflow-hidden">
                   <Image
-                    src="/images/payments-empty-illustration.png"
+                    src="/images/payments-empty-clean.jpg"
                     alt="No payment records yet illustration"
                     fill
+                    priority
                     unoptimized
                     className="object-contain"
                   />
