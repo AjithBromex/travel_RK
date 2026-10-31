@@ -305,7 +305,7 @@ export default function SettingsClient({
 
               <div className="min-w-0 z-10 flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-slate-900 truncate">
+                  <h3 className="text-base font-bold text-slate-900 truncate uppercase">
                     {displayName}
                   </h3>
                   <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-[#EBF3FE] text-[#1A68F8] border border-blue-200/60 tracking-wider uppercase">

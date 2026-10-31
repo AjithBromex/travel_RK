@@ -55,10 +55,11 @@ export async function signInUser(
   const credential = await signInWithEmailAndPassword(auth, email, password)
   setSessionCookie()
 
-  const loginUsername =
+  const loginUsername = (
     identifier.trim().replace(/@gmail\.com$/i, '').replace(/@.*$/, '') ||
     credential.user.email?.split('@')[0] ||
     identifier
+  ).toUpperCase()
 
   // Retrieve user profile
   let profile = await getUserProfile(credential.user.uid)

@@ -629,10 +629,10 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                 className="flex items-center gap-1.5 p-0.5 pr-2.5 rounded-full bg-white/95 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] hover:bg-slate-100/80 transition-colors cursor-pointer select-none backdrop-blur-md"
               >
                 <div className="w-7 h-7 rounded-full bg-[#18181B] text-white flex items-center justify-center font-black text-xs uppercase shadow-xs shrink-0">
-                  {userName.charAt(0) || "A"}
+                  {userName.charAt(0).toUpperCase() || "A"}
                 </div>
                 <div className="hidden xl:flex flex-col text-left leading-none">
-                  <span className="text-[11px] font-bold text-slate-900 leading-tight">
+                  <span className="text-[11px] font-bold text-slate-900 leading-tight uppercase tracking-wider">
                     {userName}
                   </span>
                   <span className="text-[9px] text-slate-400 capitalize leading-none mt-0.5">
@@ -646,7 +646,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
               {profileOpen && (
                 <div className="absolute right-0 top-full mt-2 w-52 bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-xl py-1.5 z-50 animate-fade-in">
                   <div className="px-3.5 py-2 border-b border-slate-100">
-                    <p className="text-xs font-bold text-slate-900">{userName}</p>
+                    <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">{userName}</p>
                     <p className="text-[10px] text-slate-400 capitalize tracking-wider">{userRole}</p>
                   </div>
                   <Link
