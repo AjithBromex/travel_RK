@@ -544,11 +544,12 @@ export default function DashboardClient({
               <div className="pt-2">
                 {reminders.length === 0 ? (
                   <div className="py-5 px-3 text-center flex flex-col items-center justify-center">
-                    <div className="relative w-16 h-16 mb-2">
+                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 mb-2">
                       <Image
                         src="/images/dashboard-empty-reminders-clean.jpg"
                         alt="Compliances Up to Date"
                         fill
+                        priority
                         unoptimized
                         className="object-contain"
                       />
