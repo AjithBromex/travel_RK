@@ -9,7 +9,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 relative selection:bg-blue-600/10 selection:text-blue-600">
+    <div className="min-h-screen bg-[#F4F7FB] relative selection:bg-blue-600/10 selection:text-blue-600 font-sans">
       {/* High-Performance Hardware-Accelerated Ambient Light Background */}
       <div
         className="fixed inset-0 pointer-events-none -z-10"

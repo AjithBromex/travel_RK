@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { motion } from "framer-motion";
 import {
   Bus,
   Car,
@@ -41,9 +42,14 @@ export default function DashboardClient({
   return (
     <div className="space-y-4 sm:space-y-5 pb-10 font-sans max-w-[1440px] mx-auto">
       {/* ─────────────────────────────────────────────────────────────
-          1. CINEMATIC SCENIC HERO BANNER (1:1 with Mockup)
+          1. CINEMATIC SCENIC HERO BANNER (1:1 with Mockup Reference)
           ───────────────────────────────────────────────────────────── */}
-      <div className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-lg h-[180px] sm:h-[195px] lg:h-[210px] flex items-center bg-slate-950">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-lg h-[180px] sm:h-[195px] lg:h-[210px] flex items-center bg-slate-950"
+      >
         {/* Photographic Panoramic Highway Background with Van & Alpine Lake */}
         <div className="absolute inset-0 -z-10">
           <Image
@@ -106,11 +112,21 @@ export default function DashboardClient({
             </Link>
           </div>
 
-          {/* Operations Hub Welcome Title */}
+          {/* Operations Hub Welcome Title with Official 3D RK Emblem */}
           <div className="max-w-xl">
-            <p className="text-[10px] sm:text-[11px] font-extrabold tracking-[0.2em] text-blue-200/90 uppercase mb-1 drop-shadow">
-              OPERATIONS HUB
-            </p>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-6 h-6 rounded-lg bg-slate-900/80 backdrop-blur-md border border-white/20 p-0.5 relative shrink-0 shadow-sm">
+                <Image
+                  src="/images/rk-logo.png"
+                  alt="RK Travel Hub"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <p className="text-[10px] sm:text-[11px] font-extrabold tracking-[0.2em] text-blue-200/95 uppercase drop-shadow">
+                OPERATIONS HUB
+              </p>
+            </div>
             <h1 className="text-2xl sm:text-3xl lg:text-[36px] font-black tracking-tight text-white leading-tight drop-shadow-md">
               Welcome back, <br className="hidden sm:inline" />
               <span>RK Travel </span>
@@ -121,12 +137,17 @@ export default function DashboardClient({
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* ─────────────────────────────────────────────────────────────
-          2. TOP 4 HORIZONTAL METRIC CARDS (Exact Mockup Layout)
+          2. TOP 4 HORIZONTAL METRIC CARDS (Exact 84px Equal Heights)
           ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4"
+      >
         {/* CARD 1: TOTAL TRIPS */}
         <Link
           href="/travel/trips"
@@ -147,7 +168,7 @@ export default function DashboardClient({
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">
                 TOTAL TRIPS
               </span>
-              <span className="text-2xl font-extrabold text-slate-900 font-mono tracking-tight leading-tight block">
+              <span className="text-2xl font-extrabold text-[#0A1E3F] font-mono tracking-tight leading-tight block">
                 {metrics.totalTrips || 0}
               </span>
               <span className="text-[10px] text-slate-400 block truncate">
@@ -186,7 +207,7 @@ export default function DashboardClient({
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">
                 COLLECTION
               </span>
-              <span className="text-2xl font-extrabold text-slate-900 font-mono tracking-tight leading-tight block">
+              <span className="text-2xl font-extrabold text-[#0A1E3F] font-mono tracking-tight leading-tight block">
                 {formatINR(metrics.totalCollection || 0)}
               </span>
               <span className="text-[10px] text-slate-400 block truncate">
@@ -225,7 +246,7 @@ export default function DashboardClient({
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate">
                 EXPENSES
               </span>
-              <span className="text-2xl font-extrabold text-slate-900 font-mono tracking-tight leading-tight block">
+              <span className="text-2xl font-extrabold text-[#0A1E3F] font-mono tracking-tight leading-tight block">
                 {formatINR(metrics.totalExpenses || 0)}
               </span>
               <span className="text-[10px] text-slate-400 block truncate">
@@ -266,7 +287,7 @@ export default function DashboardClient({
               </span>
               <span
                 className={`text-2xl font-extrabold font-mono tracking-tight leading-tight block ${
-                  (metrics.profitLoss || 0) >= 0 ? "text-slate-900" : "text-rose-600"
+                  (metrics.profitLoss || 0) >= 0 ? "text-[#0A1E3F]" : "text-rose-600"
                 }`}
               >
                 {formatINR(metrics.profitLoss || 0)}
@@ -299,15 +320,20 @@ export default function DashboardClient({
             </span>
           </div>
         </Link>
-      </div>
+      </motion.div>
 
       {/* ─────────────────────────────────────────────────────────────
-          3. MAIN CONTENT: 3-COLUMN OPERATIONAL HUB
+          3. MAIN CONTENT: SYMMETRICAL 3-COLUMN OPERATIONAL HUB
              Column 1: Recent Trips (~48% width)
              Column 2: Reminders (~24% width)
              Column 3: Balances & Health (~24% width)
           ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 items-stretch">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 items-stretch"
+      >
         {/* ════ COLUMN 1 (6 cols on lg): RECENT TRIPS & DISPATCH ════ */}
         <div className="md:col-span-12 lg:col-span-6 flex flex-col">
           <div className="bg-white rounded-[22px] border border-slate-200/70 shadow-[0_2px_12px_rgba(15,23,42,0.03)] overflow-hidden flex flex-col justify-between flex-1 min-h-[300px]">
@@ -318,7 +344,7 @@ export default function DashboardClient({
                   <Bus className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
+                  <h2 className="text-sm sm:text-base font-extrabold text-[#0A1E3F] tracking-tight">
                     Recent Trips
                   </h2>
                   <p className="text-[11px] text-slate-400">
@@ -346,7 +372,7 @@ export default function DashboardClient({
                     className="object-contain"
                   />
                 </div>
-                <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
+                <h3 className="text-sm sm:text-base font-extrabold text-[#0A1E3F]">
                   No trips recorded yet
                 </h3>
                 <p className="text-xs text-slate-500 max-w-sm mt-1 mb-4 leading-relaxed">
@@ -354,7 +380,7 @@ export default function DashboardClient({
                 </p>
                 <Link
                   href="/travel/trips"
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#0D62FE] hover:bg-[#0952DC] text-white text-xs font-bold shadow-md shadow-blue-500/25 transition-all"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#0D62FE] hover:bg-[#0952DC] text-white text-xs font-bold shadow-md shadow-blue-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <Plus className="w-4 h-4 stroke-[2.75]" />
                   <span>Create First Trip</span>
@@ -471,7 +497,7 @@ export default function DashboardClient({
                     <Bell className="w-4 h-4 fill-amber-500/10" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                    <h2 className="text-sm font-extrabold text-[#0A1E3F] tracking-tight">
                       Reminders
                     </h2>
                     <p className="text-[11px] text-slate-400">
@@ -500,7 +526,7 @@ export default function DashboardClient({
                         className="object-contain"
                       />
                     </div>
-                    <p className="text-xs sm:text-sm font-extrabold text-slate-900">
+                    <p className="text-xs sm:text-sm font-extrabold text-[#0A1E3F]">
                       Compliances Up to Date
                     </p>
                     <p className="text-[10px] text-slate-500 mt-0.5">
@@ -585,7 +611,7 @@ export default function DashboardClient({
                   <Clock className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                  <h2 className="text-sm font-extrabold text-[#0A1E3F] tracking-tight">
                     Balances &amp; Health
                   </h2>
                   <p className="text-[11px] text-slate-400">
@@ -666,7 +692,7 @@ export default function DashboardClient({
             </Link>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* ─────────────────────────────────────────────────────────────
           4. CLEAN EXECUTIVE FOOTER

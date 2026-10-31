@@ -138,7 +138,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                 prefetch={true}
                 className={`px-3 xl:px-4.5 py-1.5 xl:py-2 rounded-full text-xs xl:text-sm transition-all whitespace-nowrap ${
                   active
-                    ? "bg-[#0B3A78] text-white font-bold shadow-sm"
+                    ? "bg-[#18181B] text-white font-bold shadow-sm"
                     : "text-slate-700 hover:text-slate-950 hover:bg-white/60 font-semibold"
                 }`}
               >
