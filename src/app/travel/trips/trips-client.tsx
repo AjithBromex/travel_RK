@@ -42,6 +42,7 @@ import {
   updateTrip,
   deleteTrip,
 } from "@/services/trips.service";
+import { getVehicles } from "@/services/vehicles.service";
 
 interface TripsClientProps {
   initialTrips: Trip[];
@@ -76,6 +77,7 @@ export function getTripReceiptDisplay(trip: Trip, allTrips: Trip[]): string {
 
 export default function TripsClient({ initialTrips, vehicles }: TripsClientProps) {
   const [trips, setTrips] = useState<Trip[]>(initialTrips || []);
+  const [vehicleList, setVehicleList] = useState<Vehicle[]>(vehicles || []);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editingTripId, setEditingTripId] = useState<string | null>(null);
@@ -95,6 +97,16 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       .catch((err) => {
         console.warn("[Trips] Client data hydration error:", err);
       });
+
+    getVehicles(100)
+      .then((data) => {
+        if (data && data.length > 0) {
+          setVehicleList(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("[Trips] Client vehicles hydration error:", err);
+      });
   }, []);
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -102,8 +114,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   const emptyForm = {
     receiptNumber: getNextReceiptNumber(trips),
     tripDate: todayStr,
-    vehicleId: vehicles[0]?.id || "",
-    vehicleName: vehicles[0]?.name
+    vehicleId: vehicleList[0]?.id || vehicles[0]?.id || "",
+    vehicleName: vehicleList[0]?.name
+      ? `${vehicleList[0].name} (${vehicleList[0].registrationNumber})`
+      : vehicles[0]?.name
       ? `${vehicles[0].name} (${vehicles[0].registrationNumber})`
       : "",
     driverName: "",
@@ -115,7 +129,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     startingKm: 0,
     endingKm: 0,
     includedKm: 100,
-    extraKmRate: vehicles[0]?.extraKmRate || 25,
+    extraKmRate: vehicleList[0]?.extraKmRate || vehicles[0]?.extraKmRate || 25,
     baseFare: 0,
     advanceReceived: 0,
     status: "scheduled" as TripStatus,
@@ -165,7 +179,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   ]);
 
   const handleVehicleChange = (vehicleId: string) => {
-    const selected = vehicles.find((v) => v.id === vehicleId);
+    const selected = vehicleList.find((v) => v.id === vehicleId) || vehicles.find((v) => v.id === vehicleId);
     setForm((prev) => ({
       ...prev,
       vehicleId,
@@ -926,9 +940,18 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
               {/* Row 4: Assigned Vehicle & Driver Name */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
-                    ASSIGNED VEHICLE
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">
+                      ASSIGNED VEHICLE
+                    </label>
+                    <Link
+                      href="/travel/vehicles"
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3 stroke-[2.5]" />
+                      <span>Manage Fleet</span>
+                    </Link>
+                  </div>
                   <div className="relative">
                     <select
                       value={form.vehicleId}
@@ -936,14 +959,19 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                       className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
                     >
                       <option value="">Select vehicle...</option>
-                      {vehicles.map((v) => (
+                      {(vehicleList.length > 0 ? vehicleList : vehicles).map((v) => (
                         <option key={v.id} value={v.id}>
-                          {v.name} ({v.registrationNumber})
+                          {v.name || v.registrationNumber} ({v.registrationNumber}){v.type ? ` • ${v.type}` : ""}
                         </option>
                       ))}
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
+                  {vehicleList.length === 0 && vehicles.length === 0 && (
+                    <p className="text-[10px] text-amber-600 mt-1">
+                      No vehicles found. <Link href="/travel/vehicles" className="font-bold underline">Add one here</Link>.
+                    </p>
+                  )}
                 </div>
 
                 <div>
