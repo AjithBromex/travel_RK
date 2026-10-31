@@ -110,17 +110,12 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
               />
             </div>
 
-            {/* Stacked Wordmark matching exact design reference */}
+            {/* Stacked Wordmark */}
             <div className="flex flex-col justify-center leading-none text-left">
-              <div className="flex flex-col text-[10px] sm:text-[11px] font-black tracking-[0.02em] text-[#0A192F] uppercase leading-[1.06]">
+              <div className="flex flex-col text-[10.5px] sm:text-[11.5px] font-black tracking-[0.02em] text-[#0A192F] uppercase leading-[1.08]">
                 <span>RK</span>
                 <span>TRAVEL</span>
                 <span>HUB</span>
-              </div>
-              <div className="flex flex-col text-[6.5px] sm:text-[7px] font-bold tracking-[0.16em] text-[#5C728E] uppercase leading-[1.18] mt-0.5">
-                <span>TRAVEL</span>
-                <span>BEYOND</span>
-                <span>BORDERS</span>
               </div>
             </div>
           </Link>

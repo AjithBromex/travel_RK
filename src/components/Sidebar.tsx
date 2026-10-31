@@ -99,9 +99,6 @@ export default function Sidebar({
               <h1 className="text-xs font-black tracking-wider text-white uppercase">
                 RK TRAVEL HUB
               </h1>
-              <p className="text-[7.5px] text-blue-300/80 font-bold tracking-[0.2em] uppercase mt-0.5">
-                TRAVEL BEYOND BORDERS
-              </p>
             </div>
           )}
           {/* Mobile close */}
