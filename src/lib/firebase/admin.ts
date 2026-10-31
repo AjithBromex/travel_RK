@@ -109,12 +109,26 @@ export function getAdminApp(): App {
     return adminAppInstance
   }
 
-  const credentials = getServiceAccountCredential()
-  adminAppInstance = initializeApp({
-    credential: cert(credentials),
-    projectId: credentials.projectId,
-  })
+  if (hasAdminConfig()) {
+    try {
+      const credentials = getServiceAccountCredential()
+      adminAppInstance = initializeApp({
+        credential: cert(credentials),
+        projectId: credentials.projectId,
+      })
+      return adminAppInstance
+    } catch (err) {
+      console.warn('[FirebaseAdmin] Failed to load credentials:', err)
+    }
+  }
 
+  // Safe fallback for Next.js build / compilation in CI
+  adminAppInstance = initializeApp({
+    projectId:
+      process.env.FIREBASE_PROJECT_ID ||
+      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
+      'rk-travels-1f4f3',
+  })
   return adminAppInstance
 }
 

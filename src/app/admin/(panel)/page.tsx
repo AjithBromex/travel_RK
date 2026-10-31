@@ -2,6 +2,9 @@ import { AggregateField } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { COLLECTIONS } from "@/lib/adminSession";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
 
 async function count(c: string) {

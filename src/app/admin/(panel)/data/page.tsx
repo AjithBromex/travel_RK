@@ -4,6 +4,9 @@ import { COLLECTIONS } from "@/lib/adminSession";
 import { deleteDocument } from "@/app/admin/actions";
 import { Database, Trash2 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const show = (v: any) =>
   v?.toDate
