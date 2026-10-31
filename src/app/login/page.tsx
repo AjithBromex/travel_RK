@@ -61,7 +61,7 @@ function LoginForm() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanUsername = userId.trim().replace(/@gmail\.com$/i, "").replace(/@.*$/, "").trim();
+    const cleanUsername = userId.trim().replace(/@gmail\.com$/i, "").replace(/@.*$/, "").trim().toUpperCase();
     if (!cleanUsername) {
       setError("Please enter your username.");
       return;
@@ -93,7 +93,7 @@ function LoginForm() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanUsername = userId.trim().replace(/@gmail\.com$/i, "").replace(/@.*$/, "").trim();
+    const cleanUsername = userId.trim().replace(/@gmail\.com$/i, "").replace(/@.*$/, "").trim().toUpperCase();
     if (!cleanUsername) {
       setError("Please enter a username.");
       return;
@@ -107,7 +107,7 @@ function LoginForm() {
         localStorage.setItem("rk_login_username", cleanUsername);
       }
       const email = `${cleanUsername.toLowerCase()}@gmail.com`;
-      const name = displayName || cleanUsername.toUpperCase();
+      const name = displayName || cleanUsername;
       await signUp(email, password, name, "admin");
       const destination = callbackUrl.startsWith("/travel")
         ? callbackUrl
@@ -122,7 +122,7 @@ function LoginForm() {
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanUsername = resetEmail.trim().replace(/@gmail\.com$/i, "").replace(/@.*$/, "").trim();
+    const cleanUsername = resetEmail.trim().replace(/@gmail\.com$/i, "").replace(/@.*$/, "").trim().toUpperCase();
     if (!cleanUsername) {
       setError("Please enter your username to reset your password.");
       return;
@@ -355,13 +355,13 @@ function LoginForm() {
                       <input
                         type="text"
                         required
-                        placeholder="jagan"
+                        placeholder="JAGAN"
                         value={resetEmail}
                         onChange={(e) => {
-                          const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "");
+                          const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "").toUpperCase();
                           setResetEmail(val);
                         }}
-                        className="w-full h-12 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
+                        className="w-full h-12 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
                       />
                       <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none">
                         @gmail.com
@@ -425,13 +425,13 @@ function LoginForm() {
                       <input
                         type="text"
                         required
-                        placeholder="jagan"
+                        placeholder="JAGAN"
                         value={userId}
                         onChange={(e) => {
-                          const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "");
+                          const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "").toUpperCase();
                           setUserId(val);
                         }}
-                        className="w-full h-11 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
+                        className="w-full h-11 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
                       />
                       <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none">
                         @gmail.com
@@ -511,13 +511,13 @@ function LoginForm() {
                       <input
                         type="text"
                         required
-                        placeholder="jagan"
+                        placeholder="JAGAN"
                         value={userId}
                         onChange={(e) => {
-                          const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "");
+                          const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "").toUpperCase();
                           setUserId(val);
                         }}
-                        className="w-full h-12 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
+                        className="w-full h-12 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
                       />
                       <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none">
                         @gmail.com

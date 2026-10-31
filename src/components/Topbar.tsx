@@ -93,11 +93,12 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
     }
   }, []);
 
-  const userName =
+  const rawUserName =
     clientUsername ||
     user?.email?.split("@")[0] ||
     userProfile?.userId ||
-    "Admin";
+    "ADMIN";
+  const userName = rawUserName.toUpperCase();
   const userRole = userProfile?.role || "Staff";
 
   // Load urgent & near-date reminders / compliance alerts

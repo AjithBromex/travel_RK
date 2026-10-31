@@ -163,12 +163,13 @@ export default function SettingsClient({
     }
   };
 
-  const displayName =
+  const rawDisplayName =
     (typeof window !== "undefined" && localStorage.getItem("rk_login_username")) ||
     user?.email?.split("@")[0] ||
     userProfile?.userId ||
     userProfile?.displayName ||
-    "admin";
+    "ADMIN";
+  const displayName = rawDisplayName.toUpperCase();
   const userEmail = user?.email || "admin@gmail.com";
   const userRole = userProfile?.role || "ADMIN";
 
