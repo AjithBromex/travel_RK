@@ -18,8 +18,9 @@ import {
   TrendingUp,
   Percent,
   IndianRupee,
+  FileText,
 } from "lucide-react";
-import { formatINR, exportToCSV } from "@/lib/utils";
+import { formatINR, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Trip, Vehicle, Expense, Payment } from "@/types";
 
 interface ReportsClientProps {
@@ -224,6 +225,34 @@ export default function ReportsClient({
     exportToCSV(data, `Financial_Statement_RK_Travels_${dateFrom}_to_${dateTo}.csv`);
   };
 
+  const handleExportStatementPDF = () => {
+    const headers = ["Financial Metric / Indicator", "Amount / Ratio", "Period Note"];
+    const data = [
+      ["Gross Revenue", formatINR(displayRevenue), `${dateFrom} to ${dateTo}`],
+      ["Operating Expenses", formatINR(displayExpenses), "Fuel, Maintenance, Tolls, Misc"],
+      ["Net Operating Profit", formatINR(displayProfit), "Gross Revenue - Operating Expenses"],
+      ["Operating Profit Margin", `${displayMargin}%`, "Net Profit / Gross Revenue"],
+      ["Total Trips Dispatched", String(totalTripsCount), "Completed & Confirmed Trips"],
+      ["Average Revenue per Trip", formatINR(avgRevPerTrip), "Revenue / Dispatched Trips"],
+      ["Average Expense per Trip", formatINR(avgExpPerTrip), "Expenses / Dispatched Trips"],
+      ["Average Profit per Trip", formatINR(profitPerTrip), "Profit / Dispatched Trips"],
+    ];
+
+    exportToPDF({
+      title: "Financial Statement & Executive Summary",
+      subtitle: `Official Profit & Loss Statement (${dateFrom} to ${dateTo}) • Generated on ${new Date().toLocaleDateString("en-IN")}`,
+      filename: `Financial_Statement_RK_Travels_${dateFrom}_to_${dateTo}.pdf`,
+      headers,
+      data,
+      summary: [
+        { label: "Gross Revenue", value: formatINR(displayRevenue) },
+        { label: "Total Expenses", value: formatINR(displayExpenses) },
+        { label: "Net Profit", value: formatINR(displayProfit) },
+        { label: "Profit Margin", value: `${displayMargin}%` },
+      ],
+    });
+  };
+
   // Distinct routes from trips for filter dropdown
   const routeOptions = useMemo(() => {
     const set = new Set<string>();
@@ -280,10 +309,20 @@ export default function ReportsClient({
           <button
             type="button"
             onClick={handleExportStatement}
-            className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-[#0D62FE] hover:bg-[#0952DC] text-white font-bold text-xs shadow-md shadow-blue-500/35 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 stroke-[2.75]" />
-            <span>Export Statement</span>
+            <Download className="w-3.5 h-3.5 text-slate-600" />
+            <span>Export CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportStatementPDF}
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-rose-700 backdrop-blur-md border border-rose-200/80 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            title="Download Official PDF Statement"
+          >
+            <FileText className="w-3.5 h-3.5 text-rose-600" />
+            <span>Download PDF</span>
           </button>
         </div>
 

@@ -23,7 +23,7 @@ import {
   CreditCard,
   Edit2,
 } from "lucide-react";
-import { formatINR, formatDate, exportToCSV } from "@/lib/utils";
+import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Expense, ExpenseCategory, PaymentMode, Trip } from "@/types";
 import {
   createExpense,
@@ -357,6 +357,45 @@ export default function ExpensesClient({
       Notes: e.notes || e.description || "-",
     }));
     exportToCSV(data, `RK_Expenses_Register_${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  const handleExportPDF = () => {
+    if (filteredExpenses.length === 0) {
+      alert("No expenses recorded yet to export.");
+      return;
+    }
+    const headers = [
+      "Date",
+      "Trip ID",
+      "Route / Vehicle",
+      "Category",
+      "Amount",
+      "Payment Mode",
+      "Notes",
+    ];
+    const data = filteredExpenses.map((e) => [
+      formatDate(e.expenseDate),
+      e.tripNumber || e.tripId || "-",
+      e.vehicleName || "-",
+      CATEGORY_META[e.category]?.label || e.category,
+      formatINR(e.amount),
+      e.paymentMode.toUpperCase(),
+      e.notes || e.description || "-",
+    ]);
+
+    const totalExpense = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+    exportToPDF({
+      title: "Operating Expenses Register",
+      subtitle: `Master Record of Trip Outlays, Fuel & Maintenance • Generated on ${new Date().toLocaleDateString("en-IN")}`,
+      filename: `RK_Expenses_Register_${new Date().toISOString().slice(0, 10)}.pdf`,
+      headers,
+      data,
+      summary: [
+        { label: "Total Entries", value: String(filteredExpenses.length) },
+        { label: "Total Outlay", value: formatINR(totalExpense) },
+      ],
+    });
   };
 
   return (
@@ -868,6 +907,17 @@ export default function ExpensesClient({
                 >
                   <Download className="w-3 h-3 text-slate-500" />
                   <span>Export CSV</span>
+                </button>
+
+                {/* Download PDF Button */}
+                <button
+                  type="button"
+                  onClick={handleExportPDF}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-rose-200 text-rose-700 bg-rose-50/60 hover:bg-rose-100/60 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                  title="Download Official PDF Report"
+                >
+                  <FileText className="w-3 h-3 text-rose-600" />
+                  <span>Download PDF</span>
                 </button>
               </div>
             </div>

@@ -37,6 +37,7 @@ import {
   isDateExpiringSoon,
   isDocumentExpired,
   exportToCSV,
+  exportToPDF,
 } from "@/lib/utils";
 import type { Vehicle } from "@/types";
 import {
@@ -479,6 +480,50 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
     exportToCSV(csvData, `RK_Fleet_Vehicles_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
+  const handleExportPDF = () => {
+    if (vehicles.length === 0) {
+      alert("No vehicles recorded yet to export.");
+      return;
+    }
+    const headers = [
+      "Reg Number",
+      "Vehicle Name",
+      "Type",
+      "Status",
+      "Current KM",
+      "Insurance Expiry",
+      "Permit Expiry",
+      "Pollution Expiry",
+    ];
+    const data = vehicles.map((v) => [
+      v.registrationNumber,
+      v.name,
+      v.type || "General",
+      v.status.toUpperCase(),
+      (v.currentKm || 0).toLocaleString("en-IN"),
+      v.insuranceExpiry || "-",
+      v.permitExpiry || "-",
+      v.pollutionExpiry || "-",
+    ]);
+
+    const activeCount = vehicles.filter((v) => v.status === "active").length;
+    const serviceDueCount = vehicles.filter((v) => v.status === "service_due").length;
+
+    exportToPDF({
+      title: "Fleet Inventory & Compliance Register",
+      subtitle: `Master Record of Fleet Vehicles & Document Health • Generated on ${new Date().toLocaleDateString("en-IN")}`,
+      filename: `RK_Fleet_Vehicles_${new Date().toISOString().slice(0, 10)}.pdf`,
+      headers,
+      data,
+      orientation: "landscape",
+      summary: [
+        { label: "Total Fleet", value: String(vehicles.length) },
+        { label: "Active", value: String(activeCount) },
+        { label: "Service Due", value: String(serviceDueCount) },
+      ],
+    });
+  };
+
   // Filtered vehicles
   const filteredVehicles = useMemo(() => {
     return vehicles.filter((v) => {
@@ -578,6 +623,16 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
           >
             <Download className="w-3.5 h-3.5 text-slate-600" />
             <span>Export CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-rose-700 backdrop-blur-md border border-rose-200/80 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            title="Download Official PDF Report"
+          >
+            <FileText className="w-3.5 h-3.5 text-rose-600" />
+            <span>Download PDF</span>
           </button>
 
           <button

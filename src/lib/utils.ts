@@ -169,3 +169,5 @@ export function downloadCsv(data: Record<string, unknown>[], filename: string) {
 }
 
 export const exportToCSV = downloadCsv
+export { exportToPDF } from './pdfExport'
+export type { PDFExportOptions } from './pdfExport'

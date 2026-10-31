@@ -29,7 +29,7 @@ import {
   List,
   FileText,
 } from "lucide-react";
-import { formatINR, formatDate, exportToCSV } from "@/lib/utils";
+import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Payment, Trip, PaymentType, PaymentMode } from "@/types";
 import { createPayment, deletePayment } from "@/services/payments.service";
 
@@ -171,6 +171,43 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
     exportToCSV(data, `Payments_Ledger_${todayStr}.csv`);
   };
 
+  const handleExportPDF = () => {
+    if (payments.length === 0) {
+      alert("No payments recorded yet to export.");
+      return;
+    }
+    const headers = ["Payment ID", "Trip ID", "Type", "Amount (INR)", "Date", "Mode", "Notes"];
+    const data = payments.map((p) => [
+      p.id,
+      p.tripId || "General",
+      p.type === "customer_received" ? "Customer Inflow" : "Driver Payout",
+      formatINR(p.amount),
+      formatDate(p.paymentDate),
+      p.paymentMode.toUpperCase(),
+      p.notes || "-",
+    ]);
+    const totalInflow = payments
+      .filter((p) => p.type === "customer_received")
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const totalPayout = payments
+      .filter((p) => p.type === "driver_payment")
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+    exportToPDF({
+      title: "Payments & Treasury Ledger",
+      subtitle: `Official Statement of Transactions • Generated on ${new Date().toLocaleDateString("en-IN")}`,
+      filename: `Payments_Ledger_${todayStr}.pdf`,
+      headers,
+      data,
+      summary: [
+        { label: "Total Transactions", value: String(payments.length) },
+        { label: "Total Inflow", value: formatINR(totalInflow) },
+        { label: "Driver Payouts", value: formatINR(totalPayout) },
+        { label: "Net Cash Flow", value: formatINR(totalInflow - totalPayout) },
+      ],
+    });
+  };
+
   // Filtered Payments
   const filteredPayments = useMemo(() => {
     return payments.filter((p) => {
@@ -242,6 +279,16 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
           >
             <Download className="w-3.5 h-3.5 text-slate-600" />
             <span>Export CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-rose-700 backdrop-blur-md border border-rose-200/80 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            title="Download Official PDF Report"
+          >
+            <FileText className="w-3.5 h-3.5 text-rose-600" />
+            <span>Download PDF</span>
           </button>
 
           <Link

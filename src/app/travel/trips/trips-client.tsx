@@ -27,9 +27,13 @@ import {
   Users,
   UserCheck,
   ArrowLeftRight,
+  FileText,
 } from "lucide-react";
 import {
   exportToCSV,
+  exportToPDF,
+  formatINR,
+  formatDate,
 } from "@/lib/utils";
 import type { Trip, Vehicle, TripStatus } from "@/types";
 import {
@@ -333,6 +337,52 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     exportToCSV(data, `Fleet_Trips_${todayStr}`);
   };
 
+  const handleExportPDF = () => {
+    if (filteredTrips.length === 0) {
+      alert("No trips to export.");
+      return;
+    }
+    const headers = [
+      "Trip ID",
+      "Date",
+      "Customer",
+      "Route",
+      "Vehicle",
+      "Driver",
+      "Total Fare",
+      "Balance",
+      "Status",
+    ];
+    const data = filteredTrips.map((t) => [
+      t.tripNumber || t.id,
+      formatDate(t.tripDate),
+      t.customerName,
+      `${t.from} → ${t.to}`,
+      t.vehicleName || "-",
+      t.driverName || "-",
+      formatINR(t.totalFare),
+      formatINR(t.customerBalance),
+      t.status.toUpperCase(),
+    ]);
+
+    const totalRevenue = filteredTrips.reduce((sum, t) => sum + (Number(t.totalFare) || 0), 0);
+    const totalPending = filteredTrips.reduce((sum, t) => sum + (Number(t.customerBalance) || 0), 0);
+
+    exportToPDF({
+      title: "Trips & Bookings Register",
+      subtitle: `Fleet Dispatch & Bookings Master Record • Generated on ${new Date().toLocaleDateString("en-IN")}`,
+      filename: `Fleet_Trips_${todayStr}.pdf`,
+      headers,
+      data,
+      orientation: "landscape",
+      summary: [
+        { label: "Total Bookings", value: String(filteredTrips.length) },
+        { label: "Total Fare Billed", value: formatINR(totalRevenue) },
+        { label: "Pending Balance", value: formatINR(totalPending) },
+      ],
+    });
+  };
+
   const scrollToForm = () => {
     if (formRef.current) {
       formRef.current.scrollIntoView({ behavior: "smooth" });
@@ -402,6 +452,16 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
           >
             <Download className="w-3.5 h-3.5 text-slate-600" />
             <span>Export CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-rose-700 backdrop-blur-md border border-rose-200/80 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            title="Download Official PDF Report"
+          >
+            <FileText className="w-3.5 h-3.5 text-rose-600" />
+            <span>Download PDF</span>
           </button>
 
           <button

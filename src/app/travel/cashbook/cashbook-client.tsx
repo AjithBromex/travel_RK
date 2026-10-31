@@ -31,7 +31,7 @@ import {
   Coins,
   Trash2,
 } from "lucide-react";
-import { formatINR, formatDate, exportToCSV } from "@/lib/utils";
+import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { CashBookEntry, PaymentMode, Trip, ExpenseCategory } from "@/types";
 import { createPayment } from "@/services/payments.service";
 import { createExpense } from "@/services/expenses.service";
@@ -321,6 +321,52 @@ export default function CashBookClient({
       Notes: i.notes || "-",
     }));
     exportToCSV(data, `RK_CashBook_${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  const handleExportPDF = () => {
+    if (filteredItems.length === 0) {
+      alert("No cash book entries to export.");
+      return;
+    }
+    const headers = [
+      "Date",
+      "Type",
+      "Description",
+      "Trip ID",
+      "Amount",
+      "Mode",
+      "Balance",
+    ];
+    const data = filteredItems.map((i) => [
+      formatDate(i.date),
+      i.direction === "inflow" ? "INFLOW" : "OUTFLOW",
+      `${i.typeTitle} (${i.typeSubtitle})`,
+      i.tripNumber || "-",
+      `${i.direction === "inflow" ? "+" : "-"}${formatINR(i.amount)}`,
+      i.paymentMode.toUpperCase(),
+      formatINR(i.balance),
+    ]);
+
+    const totalInflow = filteredItems
+      .filter((i) => i.direction === "inflow")
+      .reduce((sum, i) => sum + i.amount, 0);
+    const totalOutflow = filteredItems
+      .filter((i) => i.direction === "outflow")
+      .reduce((sum, i) => sum + i.amount, 0);
+
+    exportToPDF({
+      title: "Cash Book & Daily Treasury Ledger",
+      subtitle: `Real-time Cash Flow & Balance Reconciliation • Generated on ${new Date().toLocaleDateString("en-IN")}`,
+      filename: `RK_CashBook_${new Date().toISOString().slice(0, 10)}.pdf`,
+      headers,
+      data,
+      summary: [
+        { label: "Total Entries", value: String(filteredItems.length) },
+        { label: "Total Inflows", value: formatINR(totalInflow) },
+        { label: "Total Outflows", value: formatINR(totalOutflow) },
+        { label: "Net Cash Flow", value: formatINR(totalInflow - totalOutflow) },
+      ],
+    });
   };
 
   // Description icon selector
@@ -957,6 +1003,17 @@ export default function CashBookClient({
                 >
                   <Download className="w-3 h-3 text-slate-500" />
                   <span>Export CSV</span>
+                </button>
+
+                {/* Download PDF */}
+                <button
+                  type="button"
+                  onClick={handleExportPDF}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-rose-200 text-rose-700 bg-rose-50/60 hover:bg-rose-100/60 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                  title="Download Official PDF Report"
+                >
+                  <FileText className="w-3 h-3 text-rose-600" />
+                  <span>Download PDF</span>
                 </button>
               </div>
             </div>
