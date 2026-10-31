@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -37,6 +37,7 @@ import {
 } from "@/lib/utils";
 import type { Trip, Vehicle, TripStatus } from "@/types";
 import {
+  getTrips,
   createTrip,
   updateTrip,
   deleteTrip,
@@ -83,6 +84,18 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const formRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    getTrips(100)
+      .then((data) => {
+        if (data && data.length > 0) {
+          setTrips(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("[Trips] Client data hydration error:", err);
+      });
+  }, []);
 
   const todayStr = new Date().toISOString().split("T")[0];
 

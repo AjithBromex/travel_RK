@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { formatINR, formatDateShort, formatDate } from "@/lib/utils";
 import type { DashboardMetrics, Trip, Reminder } from "@/types";
+import { getDashboardData } from "@/services/dashboard.service";
 
 interface DashboardClientProps {
   initialMetrics: DashboardMetrics;
@@ -35,9 +37,23 @@ export default function DashboardClient({
   initialTrips,
   initialReminders = [],
 }: DashboardClientProps) {
-  const metrics = initialMetrics;
-  const trips = initialTrips || [];
-  const reminders = initialReminders || [];
+  const [metrics, setMetrics] = useState<DashboardMetrics>(initialMetrics);
+  const [trips, setTrips] = useState<Trip[]>(initialTrips || []);
+  const [reminders, setReminders] = useState<Reminder[]>(initialReminders || []);
+
+  useEffect(() => {
+    getDashboardData()
+      .then((data) => {
+        if (data && data.metrics) {
+          setMetrics(data.metrics);
+          if (data.recentTrips) setTrips(data.recentTrips);
+          if (data.reminders) setReminders(data.reminders);
+        }
+      })
+      .catch((err) => {
+        console.warn("[Dashboard] Client data hydration error:", err);
+      });
+  }, []);
 
   return (
     <div className="font-sans max-w-[1440px] mx-auto pb-10">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Payment, Trip, PaymentType, PaymentMode } from "@/types";
-import { createPayment, deletePayment } from "@/services/payments.service";
+import { getPayments, createPayment, deletePayment } from "@/services/payments.service";
 
 interface PaymentsClientProps {
   initialPayments: Payment[];
@@ -49,6 +49,18 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
 
   const amountInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    getPayments(100)
+      .then((data) => {
+        if (data && data.length > 0) {
+          setPayments(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("[Payments] Client data hydration error:", err);
+      });
+  }, []);
 
   const todayStr = new Date().toISOString().split("T")[0];
 

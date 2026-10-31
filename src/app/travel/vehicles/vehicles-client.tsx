@@ -41,6 +41,7 @@ import {
 } from "@/lib/utils";
 import type { Vehicle } from "@/types";
 import {
+  getVehicles,
   createVehicle,
   updateVehicle,
   deleteVehicle,
@@ -129,6 +130,18 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
 
   const formRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    getVehicles(100)
+      .then((data) => {
+        if (data && data.length > 0) {
+          setVehicles(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("[Vehicles] Client data hydration error:", err);
+      });
+  }, []);
   const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
   const [photoProcessing, setPhotoProcessing] = useState(false);
   const [showComplianceFields, setShowComplianceFields] = useState(false);
