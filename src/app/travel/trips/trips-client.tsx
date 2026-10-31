@@ -3,48 +3,33 @@
 import { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  Car,
   Calendar,
-  Clock,
   CheckCircle2,
-  TrendingUp,
   Plus,
   Download,
   CreditCard,
   Search,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Phone,
-  User,
   MapPin,
   X,
   Edit2,
   Trash2,
   ArrowRight,
-  Check,
-  AlertCircle,
   LayoutGrid,
   List,
   RotateCcw,
   IndianRupee,
   Bus,
   Receipt,
-  FileText,
   Calculator,
   Users,
   UserCheck,
-  Navigation,
-  Sparkles,
   ArrowLeftRight,
 } from "lucide-react";
 import {
-  formatINR,
-  formatDateShort,
   exportToCSV,
-  calculateTripFare,
 } from "@/lib/utils";
 import type { Trip, Vehicle, TripStatus } from "@/types";
 import {
@@ -66,7 +51,6 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const formRef = useRef<HTMLDivElement>(null);
 

@@ -1,27 +1,21 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import Link from "next/link";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Car,
   Wrench,
-  ShieldAlert,
   CheckCircle2,
   Download,
   Plus,
   Search,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Shield,
-  AlertTriangle,
   LayoutGrid,
   List,
   Edit2,
   Trash2,
-  ArrowRight,
   Calendar,
   X,
   Camera,
@@ -29,8 +23,6 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  Move,
-  Check,
   FileCheck,
   BarChart3,
   Users,
@@ -38,19 +30,12 @@ import {
   UploadCloud,
   MoreVertical,
   Navigation,
-  Sparkles,
   FileText,
-  AlertCircle,
-  Eye,
-  Gauge,
-  Clock,
 } from "lucide-react";
 import {
-  formatINR,
   normalizeRegNumber,
   isDateExpiringSoon,
   isDocumentExpired,
-  formatDateShort,
   exportToCSV,
 } from "@/lib/utils";
 import type { Vehicle } from "@/types";
@@ -62,69 +47,6 @@ import {
 
 interface VehiclesClientProps {
   initialVehicles: Vehicle[];
-}
-
-// Client-side automatic rectangular crop (16:9 landscape aspect ratio)
-async function autoCropToRectangle(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (!file.type.startsWith("image/")) {
-      reject(new Error("Please upload an image file (JPG, PNG, WEBP)"));
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Failed to read image file"));
-    reader.onload = () => {
-      const img = new (window as any).Image();
-      img.onerror = () => reject(new Error("Unable to load selected image"));
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Canvas context is not available"));
-          return;
-        }
-
-        const targetAspect = 16 / 9; // Clean landscape rectangular ratio
-        const imgWidth = img.naturalWidth || img.width;
-        const imgHeight = img.naturalHeight || img.height;
-        const imgAspect = imgWidth / imgHeight;
-
-        let srcX = 0;
-        let srcY = 0;
-        let srcW = imgWidth;
-        let srcH = imgHeight;
-
-        // Auto center-crop to rectangular aspect ratio
-        if (imgAspect > targetAspect) {
-          srcW = Math.round(imgHeight * targetAspect);
-          srcX = Math.round((imgWidth - srcW) / 2);
-        } else {
-          srcH = Math.round(imgWidth / targetAspect);
-          srcY = Math.round((imgHeight - srcH) / 2);
-        }
-
-        const outWidth = 960;
-        const outHeight = Math.round(outWidth / targetAspect); // 540
-
-        canvas.width = outWidth;
-        canvas.height = outHeight;
-
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, outWidth, outHeight);
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-
-        ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, outWidth, outHeight);
-
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
-        resolve(dataUrl);
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-  });
 }
 
 // Default realistic sample vehicles matching the user's mockup if database is fresh
@@ -465,9 +387,8 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
     const vpW = cropViewportRef.current.clientWidth;
     const vpH = cropViewportRef.current.clientHeight;
 
-    const { width: baseW, height: baseH, natW, natH } = cropImgDims;
+    const { width: baseW, natW, natH } = cropImgDims;
     const currentRenderW = baseW * cropZoom;
-    const currentRenderH = baseH * cropZoom;
 
     const scaleToNatural = natW / currentRenderW;
 
@@ -1487,6 +1408,22 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                     <option value="volvo">Volvo / Bus</option>
                     <option value="urbania">Urbania</option>
                     <option value="bolero">Bolero</option>
+                  </select>
+                  <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+
+                {/* Status Filter */}
+                <div className="relative">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="appearance-none pl-3 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="service_due">Service Due</option>
+                    <option value="expiring_docs">Expiring Docs</option>
+                    <option value="in_maintenance">Maintenance</option>
                   </select>
                   <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
