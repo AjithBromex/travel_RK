@@ -50,23 +50,26 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md h-[220px] sm:h-[240px] lg:h-[265px] flex flex-col justify-between p-5 sm:p-7 lg:p-9 pb-16 sm:pb-20 lg:pb-22"
+        className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md min-h-[290px] sm:min-h-[320px] lg:min-h-[350px] flex flex-col justify-between p-5 sm:p-7 lg:p-9 pb-24 sm:pb-28 lg:pb-32"
       >
         {/* Photographic Panoramic Highway Background with Van & Alpine Lake */}
         <div
-          className="absolute inset-0 z-0 pointer-events-none bg-cover bg-[center_45%] bg-no-repeat"
-          style={{ backgroundImage: "url('/images/dashboard-scenic-hero.jpg')" }}
+          className="absolute inset-0 z-0 pointer-events-none bg-cover bg-no-repeat"
+          style={{
+            backgroundImage: "url('/images/dashboard-scenic-hero.jpg')",
+            backgroundPosition: "70% 62%",
+          }}
         >
           <Image
             src="/images/dashboard-scenic-hero.jpg"
-            alt="Scenic Travel Highway"
+            alt="Scenic Travel Highway with Passenger Van"
             fill
             priority
             unoptimized
-            className="object-cover object-[center_45%]"
+            className="object-cover object-[70%_62%]"
           />
-          {/* Subtle directional gradient so text on left is crystal clear without darkening the right van */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/20 to-transparent" />
+          {/* Subtle directional gradient restricted to the left for text legibility, leaving the vehicle on the right 100% bright */}
+          <div className="absolute inset-0 max-w-xl sm:max-w-2xl bg-gradient-to-r from-slate-950/80 via-slate-950/35 to-transparent pointer-events-none" />
         </div>
 
         {/* Top Floating Action Pill Buttons (Aligned to Right on Desktop) */}
