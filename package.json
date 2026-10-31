@@ -6,13 +6,10 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "set-admin-claim": "tsx scripts/setAdminClaim.ts"
+    "lint": "eslint"
   },
   "dependencies": {
-    "@opentelemetry/api": "^1.10.0",
     "firebase": "^13.1.0",
-    "firebase-admin": "^14.5.0",
     "framer-motion": "^14.9.0",
     "lucide-react": "^1.14.0",
     "next": "16.2.6",
@@ -28,7 +25,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
-    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

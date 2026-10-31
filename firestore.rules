@@ -1,60 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Check if the authenticated caller has the admin custom claim
-    function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
-    }
-    
-    // Check if user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    // Helper to check user document ownership by matching path uid
-    function isUserSelf(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Helper to check ownership of documents based on stored userId/ownerId/createdBy
-    function isDocOwner() {
-      return isAuthenticated() && (
-        resource == null ||
-        resource.data.userId == request.auth.uid || 
-        resource.data.ownerId == request.auth.uid ||
-        resource.data.createdBy == request.auth.uid
-      );
-    }
-
-    function willBeDocOwner() {
-      return isAuthenticated() && (
-        request.resource.data.userId == request.auth.uid ||
-        request.resource.data.ownerId == request.auth.uid ||
-        request.resource.data.createdBy == request.auth.uid
-      );
-    }
-
-    // Users profile collection
-    match /users/{userId} {
-      allow read: if isAdmin() || isUserSelf(userId);
-      // Protect admin user document from being deleted or modified by non-admins
-      allow write: if isAdmin() || isUserSelf(userId);
-    }
-
-    // Audit logs collection (admin view only; create allowed for security logging)
-    match /audit_logs/{logId} {
-      allow read, update, delete: if isAdmin();
-      allow create: if true;
-    }
-
-    // All business collections (vehicles, trips, payments, expenses, reminders, settings, etc.)
-    // Admins (request.auth.token.admin == true) can read and write all collections;
-    // Regular users can only access documents they own.
-    match /{collectionName}/{docId} {
-      allow read: if isAdmin() || isDocOwner();
-      allow create: if isAdmin() || willBeDocOwner();
-      allow update, delete: if isAdmin() || isDocOwner();
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
