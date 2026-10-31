@@ -368,23 +368,23 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         transition={{ duration: 0.35 }}
         className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md min-h-[300px] sm:min-h-[330px] lg:min-h-[360px] flex flex-col justify-between p-5 sm:p-7 lg:p-9 pb-24 sm:pb-28 lg:pb-32"
       >
-        {/* Background Image: Scenic Mountain Highway with White Luxury Van */}
+        {/* Background Image: Scenic Mountain Highway with Fleet Vehicles */}
         <div
           className="absolute inset-0 z-0 pointer-events-none bg-cover bg-no-repeat"
           style={{
             backgroundImage: "url('/images/trips-scenic-hero.jpg')",
-            backgroundPosition: "75% 65%",
+            backgroundPosition: "70% 62%",
           }}
         >
           <Image
             src="/images/trips-scenic-hero.jpg"
-            alt="Scenic Mountain Road Trip Highway with Passenger Van"
+            alt="Scenic Mountain Road Trip Highway with Fleet Vehicles"
             fill
             priority
             unoptimized
-            className="object-cover object-[75%_65%]"
+            className="object-cover object-[70%_62%]"
           />
-          {/* Subtle directional gradient restricted to the left for text legibility, leaving the van and mountains bright on the right */}
+          {/* Subtle directional gradient restricted to the left for text legibility, leaving the fleet vehicles and sunset bright on the right */}
           <div className="absolute inset-0 max-w-xl sm:max-w-2xl bg-gradient-to-r from-slate-950/85 via-slate-950/40 to-transparent pointer-events-none" />
         </div>
 
