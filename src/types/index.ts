@@ -25,6 +25,7 @@ export type TripStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
 export interface Trip {
   id: string
   tripNumber: string
+  receiptNumber?: string
   tripDate: string
   vehicleId: string
   vehicleName?: string

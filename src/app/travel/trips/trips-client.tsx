@@ -47,6 +47,32 @@ interface TripsClientProps {
   vehicles: Vehicle[];
 }
 
+export function getNextReceiptNumber(currentTrips: Trip[]): string {
+  let maxNum = 0;
+  for (const t of currentTrips) {
+    if (t.receiptNumber) {
+      const match = t.receiptNumber.match(/\d+/);
+      if (match) {
+        const num = parseInt(match[0], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  const next = maxNum > 0 ? maxNum + 1 : currentTrips.length + 1;
+  return `#${String(next).padStart(4, "0")}`;
+}
+
+export function getTripReceiptDisplay(trip: Trip, allTrips: Trip[]): string {
+  if (trip.receiptNumber && trip.receiptNumber.trim() !== "") {
+    return trip.receiptNumber;
+  }
+  const idx = allTrips.findIndex((t) => t.id === trip.id);
+  const sequentialNum = idx >= 0 ? allTrips.length - idx : 1;
+  return `#${String(Math.max(1, sequentialNum)).padStart(4, "0")}`;
+}
+
 export default function TripsClient({ initialTrips, vehicles }: TripsClientProps) {
   const [trips, setTrips] = useState<Trip[]>(initialTrips || []);
   const [search, setSearch] = useState("");
@@ -61,6 +87,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   const todayStr = new Date().toISOString().split("T")[0];
 
   const emptyForm = {
+    receiptNumber: getNextReceiptNumber(trips),
     tripDate: todayStr,
     vehicleId: vehicles[0]?.id || "",
     vehicleName: vehicles[0]?.name
@@ -161,6 +188,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   const handleEdit = (trip: Trip) => {
     setEditingTripId(trip.id);
     setForm({
+      receiptNumber: trip.receiptNumber || getTripReceiptDisplay(trip, trips),
       tripDate: trip.tripDate || todayStr,
       vehicleId: trip.vehicleId || "",
       vehicleName: trip.vehicleName || "",
@@ -186,7 +214,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
   const handleCancelEdit = () => {
     setEditingTripId(null);
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      receiptNumber: getNextReceiptNumber(trips),
+    });
   };
 
   const handleDelete = async (trip: Trip) => {
@@ -196,7 +227,8 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     setDeletingId(trip.id);
     try {
       await deleteTrip(trip.id);
-      setTrips((prev) => prev.filter((t) => t.id !== trip.id));
+      const remaining = trips.filter((t) => t.id !== trip.id);
+      setTrips(remaining);
       if (editingTripId === trip.id) {
         handleCancelEdit();
       }
@@ -229,7 +261,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
           ? `${selectedVehicle.name} (${selectedVehicle.registrationNumber})`
           : "");
 
+      const assignedReceiptNo = (form.receiptNumber && form.receiptNumber.trim()) || getNextReceiptNumber(trips);
+
       const tripPayload = {
+        receiptNumber: assignedReceiptNo,
         tripDate: form.tripDate,
         vehicleId: form.vehicleId,
         vehicleName,
@@ -257,13 +292,16 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
       if (editingTripId) {
         await updateTrip(editingTripId, tripPayload);
-        setTrips((prev) =>
-          prev.map((t) =>
-            t.id === editingTripId ? { ...t, ...tripPayload } : t
-          )
+        const updated = trips.map((t) =>
+          t.id === editingTripId ? { ...t, ...tripPayload } : t
         );
+        setTrips(updated);
         setFeedback({ message: "Trip updated successfully!", type: "success" });
         setEditingTripId(null);
+        setForm({
+          ...emptyForm,
+          receiptNumber: getNextReceiptNumber(updated),
+        });
       } else {
         const newId = await createTrip(tripPayload);
         const nextTripNumber = `TRP-${String(trips.length + 1001).slice(-4)}`;
@@ -274,14 +312,17 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
-        setTrips((prev) => [newTrip, ...prev]);
+        const updated = [newTrip, ...trips];
+        setTrips(updated);
         setFeedback({
-          message: "New trip booked and dispatched successfully!",
+          message: `New trip (${assignedReceiptNo}) booked and dispatched successfully!`,
           type: "success",
         });
+        setForm({
+          ...emptyForm,
+          receiptNumber: getNextReceiptNumber(updated),
+        });
       }
-
-      setForm(emptyForm);
     } catch (err: unknown) {
       console.error("Save trip error:", err);
       const msg = (err as Error)?.message || "Failed to save trip";
@@ -297,7 +338,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     return trips.filter((t) => {
       if (search.trim()) {
         const query = search.toLowerCase();
+        const receiptDisplay = getTripReceiptDisplay(t, trips).toLowerCase();
         const matches =
+          receiptDisplay.includes(query) ||
+          (t.receiptNumber && t.receiptNumber.toLowerCase().includes(query)) ||
           (t.tripNumber && t.tripNumber.toLowerCase().includes(query)) ||
           t.customerName.toLowerCase().includes(query) ||
           t.from.toLowerCase().includes(query) ||
@@ -321,6 +365,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       return;
     }
     const data = filteredTrips.map((t) => ({
+      "Receipt #": getTripReceiptDisplay(t, trips),
       "Trip Number": t.tripNumber || t.id,
       Date: t.tripDate,
       Customer: t.customerName,
@@ -343,6 +388,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       return;
     }
     const headers = [
+      "Receipt #",
       "Trip ID",
       "Date",
       "Customer",
@@ -354,6 +400,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       "Status",
     ];
     const data = filteredTrips.map((t) => [
+      getTripReceiptDisplay(t, trips),
       t.tripNumber || t.id,
       formatDate(t.tripDate),
       t.customerName,
@@ -752,8 +799,21 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Row 1: Trip Date & Status */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Row 1: Receipt No, Trip Date & Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
+                    RECEIPT NO <span className="text-blue-600 font-mono font-bold">(#0001)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="#0001"
+                    value={form.receiptNumber}
+                    onChange={(e) => setForm({ ...form, receiptNumber: e.target.value })}
+                    className="w-full px-3 py-2 bg-blue-50/50 border border-blue-200/80 rounded-xl text-xs font-black font-mono text-blue-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-blue-400"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
                     TRIP DATE <span className="text-rose-500">*</span>
@@ -1158,9 +1218,14 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
-                        <span className="text-xs font-black font-mono text-slate-900">
-                          {trip.tripNumber || trip.id.slice(0, 8)}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black font-mono text-slate-900">
+                            {trip.tripNumber || trip.id.slice(0, 8)}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80 font-mono text-[10px] font-black">
+                            {getTripReceiptDisplay(trip, trips)}
+                          </span>
+                        </div>
                         <span
                           className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
                             trip.status === "completed"
@@ -1231,9 +1296,12 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     className="bg-slate-50/70 hover:bg-white p-3 sm:p-4 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:shadow-xs transition-all flex items-center justify-between gap-3"
                   >
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-black font-mono text-slate-900">
                           {trip.tripNumber || trip.id.slice(0, 8)}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80 font-mono text-[11px] font-black">
+                          {getTripReceiptDisplay(trip, trips)}
                         </span>
                         <span
                           className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
