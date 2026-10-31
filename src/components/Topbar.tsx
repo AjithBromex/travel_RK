@@ -131,20 +131,14 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
 
   return (
     <header className="sticky top-0 z-40 pt-3 sm:pt-4 pb-2 px-3 sm:px-6 lg:px-8 bg-transparent">
-      <div className="max-w-[1520px] mx-auto">
-        {/* Continuous Floating Pill Navigation Bar (Matching Original Design Reference) */}
-        <div
-          className={`w-full rounded-full border transition-[box-shadow,background-color,border-color] duration-200 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between gap-2 xl:gap-3 ${
-            scrolled
-              ? "bg-white/95 border-slate-300/80 shadow-[0_8px_24px_rgba(15,23,42,0.09)]"
-              : "bg-white/95 border-white/80 shadow-[0_4px_20px_rgba(0,0,0,0.05)]"
-          }`}
-        >
-          {/* 1. LEFT: BRAND EMBLEM & WORDMARK */}
+      <div className="max-w-[1520px] mx-auto flex flex-col gap-2">
+        {/* Main Floating Row */}
+        <div className="flex items-center justify-between gap-3 w-full">
+          {/* 1. LEFT: PILL-SHAPED BRAND CAPSULE */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={onToggleMobileSidebar}
-              className="xl:hidden p-1.5 rounded-full hover:bg-slate-100 text-slate-700 cursor-pointer transition-colors"
+              className="lg:hidden p-2 rounded-full bg-white/95 border border-slate-200/90 hover:bg-slate-100 text-slate-700 cursor-pointer shadow-xs transition-colors"
               aria-label="Toggle navigation"
             >
               <Menu className="w-4 h-4" />
@@ -152,7 +146,11 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
 
             <Link
               href="/travel"
-              className="inline-flex items-center gap-2 sm:gap-2.5 transition-transform hover:scale-[1.01] active:scale-[0.99] select-none shrink-0"
+              className={`inline-flex items-center gap-2.5 px-3.5 py-1.5 sm:py-2 rounded-full border transition-all hover:scale-[1.01] active:scale-[0.99] select-none shrink-0 backdrop-blur-md ${
+                scrolled
+                  ? "bg-white/95 border-slate-300/90 shadow-[0_6px_20px_rgba(15,23,42,0.08)]"
+                  : "bg-white/95 border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)]"
+              }`}
             >
               <div className="w-7 h-7 sm:w-8 sm:h-8 relative shrink-0">
                 <Image
@@ -176,8 +174,14 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
             </Link>
           </div>
 
-          {/* 2. CENTER: TEXT-ONLY NAVIGATION TABS (MATCHING REFERENCE MOCKUP EXACTLY) */}
-          <nav className="hidden xl:flex items-center gap-0.5 2xl:gap-1 shrink-0">
+          {/* 2. CENTER: DEDICATED PILL-SHAPED NAVBAR (MATCHING REFERENCE MOCKUP EXACTLY) */}
+          <nav
+            className={`hidden lg:flex items-center gap-1 p-1 sm:p-1.5 rounded-full border transition-all duration-200 backdrop-blur-md shrink-0 ${
+              scrolled
+                ? "bg-white/95 border-slate-300/90 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
+                : "bg-white/95 border-slate-200/90 shadow-[0_4px_20px_rgba(15,23,42,0.06)]"
+            }`}
+          >
             {navLinks.map((link) => {
               const active = isLinkActive(link.href);
               return (
@@ -185,10 +189,10 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                   key={link.name}
                   href={link.href}
                   prefetch={true}
-                  className={`px-3 py-1.5 rounded-full text-xs 2xl:text-[12.5px] transition-all whitespace-nowrap ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap select-none ${
                     active
-                      ? "bg-[#0B1E38] text-white font-bold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900 font-semibold hover:bg-slate-100/70"
+                      ? "bg-[#0B1E38] text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-semibold"
                   }`}
                 >
                   {link.name}
@@ -197,9 +201,9 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
             })}
           </nav>
 
-          {/* 3. RIGHT: INTERACTIVE SEARCH BAR, NOTIFICATION BELL & USER PROFILE */}
+          {/* 3. RIGHT: PILL SEARCH, NOTIFICATION BELL & USER PROFILE */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* Desktop / Tablet Interactive Search Bar */}
+            {/* Desktop / Tablet Interactive Pill Search */}
             <div ref={searchContainerRef} className="hidden sm:block relative">
               <form onSubmit={handleSearchSubmit} className="relative flex items-center">
                 <Search className="absolute left-3 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
@@ -218,10 +222,10 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                       setSearchFocused(false);
                     }
                   }}
-                  className={`w-36 md:w-44 lg:w-48 xl:w-56 h-8 sm:h-8.5 pl-8 pr-7 rounded-full text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all ${
+                  className={`w-36 md:w-44 lg:w-48 xl:w-56 h-8 sm:h-9 pl-8 pr-7 rounded-full text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all ${
                     searchFocused
                       ? "bg-white border border-blue-500 shadow-md ring-2 ring-blue-500/10"
-                      : "bg-[#EDF2F9] border border-slate-200/60 hover:bg-[#E4ECF6]"
+                      : "bg-white/95 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] hover:border-slate-300"
                   }`}
                 />
                 {searchQuery && (
@@ -293,10 +297,10 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
               )}
             </div>
 
-            {/* Mobile Search Toggle */}
+            {/* Mobile Search Toggle Button */}
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className="sm:hidden w-8 h-8 rounded-full border border-slate-200/80 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors"
+              className="sm:hidden w-8 h-8 rounded-full bg-white/95 border border-slate-200/90 shadow-xs flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors"
               aria-label="Search"
             >
               <Search className="w-3.5 h-3.5" />
@@ -306,22 +310,30 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
             <Link
               href="/travel/reminders"
               prefetch={true}
-              className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full border border-slate-200/80 hover:bg-slate-100/80 flex items-center justify-center text-slate-700 transition-colors relative cursor-pointer"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/95 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] hover:bg-slate-100/80 flex items-center justify-center text-slate-700 transition-colors relative cursor-pointer backdrop-blur-md"
               title="Reminders & Alerts"
             >
               <Bell className="w-4 h-4" />
-              {/* Subtle Notification Dot Badge */}
+              {/* Subtle Red Alert Dot Badge */}
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
             </Link>
 
-            {/* User Profile Capsule */}
+            {/* User Profile Pill Capsule */}
             <div ref={profileRef} className="relative">
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-1.5 p-0.5 pr-2 rounded-full border border-slate-200/80 hover:bg-slate-100/80 transition-colors cursor-pointer select-none"
+                className="flex items-center gap-1.5 p-0.5 pr-2.5 rounded-full bg-white/95 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] hover:bg-slate-100/80 transition-colors cursor-pointer select-none backdrop-blur-md"
               >
                 <div className="w-7 h-7 rounded-full bg-[#18181B] text-white flex items-center justify-center font-black text-xs uppercase shadow-xs shrink-0">
                   {userName.charAt(0) || "A"}
+                </div>
+                <div className="hidden xl:flex flex-col text-left leading-none">
+                  <span className="text-[11px] font-bold text-slate-900 leading-tight">
+                    {userName}
+                  </span>
+                  <span className="text-[9px] text-slate-400 capitalize leading-none mt-0.5">
+                    {userRole}
+                  </span>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               </button>
@@ -358,9 +370,9 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
           </div>
         </div>
 
-        {/* Mobile / Tablet Horizontal Navigation Strip (< xl) */}
-        <div className="xl:hidden w-full overflow-x-auto no-scrollbar pt-2 pb-0.5">
-          <nav className="inline-flex items-center gap-1 p-1 rounded-full bg-white/95 border border-slate-200/80 shadow-xs backdrop-blur-md whitespace-nowrap">
+        {/* Mobile / Tablet Dedicated Pill-shaped Navbar Strip (< lg) */}
+        <div className="lg:hidden w-full overflow-x-auto no-scrollbar pt-1 pb-0.5 flex justify-center">
+          <nav className="inline-flex items-center gap-1 p-1 rounded-full bg-white/95 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.06)] backdrop-blur-md whitespace-nowrap">
             {navLinks.map((link) => {
               const active = isLinkActive(link.href);
               return (
@@ -368,10 +380,10 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                   key={link.name}
                   href={link.href}
                   prefetch={true}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all shrink-0 ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
                     active
-                      ? "bg-[#0B1E38] text-white font-bold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                      ? "bg-[#0B1E38] text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-semibold"
                   }`}
                 >
                   {link.name}
@@ -381,7 +393,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
           </nav>
         </div>
 
-        {/* Mobile Search Overlay Bar (< sm) */}
+        {/* Mobile Search Overlay Input (< sm) */}
         {searchOpen && (
           <div className="mt-2 bg-white rounded-2xl border border-slate-200 p-2 sm:hidden shadow-lg animate-fade-in">
             <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
