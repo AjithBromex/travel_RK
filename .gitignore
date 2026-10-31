@@ -33,6 +33,8 @@ serviceAccountKey.json
 firebase-admin-key.json
 firebase-service-account*.json
 *.service-account.json
+*-adminsdk-*.json
+*-firebase-adminsdk-*.json
 
 # vercel
 .vercel
