@@ -12,7 +12,7 @@ const GENERIC = 'Invalid admin credentials.';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@gmail.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -33,37 +33,27 @@ export default function AdminLoginPage() {
       });
 
     try {
-      const resolvedEmail = email.trim().includes('@')
-        ? email.trim().toLowerCase()
-        : `${email.trim().toLowerCase()}@gmail.com`;
+      const resolvedEmail = email.trim().toLowerCase();
 
       let idToken: string;
       try {
         const cred = await signInWithEmailAndPassword(auth, resolvedEmail, password);
         idToken = await cred.user.getIdToken();
-      } catch (authErr: unknown) {
+      } catch {
         await post({ failedEmail: resolvedEmail }).catch(() => undefined);
-        const code = (authErr as { code?: string })?.code;
-        if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-          throw new Error('Invalid email/username or password.');
-        }
-        if (code === 'auth/too-many-requests') {
-          throw new Error('Too many failed attempts. Access temporarily restricted for security.');
-        }
         throw new Error(GENERIC);
       }
 
       const res = await post({ idToken });
       await signOut(auth); // the httpOnly cookie is the admin session; don't keep client auth
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'This account does not have admin privileges.');
+        throw new Error(GENERIC);
       }
 
       window.location.href = '/admin';
-    } catch (err: unknown) {
+    } catch {
       await signOut(auth).catch(() => undefined);
-      setError((err as Error)?.message || GENERIC);
+      setError(GENERIC);
       setPassword('');
     } finally {
       lock.current = false;
@@ -121,7 +111,7 @@ export default function AdminLoginPage() {
               type="text"
               autoComplete="username"
               required
-              placeholder="admin@gmail.com"
+              placeholder="admin@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full h-12 pl-11 pr-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"

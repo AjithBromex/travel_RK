@@ -21,7 +21,6 @@ import {
   AlertTriangle,
   Clock,
   CheckCircle2,
-  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -52,7 +51,6 @@ const navLinks = [
   { name: "Reports", href: "/travel/reports" },
   { name: "Reminders", href: "/travel/reminders" },
   { name: "Settings", href: "/travel/settings" },
-  { name: "Admin Portal", href: "/admin" },
 ];
 
 const searchableSections = [
@@ -65,7 +63,6 @@ const searchableSections = [
   { name: "Reports & Analytics", href: "/travel/reports", desc: "Financial statements, profit margins & corridor analysis", icon: FileText, keywords: ["reports", "profit", "revenue", "financial", "margin", "p&l"] },
   { name: "Reminders & Compliance", href: "/travel/reminders", desc: "Insurance, permit, tax & maintenance alerts", icon: Calendar, keywords: ["reminders", "insurance", "fitness", "pollution", "tax", "permit", "compliance"] },
   { name: "Agency Settings", href: "/travel/settings", desc: "Agency profile, rate card, security & team preferences", icon: Settings, keywords: ["settings", "profile", "password", "agency", "security", "preferences"] },
-  { name: "Admin Portal", href: "/admin", desc: "Governance dashboard, audit logs & approval workflows", icon: ShieldCheck, keywords: ["admin", "governance", "approval", "audit", "security", "records"] },
 ];
 
 
@@ -660,14 +657,6 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                   >
                     <Settings className="w-3.5 h-3.5" />
                     <span>Settings</span>
-                  </Link>
-                  <Link
-                    href="/admin"
-                    className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition-colors"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Admin Portal</span>
                   </Link>
 
                   <button

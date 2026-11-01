@@ -227,6 +227,15 @@ async function writeFirestoreRest(collectionName: string, id: string | undefined
       } else if (action === 'reject') {
         await writeFirestoreRest(c, id as string, { status: 'rejected', reviewedBy: admin.uid, reviewedAt: now, rejectionReason: String(reason || '') }, 'PATCH');
       }
+
+      // Record admin action in auditLogs in fallback path as well
+      await writeFirestoreRest('auditLogs', undefined, {
+        action: `${action}_record`,
+        adminUid: admin.uid,
+        collection: c,
+        docId: id || null,
+        at: now,
+      }, 'POST').catch(() => undefined);
     }
 
     return json({ ok: true });

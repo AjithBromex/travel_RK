@@ -635,34 +635,8 @@ function LoginForm() {
                 </form>
               )}
 
-              {/* OR Divider */}
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-300/70" />
-                </div>
-                <div className="relative flex justify-center text-[10px] uppercase tracking-wider font-bold text-slate-400">
-                  <span className="bg-white/80 px-2.5 rounded-full">OR</span>
-                </div>
-              </div>
-
-              {/* Simple Clean Admin Portal Access Button (Matching UI/UX) */}
-              <div className="space-y-3">
-                <Link
-                  href="/admin/login"
-                  className="w-full h-12 flex items-center justify-between px-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-bold text-slate-800 hover:text-blue-600 transition-all cursor-pointer group shadow-2xs"
-                  title="Switch to Admin Portal"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                      <Shield className="w-4 h-4" />
-                    </div>
-                    <span>Admin Portal Access</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
-                </Link>
-
                 {/* Enterprise Security Badge */}
-                <div className="text-center flex items-center justify-center">
+                <div className="mt-5 text-center flex items-center justify-center">
                   <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/90 border border-slate-200/80 rounded-full shadow-2xs">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span className="text-[10px] sm:text-[11px] font-bold text-slate-700">
@@ -670,7 +644,6 @@ function LoginForm() {
                     </span>
                   </div>
                 </div>
-              </div>
 
 
             </div>

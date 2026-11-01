@@ -1,8 +1,98 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isRecordOwner() {
+      return isAuthenticated() && (
+        resource == null ||
+        resource.data.userId == request.auth.uid ||
+        resource.data.createdBy == request.auth.uid ||
+        request.resource.data.userId == request.auth.uid ||
+        request.resource.data.createdBy == request.auth.uid
+      );
+    }
+
+    // 1. Users collection: regular users only access their own profile; admins manage all
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create, update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // 2. Operational collections: trips, vehicles, payments, expenses, cashbook, reminders
+    match /trips/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /vehicles/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /payments/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /expenses/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /cashbook/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /reminders/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // 3. Audit trail: readable only by admin, create-only, strictly immutable
+    match /auditLogs/{id} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+
+    match /adminLoginAttempts/{id} {
+      allow read, write: if false;
+    }
+
+    // 4. Default fallback: deny unless admin
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
   }
 }

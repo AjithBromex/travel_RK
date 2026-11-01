@@ -41,12 +41,12 @@ export async function POST(req: NextRequest) {
     const email = body.failedEmail.trim().toLowerCase();
     await recordFailure([ipKey, `pair_${hash(`${ip}|${email}`)}`]);
     await audit({ action: 'admin_login_failed', reason: 'bad_credentials', ipHash: hash(ip), emailHash: hash(email) });
-    return DENY('Invalid email or password.');
+    return DENY('Invalid admin credentials.', 401);
   }
 
   try {
     if (typeof body.idToken !== 'string' || body.idToken.length > 4096) {
-      return DENY('Missing or invalid token.');
+      return DENY('Invalid admin credentials.', 401);
     }
 
     // Decode token claims
@@ -66,23 +66,19 @@ export async function POST(req: NextRequest) {
     }
 
     if (!decodedUid) {
-      return DENY('Could not authenticate token.');
+      return DENY('Invalid admin credentials.', 401);
     }
 
-    // Check admin authorization
+    // Verify admin: trusted `admin: true` custom claim or verified administrator
     const isAllowedAdmin =
       hasAdminClaim ||
-      isAllowedAdminEmail(decodedEmail, decodedUid) ||
-      decodedEmail === 'admin@gmail.com' ||
-      decodedUid === 'O36Jb9fvu4bbJNeM6lilpyEo1JM2' ||
-      decodedEmail.includes('admin');
-
+      isAllowedAdminEmail(decodedEmail, decodedUid);
 
     if (!isAllowedAdmin) {
       const pairKey = `pair_${hash(`${ip}|${decodedEmail}`)}`;
       await recordFailure([ipKey, pairKey]);
       await audit({ action: 'admin_login_failed', reason: 'no_admin_claim', ipHash: hash(ip), emailHash: hash(decodedEmail) });
-      return DENY(`Account (${decodedEmail || 'unknown'}) does not have administrator privileges.`, 403);
+      return DENY('Invalid admin credentials.', 401);
     }
 
     // Create session token
@@ -110,7 +106,7 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (err) {
     console.warn('[AdminSession] Error creating session:', err);
-    return DENY('Failed to create admin session.');
+    return DENY('Invalid admin credentials.', 401);
   }
 }
 

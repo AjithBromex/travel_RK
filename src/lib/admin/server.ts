@@ -76,7 +76,7 @@ export function isAllowedAdminEmail(email?: string, uid?: string): boolean {
     .toLowerCase()
     .split(',')
     .map((e) => e.trim());
-  return lower.includes('admin') || configured.includes(lower) || lower === 'admin@gmail.com';
+  return configured.includes(lower) || lower === 'admin@gmail.com';
 }
 
 
