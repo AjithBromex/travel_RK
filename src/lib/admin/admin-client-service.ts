@@ -40,6 +40,7 @@ import {
   getAllUsers,
   createUserProfile,
   updateUserProfile,
+  deleteUserProfile,
 } from '@/services/users.service';
 import {
   getStoredTrips,
@@ -48,6 +49,8 @@ import {
   getStoredExpenses,
   notifyDataChanged,
   unmarkDeleted,
+  markAsDeleted,
+  isDeleted,
 } from '@/lib/storage-sync';
 import type { Trip, Vehicle, Payment, Expense, Reminder, UserProfile } from '@/types';
 
@@ -218,7 +221,9 @@ export async function fetchAdminRows(slug: string): Promise<Record<string, unkno
 
     if (slug === 'users') {
       const list = await getAllUsers().catch(() => []);
-      return list.map(normalizeUser);
+      return list
+        .filter((u) => !isDeleted('users', u.uid || (u as any).id))
+        .map(normalizeUser);
     }
 
     return [];
@@ -404,7 +409,10 @@ export async function deleteAdminRow(slug: string, id: string): Promise<void> {
     await deleteExpense(id);
   } else if (slug === 'reminders') {
     await deleteReminder(id);
+  } else if (slug === 'users') {
+    await deleteUserProfile(id);
   }
+  markAsDeleted(slug, id);
   notifyDataChanged(slug as any);
   notifyDataChanged('all');
 }

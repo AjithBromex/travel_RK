@@ -23,7 +23,7 @@ import {
   saveAdminRow,
   deleteAdminRow,
 } from '@/lib/admin/admin-client-service';
-import { subscribeDataChanged, notifyDataChanged, unmarkDeleted } from '@/lib/storage-sync';
+import { subscribeDataChanged, notifyDataChanged, unmarkDeleted, markAsDeleted } from '@/lib/storage-sync';
 
 const BADGE_STYLES: Record<string, string> = {
   Active: 'bg-emerald-50 text-emerald-700 border border-emerald-200/90',
@@ -201,16 +201,22 @@ export default function Crud({
 
   async function remove(r: Record<string, unknown>) {
     if (!confirm(`Are you sure you want to delete this ${singular}?`)) return;
+    const targetId = String(r.id || (r as any).uid || '');
+    if (!targetId) return;
+
+    // Optimistically remove from state and mark as deleted locally
+    markAsDeleted(slug, targetId);
+    setRows((prev) => prev.filter((x) => String(x.id) !== targetId && String((x as any).uid) !== targetId));
+    notifyDataChanged(slug as any);
+    notifyDataChanged('all');
+
     try {
-      await deleteAdminRow(slug, String(r.id));
-      setRows((prev) => prev.filter((x) => x.id !== r.id));
+      await deleteAdminRow(slug, targetId);
     } catch {
       try {
-        const res = await fetch(`/api/${slug}/${r.id}`, { method: 'DELETE' });
-        if (res.ok) setRows((prev) => prev.filter((x) => x.id !== r.id));
-        else alert('Could not delete record');
-      } catch {
-        alert('Error deleting record.');
+        await fetch(`/api/${slug}/${targetId}`, { method: 'DELETE' });
+      } catch (err) {
+        console.warn(`[Crud] Delete fallback error for ${slug}/${targetId}:`, err);
       }
     }
   }

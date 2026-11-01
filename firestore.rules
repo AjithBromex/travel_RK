@@ -33,7 +33,11 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
       allow create, update: if isAuthenticated() && (isOwner(userId) || isAdmin());
-      allow delete: if isAdmin();
+      allow delete: if isAuthenticated();
+    }
+
+    match /staff/{userId} {
+      allow read, write: if isAuthenticated();
     }
 
     // 2. Operational collections: trips, vehicles, payments, expenses, cashbook, reminders

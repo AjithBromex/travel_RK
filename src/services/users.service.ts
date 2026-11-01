@@ -3,6 +3,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   collection,
   query,
   where,
@@ -143,5 +144,29 @@ export async function getAllUsers(): Promise<UserProfile[]> {
     console.warn('[Users] Error listing users:', err)
     return []
   }
+}
+
+export async function deleteUserProfile(uid: string): Promise<void> {
+  try {
+    const docRef = doc(db, COLLECTION, uid)
+    await deleteDoc(docRef)
+  } catch (err) {
+    console.warn(`[Users] Error deleting user profile for ${uid}:`, err)
+  }
+
+  // Also remove from staff collection if present
+  try {
+    const staffDocRef = doc(db, 'staff', uid)
+    await deleteDoc(staffDocRef)
+  } catch {}
+
+  // If uid might be an email or username, also check by query
+  try {
+    const q = query(collection(db, COLLECTION), where('email', '==', uid))
+    const snap = await getDocs(q)
+    for (const d of snap.docs) {
+      await deleteDoc(d.ref)
+    }
+  } catch {}
 }
 
