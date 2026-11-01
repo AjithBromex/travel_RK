@@ -20,6 +20,7 @@ import {
 import {
   getPayments,
   createPayment,
+  updatePayment,
   deletePayment,
 } from '@/services/payments.service';
 import {
@@ -46,6 +47,7 @@ import {
   getStoredPayments,
   getStoredExpenses,
   notifyDataChanged,
+  unmarkDeleted,
 } from '@/lib/storage-sync';
 import type { Trip, Vehicle, Payment, Expense, Reminder, UserProfile } from '@/types';
 
@@ -234,6 +236,16 @@ export async function saveAdminRow(
   const id = String(form.id || '');
 
   if (slug === 'trips') {
+    const rawStatus = String(form.status || 'scheduled').toLowerCase();
+    const mappedStatus =
+      rawStatus === 'ongoing' || rawStatus === 'in_progress'
+        ? 'in_progress'
+        : rawStatus === 'completed'
+        ? 'completed'
+        : rawStatus === 'cancelled'
+        ? 'cancelled'
+        : 'scheduled';
+
     const tripData: any = {
       customerName: String(form.customer || ''),
       vehicleName: String(form.vehicle || ''),
@@ -242,17 +254,20 @@ export async function saveAdminRow(
       tripDate: String(form.startDate || new Date().toISOString().slice(0, 10)),
       endDate: String(form.endDate || ''),
       totalFare: Number(form.amount || 0),
-      status: String(form.status || 'scheduled').toLowerCase().replace(' ', '_'),
+      status: mappedStatus,
       notes: String(form.note || ''),
     };
 
+    let targetId = id;
     if (isEdit) {
       await updateTrip(id, tripData);
-      return normalizeTrip({ id, ...tripData });
     } else {
-      const newId = await createTrip(tripData);
-      return normalizeTrip({ id: newId, ...tripData });
+      targetId = await createTrip(tripData);
     }
+    unmarkDeleted('trips', targetId);
+    notifyDataChanged('trips');
+    notifyDataChanged('all');
+    return normalizeTrip({ id: targetId, ...tripData });
   }
 
   if (slug === 'vehicles') {
@@ -274,13 +289,16 @@ export async function saveAdminRow(
       serviceDue: String(form.serviceDue || ''),
     };
 
+    let targetId = id;
     if (isEdit) {
       await updateVehicle(id, vehicleData);
-      return normalizeVehicle({ id, ...vehicleData });
     } else {
-      const newId = await createVehicle(vehicleData);
-      return normalizeVehicle({ id: newId, ...vehicleData });
+      targetId = await createVehicle(vehicleData);
     }
+    unmarkDeleted('vehicles', targetId);
+    notifyDataChanged('vehicles');
+    notifyDataChanged('all');
+    return normalizeVehicle({ id: targetId, ...vehicleData });
   }
 
   if (slug === 'payments') {
@@ -295,8 +313,17 @@ export async function saveAdminRow(
       type: 'customer_received',
     };
 
-    const newId = await createPayment(payData);
-    return normalizePayment({ id: newId, ...payData });
+    let targetId = id;
+    if (isEdit) {
+      await updatePayment(id, payData);
+    } else {
+      targetId = await createPayment(payData);
+    }
+    unmarkDeleted('payments', targetId);
+    notifyDataChanged('payments');
+    notifyDataChanged('trips');
+    notifyDataChanged('all');
+    return normalizePayment({ id: targetId, ...payData });
   }
 
   if (slug === 'expenses') {
@@ -309,13 +336,16 @@ export async function saveAdminRow(
       paymentMode: 'cash',
     };
 
+    let targetId = id;
     if (isEdit) {
       await updateExpense(id, expData);
-      return normalizeExpense({ id, ...expData });
     } else {
-      const newId = await createExpense(expData);
-      return normalizeExpense({ id: newId, ...expData });
+      targetId = await createExpense(expData);
     }
+    unmarkDeleted('expenses', targetId);
+    notifyDataChanged('expenses');
+    notifyDataChanged('all');
+    return normalizeExpense({ id: targetId, ...expData });
   }
 
   if (slug === 'reminders') {
@@ -327,13 +357,15 @@ export async function saveAdminRow(
       notes: String(form.note || ''),
     };
 
+    let targetId = id;
     if (isEdit) {
       await updateReminder(id, remData);
-      return normalizeReminder({ id, ...remData });
     } else {
-      const newId = await createReminder(remData);
-      return normalizeReminder({ id: newId, ...remData });
+      targetId = await createReminder(remData);
     }
+    unmarkDeleted('reminders', targetId);
+    notifyDataChanged('all');
+    return normalizeReminder({ id: targetId, ...remData });
   }
 
   if (slug === 'users') {
@@ -347,14 +379,17 @@ export async function saveAdminRow(
 
     if (isEdit) {
       await updateUserProfile(id, userData);
+      notifyDataChanged('all');
       return normalizeUser({ uid: id, ...userData });
     } else {
       const newUid = `usr_${Date.now()}`;
       const profile = await createUserProfile(newUid, userData);
+      notifyDataChanged('all');
       return normalizeUser(profile);
     }
   }
 
+  notifyDataChanged('all');
   return { id, ...form };
 }
 

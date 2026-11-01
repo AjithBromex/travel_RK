@@ -146,11 +146,8 @@ export default function ExpensesClient({
     fetchFreshData();
 
     const unsubscribe = subscribeDataChanged((entity) => {
-      if (entity === "expenses" || entity === "all") {
-        setExpenses(getStoredExpenses());
-      }
-      if (entity === "trips" || entity === "all") {
-        setTripList(getStoredTrips());
+      if (entity === "expenses" || entity === "trips" || entity === "all") {
+        fetchFreshData();
       }
     });
 

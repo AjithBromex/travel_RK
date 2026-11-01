@@ -10,7 +10,6 @@ import {
   Loader2,
   AlertCircle,
   FileText,
-  RefreshCw,
   Download,
   ShieldCheck,
   CheckCircle2,
@@ -24,7 +23,7 @@ import {
   saveAdminRow,
   deleteAdminRow,
 } from '@/lib/admin/admin-client-service';
-import { subscribeDataChanged } from '@/lib/storage-sync';
+import { subscribeDataChanged, notifyDataChanged, unmarkDeleted } from '@/lib/storage-sync';
 
 const BADGE_STYLES: Record<string, string> = {
   Active: 'bg-emerald-50 text-emerald-700 border border-emerald-200/90',
@@ -161,6 +160,10 @@ export default function Crud({
     const edit = Boolean(form.id);
     try {
       const savedRecord = await saveAdminRow(slug, form);
+      const recId = String(savedRecord.id || form.id || '');
+      if (recId) unmarkDeleted(slug, recId);
+      notifyDataChanged(slug as any);
+      notifyDataChanged('all');
       setBusy(false);
       setRows((prev) =>
         edit
@@ -181,6 +184,10 @@ export default function Crud({
           setErr(data.error || clientErr?.message || 'Could not save record');
           return;
         }
+        const recId = String(data.id || form.id || '');
+        if (recId) unmarkDeleted(slug, recId);
+        notifyDataChanged(slug as any);
+        notifyDataChanged('all');
         setRows((prev) =>
           edit ? prev.map((r) => (r.id === data.id ? data : r)) : [data, ...prev]
         );
@@ -279,17 +286,6 @@ export default function Crud({
             >
               <Download className="w-3.5 h-3.5 text-slate-600" />
               <span>Excel</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={loadLiveRows}
-              disabled={syncing}
-              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-60"
-              title="Synchronize data"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${syncing ? 'animate-spin text-blue-600' : ''}`} />
-              <span>Sync</span>
             </button>
 
             <button

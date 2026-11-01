@@ -15,13 +15,11 @@ import {
   Users,
   LogOut,
   ArrowLeft,
-  RefreshCw,
   Search,
   Menu,
   X,
   ChevronDown,
 } from 'lucide-react';
-import { notifyDataChanged } from '@/lib/storage-sync';
 
 const navItems = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -40,7 +38,6 @@ export default function AdminTopbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -70,12 +67,6 @@ export default function AdminTopbar() {
   const isNavActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin';
     return pathname.startsWith(href);
-  };
-
-  const handleManualSync = () => {
-    setSyncing(true);
-    notifyDataChanged('all');
-    setTimeout(() => setSyncing(false), 700);
   };
 
   return (
@@ -144,20 +135,8 @@ export default function AdminTopbar() {
               })}
             </nav>
 
-            {/* 3. RIGHT: ACTIONS & PROFILE PILL */}
+            {/* 3. RIGHT: PROFILE PILL */}
             <div className="flex items-center gap-2 shrink-0">
-              {/* Quick Sync Button */}
-              <button
-                type="button"
-                onClick={handleManualSync}
-                disabled={syncing}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 border border-slate-200/90 text-slate-700 hover:text-blue-600 hover:bg-slate-50 text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-60"
-                title="Synchronize live fleet data"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${syncing ? 'animate-spin text-blue-600' : ''}`} />
-                <span>Sync</span>
-              </button>
-
               {/* Admin Profile Dropdown */}
               <div className="relative" ref={profileRef}>
                 <button

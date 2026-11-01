@@ -132,6 +132,36 @@ export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'up
   return docId
 }
 
+export async function updatePayment(id: string, data: Partial<Payment>): Promise<void> {
+  await waitForAuthReady()
+  const now = new Date().toISOString()
+  const updateData = {
+    ...data,
+    updatedAt: now,
+  }
+
+  try {
+    await updateDoc(doc(db, COLLECTION, id), updateData)
+  } catch (err) {
+    console.warn('[PaymentsService] Firestore update fallback to local:', err)
+  }
+
+  const list = getStoredPayments()
+  const existing = list.find(p => p.id === id)
+  if (existing) {
+    upsertStoredPayment({ ...existing, ...updateData } as Payment)
+  }
+
+  invalidateCache('payments')
+  invalidateCache('trips')
+  invalidateCache('cashbook')
+  invalidateCache('reports')
+  invalidateCache('dashboard')
+  notifyDataChanged('payments')
+  notifyDataChanged('trips')
+  notifyDataChanged('all')
+}
+
 export async function deletePayment(id: string): Promise<void> {
   await waitForAuthReady()
   try {

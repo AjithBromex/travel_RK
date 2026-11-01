@@ -13,6 +13,7 @@ import {
 import { db } from '@/lib/firebase/config'
 import type { Reminder, ReminderStatus } from '@/types'
 import { withCache, invalidateCache } from '@/lib/cache'
+import { notifyDataChanged } from '@/lib/storage-sync'
 
 const COLLECTION = 'reminders'
 
@@ -52,6 +53,7 @@ export async function createReminder(data: Omit<Reminder, 'id' | 'createdAt' | '
     updatedAt: now,
   })
   invalidateCache('reminders')
+  notifyDataChanged('all')
   return docRef.id
 }
 
@@ -61,6 +63,7 @@ export async function updateReminder(id: string, data: Partial<Reminder>): Promi
     updatedAt: new Date().toISOString(),
   })
   invalidateCache('reminders')
+  notifyDataChanged('all')
 }
 
 export async function toggleReminderStatus(id: string, currentStatus: ReminderStatus): Promise<void> {
@@ -73,9 +76,11 @@ export async function toggleReminderStatus(id: string, currentStatus: ReminderSt
   }
   await updateDoc(doc(db, COLLECTION, id), updateData)
   invalidateCache('reminders')
+  notifyDataChanged('all')
 }
 
 export async function deleteReminder(id: string): Promise<void> {
   await deleteDoc(doc(db, COLLECTION, id))
   invalidateCache('reminders')
+  notifyDataChanged('all')
 }
