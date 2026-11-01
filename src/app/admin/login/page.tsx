@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import '../admin.css';
 
 export default function AdminLogin() {
   const router = useRouter();

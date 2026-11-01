@@ -143,6 +143,8 @@ export const MODULES: Record<string, ModuleConfig> = {
 
 export const SLUGS = Object.keys(MODULES);
 
+export const inr = (n: unknown) => '₹' + Number(n || 0).toLocaleString('en-IN');
+
 const genId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 
 export const SEED: Record<string, Record<string, unknown>[]> = {

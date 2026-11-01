@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { listRows } from '@/lib/admin/store';
-import { inr } from '@/components/admin/Crud';
+import { inr } from '@/lib/admin/modules';
 
 export const dynamic = 'force-dynamic';
 

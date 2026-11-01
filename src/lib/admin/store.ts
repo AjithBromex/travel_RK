@@ -7,11 +7,12 @@ declare global {
   var __rkdb: Record<string, Record<string, unknown>[]> | undefined;
 }
 
-if (!globalThis.__rkdb) {
-  globalThis.__rkdb = JSON.parse(JSON.stringify(SEED));
-}
-
-const db = () => globalThis.__rkdb!;
+const db = (): Record<string, Record<string, unknown>[]> => {
+  if (!globalThis.__rkdb) {
+    globalThis.__rkdb = JSON.parse(JSON.stringify(SEED));
+  }
+  return globalThis.__rkdb!;
+};
 
 export const listRows = (slug: string): Record<string, unknown>[] => {
   return db()[slug] || [];
