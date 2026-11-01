@@ -563,19 +563,13 @@ export default function ExpensesClient({
         className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md min-h-[290px] sm:min-h-[320px] lg:min-h-[350px] flex flex-col justify-between p-5 sm:p-7 lg:p-9 pb-24 sm:pb-28 lg:pb-32"
       >
         {/* Background Scenic Alpine Lake Road with Tour Coach and SUV */}
-        <div
-          className="absolute inset-0 z-0 pointer-events-none bg-cover bg-no-repeat"
-          style={{
-            backgroundImage: "url('/images/expenses-scenic-hero.jpg')",
-            backgroundPosition: "center right",
-          }}
-        >
+        <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
             src="/images/expenses-scenic-hero.jpg"
             alt="Alpine Highway with Tour Coach and SUV at Sunrise"
             fill
             priority
-            unoptimized
+            sizes="(max-width: 640px) 100vw, (max-width: 1200px) 100vw, 1500px"
             className="object-cover object-[70%_50%]"
           />
           {/* Subtle directional dark gradient on the left for contrast */}
@@ -1113,8 +1107,8 @@ export default function ExpensesClient({
             </div>
 
             {/* Table Content */}
-            <div className="overflow-x-auto min-h-[360px]">
-              <table className="w-full text-left text-xs">
+            <div className="overflow-x-auto min-h-[360px] -mx-1 sm:mx-0">
+              <table className="w-full min-w-[620px] text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     <th className="py-2.5 px-3">DATE</th>

@@ -691,19 +691,13 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
         className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md min-h-[300px] sm:min-h-[330px] lg:min-h-[360px] flex flex-col justify-between p-5 sm:p-7 lg:p-9 pb-24 sm:pb-28 lg:pb-32"
       >
         {/* Background Image: Panoramic Coastal Highway with Coach Bus, Van & Innova Crysta */}
-        <div
-          className="absolute inset-0 z-0 pointer-events-none bg-cover bg-no-repeat"
-          style={{
-            backgroundImage: "url('/images/vehicles-scenic-hero.jpg')",
-            backgroundPosition: "75% 65%",
-          }}
-        >
+        <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
             src="/images/vehicles-scenic-hero.jpg"
             alt="RK Travel Fleet on Panoramic Highway"
             fill
             priority
-            unoptimized
+            sizes="(max-width: 640px) 100vw, (max-width: 1200px) 100vw, 1500px"
             className="object-cover object-[75%_65%]"
           />
           {/* Subtle directional gradient restricted to the left for text legibility, leaving the 3 fleet vehicles bright */}
@@ -827,7 +821,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
         className="relative z-20 px-1 sm:px-2 -mt-10 sm:-mt-12 lg:-mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4"
       >
         {/* CARD 1: TOTAL VEHICLES */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]">
+        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
           {/* Subtle Wave Sparkline Curve at Bottom */}
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
@@ -870,7 +864,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
         </div>
 
         {/* CARD 2: ACTIVE FLEET */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]">
+        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
@@ -912,7 +906,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
         </div>
 
         {/* CARD 3: SERVICE DUE */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]">
+        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
@@ -954,7 +948,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
         </div>
 
         {/* CARD 4: DOCUMENT EXPIRIES */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-purple-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]">
+        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-purple-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>

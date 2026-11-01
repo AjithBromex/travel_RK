@@ -361,19 +361,13 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
         className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md min-h-[290px] sm:min-h-[320px] lg:min-h-[350px] flex flex-col justify-between p-5 sm:p-7 lg:p-9 pb-24 sm:pb-28 lg:pb-32"
       >
         {/* Background Tour Coach Highway Image */}
-        <div
-          className="absolute inset-0 z-0 pointer-events-none bg-cover bg-no-repeat"
-          style={{
-            backgroundImage: "url('/images/payments-scenic-hero.jpg')",
-            backgroundPosition: "center right",
-          }}
-        >
+        <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
             src="/images/payments-scenic-hero.jpg"
             alt="Scenic Alpine Highway with Luxury Tour Bus"
             fill
             priority
-            unoptimized
+            sizes="(max-width: 640px) 100vw, (max-width: 1200px) 100vw, 1500px"
             className="object-cover object-[70%_50%]"
           />
           {/* Directional text gradient on left for crystal clear readability */}
@@ -515,7 +509,7 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
               </div>
               <div>
                 <span className="text-[10px] sm:text-[11px] font-black tracking-wider text-slate-500 uppercase">
-                  PENDING RECIEVABLES
+                  PENDING RECEIVABLES
                 </span>
                 <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-mono-nums">
                   {formatINR(displayPendingDues)}
@@ -981,8 +975,8 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
               </div>
             ) : viewMode === "list" ? (
               /* ══════════════ LIST VIEW TABLE ══════════════ */
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto -mx-1 sm:mx-0">
+                <table className="w-full min-w-[560px] text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                       <th className="py-2.5 px-3">Date</th>

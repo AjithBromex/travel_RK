@@ -80,19 +80,13 @@ export default function DashboardClient({
         className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md min-h-[290px] sm:min-h-[320px] lg:min-h-[350px] flex flex-col justify-between p-5 sm:p-7 lg:p-9 pb-24 sm:pb-28 lg:pb-32"
       >
         {/* Photographic Panoramic Highway Background with Van & Alpine Lake */}
-        <div
-          className="absolute inset-0 z-0 pointer-events-none bg-cover bg-no-repeat"
-          style={{
-            backgroundImage: "url('/images/dashboard-scenic-hero.jpg')",
-            backgroundPosition: "70% 62%",
-          }}
-        >
+        <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
             src="/images/dashboard-scenic-hero.jpg"
             alt="Scenic Travel Highway with Passenger Van"
             fill
             priority
-            unoptimized
+            sizes="(max-width: 640px) 100vw, (max-width: 1200px) 100vw, 1500px"
             className="object-cover object-[70%_62%]"
           />
           {/* Subtle directional gradient restricted to the left for text legibility, leaving the vehicle on the right 100% bright */}
@@ -174,7 +168,7 @@ export default function DashboardClient({
         {/* CARD 1: TOTAL TRIPS */}
         <Link
           href="/travel/trips"
-          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]"
+          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
@@ -220,7 +214,7 @@ export default function DashboardClient({
         {/* CARD 2: COLLECTION */}
         <Link
           href="/travel/payments"
-          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]"
+          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
@@ -266,7 +260,7 @@ export default function DashboardClient({
         {/* CARD 3: EXPENSES */}
         <Link
           href="/travel/expenses"
-          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]"
+          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
@@ -312,7 +306,7 @@ export default function DashboardClient({
         {/* CARD 4: NET PROFIT */}
         <Link
           href="/travel/reports"
-          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-indigo-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]"
+          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-indigo-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">

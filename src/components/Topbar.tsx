@@ -350,7 +350,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
 
           {/* 2. CENTER: DEDICATED PILL-SHAPED NAVBAR (MATCHING REFERENCE MOCKUP EXACTLY) */}
           <nav
-            className={`hidden xl:flex items-center gap-1 p-1 sm:p-1.5 rounded-full border transition-all duration-200 backdrop-blur-md shrink-0 ${
+            className={`hidden xl:flex items-center gap-1 p-1 2xl:p-1.5 rounded-full border transition-all duration-200 backdrop-blur-md shrink-0 ${
               scrolled
                 ? "bg-white/95 border-slate-300/90 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
                 : "bg-white/95 border-slate-200/90 shadow-[0_4px_20px_rgba(15,23,42,0.06)]"
@@ -363,7 +363,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                   key={link.name}
                   href={link.href}
                   prefetch={true}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap select-none ${
+                  className={`px-2.5 2xl:px-3.5 py-1 2xl:py-1.5 rounded-full text-[11px] 2xl:text-xs font-bold transition-all whitespace-nowrap select-none ${
                     active
                       ? "bg-[#0B1E38] text-white shadow-xs"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-semibold"
@@ -396,7 +396,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                       setSearchFocused(false);
                     }
                   }}
-                  className={`w-36 md:w-44 lg:w-48 xl:w-56 h-8 sm:h-9 pl-8 pr-7 rounded-full text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all ${
+                  className={`w-32 md:w-36 lg:w-40 xl:w-44 2xl:w-56 h-8 sm:h-9 pl-8 pr-7 rounded-full text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all ${
                     searchFocused
                       ? "bg-white border border-blue-500 shadow-md ring-2 ring-blue-500/10"
                       : "bg-white/95 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] hover:border-slate-300"

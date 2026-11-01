@@ -373,7 +373,7 @@ export default function Crud({
           ───────────────────────────────────────────────────────────── */}
       <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-[24px] shadow-[0_4px_20px_rgba(15,23,42,0.04)] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full min-w-[640px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200/80">
                 {cols.map((f) => (

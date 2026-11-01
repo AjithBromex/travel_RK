@@ -345,19 +345,13 @@ export default function ReportsClient({
         className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md min-h-[300px] sm:min-h-[330px] lg:min-h-[360px] flex flex-col justify-between p-5 sm:p-7 lg:p-9 pb-24 sm:pb-28 lg:pb-32"
       >
         {/* Background Tour Coach Highway Image */}
-        <div
-          className="absolute inset-0 z-0 pointer-events-none bg-cover bg-no-repeat"
-          style={{
-            backgroundImage: "url('/images/reports-scenic-hero.jpg')",
-            backgroundPosition: "center right",
-          }}
-        >
+        <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
             src="/images/reports-scenic-hero.jpg"
             alt="Scenic Tour Coach Alpine Highway at Sunset"
             fill
             priority
-            unoptimized
+            sizes="(max-width: 640px) 100vw, (max-width: 1200px) 100vw, 1500px"
             className="object-cover object-[70%_50%]"
           />
           {/* Subtle directional text gradient on left for contrast */}
@@ -882,8 +876,8 @@ export default function ReportsClient({
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto -mx-1 sm:mx-0">
+            <table className="w-full min-w-[560px] text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   <th className="py-2 px-2.5 w-6">#</th>
@@ -951,8 +945,8 @@ export default function ReportsClient({
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto -mx-1 sm:mx-0">
+            <table className="w-full min-w-[560px] text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   <th className="py-2 px-2.5 w-6">#</th>

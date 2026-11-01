@@ -637,19 +637,13 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-md min-h-[300px] sm:min-h-[330px] lg:min-h-[360px] flex flex-col justify-between p-5 sm:p-7 lg:p-9 pb-24 sm:pb-28 lg:pb-32"
       >
         {/* Background Image: Scenic Mountain Highway with Fleet Vehicles */}
-        <div
-          className="absolute inset-0 z-0 pointer-events-none bg-cover bg-no-repeat"
-          style={{
-            backgroundImage: "url('/images/trips-scenic-hero.jpg')",
-            backgroundPosition: "70% 62%",
-          }}
-        >
+        <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
             src="/images/trips-scenic-hero.jpg"
             alt="Scenic Mountain Road Trip Highway with Fleet Vehicles"
             fill
             priority
-            unoptimized
+            sizes="(max-width: 640px) 100vw, (max-width: 1200px) 100vw, 1500px"
             className="object-cover object-[70%_62%]"
           />
           {/* Subtle directional gradient restricted to the left for text legibility, leaving the fleet vehicles and sunset bright on the right */}
@@ -746,7 +740,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         className="relative z-20 px-1 sm:px-2 -mt-10 sm:-mt-12 lg:-mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4"
       >
         {/* CARD 1: TOTAL TRIPS */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]">
+        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
@@ -785,7 +779,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         </div>
 
         {/* CARD 2: TODAY'S SCHEDULE */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]">
+        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
@@ -830,7 +824,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         </div>
 
         {/* CARD 3: COMPLETED TRIPS */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-purple-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]">
+        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-purple-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
@@ -869,7 +863,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         </div>
 
         {/* CARD 4: CUSTOMER BALANCE */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex items-center justify-between relative overflow-hidden h-[86px]">
+        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
           <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
@@ -1539,7 +1533,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                 {filteredTrips.map((trip) => (
                   <div
                     key={trip.id}
-                    className="bg-slate-50/70 hover:bg-white p-3 sm:p-4 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:shadow-xs transition-all flex items-center justify-between gap-3"
+                    className="bg-slate-50/70 hover:bg-white p-3 sm:p-4 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1593,13 +1587,13 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                       })()}
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t border-slate-100 sm:border-0 w-full sm:w-auto">
+                      <div className="text-left sm:text-right">
                         <span className="text-xs font-black font-mono text-slate-900 block">
                           ₹{Number(trip.totalFare).toLocaleString("en-IN")}
                         </span>
                         {Number(trip.customerBalance) > 0 && (
-                          <div className="flex items-center justify-end gap-1 mt-0.5">
+                          <div className="flex items-center sm:justify-end gap-1 mt-0.5">
                             <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded block">
                               Due ₹{Number(trip.customerBalance).toLocaleString("en-IN")}
                             </span>

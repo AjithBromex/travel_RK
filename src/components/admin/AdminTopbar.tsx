@@ -109,7 +109,7 @@ export default function AdminTopbar() {
 
             {/* 2. CENTER: PILL NAVIGATION BAR (DESKTOP) */}
             <nav
-              className={`hidden xl:inline-flex items-center p-1 rounded-full border backdrop-blur-md transition-all ${
+              className={`hidden xl:inline-flex items-center p-1 2xl:p-1.5 rounded-full border backdrop-blur-md transition-all ${
                 scrolled
                   ? 'bg-white/95 border-slate-300/90 shadow-[0_6px_20px_rgba(15,23,42,0.08)]'
                   : 'bg-white/95 border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)]'
@@ -122,13 +122,13 @@ export default function AdminTopbar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 2xl:px-3.5 py-1 2xl:py-1.5 rounded-full text-[11px] 2xl:text-xs font-bold transition-all whitespace-nowrap ${
                       active
                         ? 'bg-[#0D62FE] text-white shadow-sm shadow-blue-500/25'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                     }`}
                   >
-                    <Icon className={`w-3.5 h-3.5 ${active ? 'text-white' : 'text-slate-500'}`} />
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${active ? 'text-white' : 'text-slate-500'}`} />
                     <span>{item.name}</span>
                   </Link>
                 );
