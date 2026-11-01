@@ -17,7 +17,6 @@ import {
   Database,
   KeyRound,
   Server,
-  Sparkles,
 } from 'lucide-react';
 import { auth } from '@/lib/firebase/config';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -36,12 +35,6 @@ export default function AdminLogin() {
       document.cookie = 'rk_admin=; path=/; max-age=0; SameSite=Lax';
     }
   }, []);
-
-  const fillQuickCredentials = () => {
-    setUsername('admin@gmail.com');
-    setPassword('admin123');
-    setErr('');
-  };
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -247,24 +240,6 @@ export default function AdminLogin() {
                 <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">
                   Enter administrative credentials to access controls, modules &amp; records
                 </p>
-              </div>
-
-              {/* Quick Fill Credentials Chip */}
-              <div className="mb-5 p-2.5 rounded-2xl bg-[#EEF4FB] border border-blue-100 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-slate-800 leading-none">Standard Admin Access</p>
-                    <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">admin@gmail.com &bull; admin123</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={fillQuickCredentials}
-                  className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold shrink-0 transition-all cursor-pointer shadow-xs active:scale-[0.96]"
-                >
-                  Auto-fill
-                </button>
               </div>
 
               {/* Error Alert */}
