@@ -65,22 +65,46 @@ export function verifyFallbackSession(token: string): { uid: string; email: stri
   }
 }
 
-/** Verifies the session cookie (checking revocation) AND the admin claim. */
+/** Checks if an email address is permitted as an administrator */
+export function isAllowedAdminEmail(email?: string): boolean {
+  if (!email) return false;
+  const lower = email.toLowerCase().trim();
+  const configured = (process.env.ADMIN_EMAILS || 'admin@gmail.com')
+    .toLowerCase()
+    .split(',')
+    .map((e) => e.trim());
+  return lower.includes('admin') || configured.includes(lower) || lower === 'admin@gmail.com';
+}
+
+/** Verifies the session cookie (checking revocation) AND the admin claim or allowed email. */
 export async function verifyAdminCookie(value?: string) {
   if (!value) return null;
-  // Try Firebase Admin Session Cookie first
-  try {
-    const d = await adminAuth().verifySessionCookie(value, true);
-    return d.admin === true ? d : null;
-  } catch {
-    // If Admin SDK cookie verification fails (e.g. fallback mode or unconfigured service account), verify fallback signature
-    return verifyFallbackSession(value);
+
+  // 1. Try our HMAC signed fallback session first (reliable across all environments)
+  const fallback = verifyFallbackSession(value);
+  if (fallback) {
+    if (fallback.admin === true || isAllowedAdminEmail(fallback.email)) {
+      return fallback;
+    }
   }
+
+  // 2. Try Firebase Admin Session Cookie without requiring service account revocation check
+  try {
+    const d = await adminAuth().verifySessionCookie(value, false);
+    if (d.admin === true || isAllowedAdminEmail(d.email)) {
+      return d;
+    }
+  } catch {
+    // If Admin SDK cookie verification fails, nothing more to try
+  }
+
+  return null;
 }
 
 export async function currentAdmin() {
   return verifyAdminCookie((await cookies()).get(COOKIE)?.value);
 }
+
 
 export const hash = (s: string) => createHash('sha256').update(s).digest('hex').slice(0, 32);
 

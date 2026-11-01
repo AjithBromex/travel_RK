@@ -60,7 +60,7 @@ export default function AdminLoginPage() {
         throw new Error(data.error || 'This account does not have admin privileges.');
       }
 
-      router.replace('/admin');
+      window.location.href = '/admin';
     } catch (err: unknown) {
       await signOut(auth).catch(() => undefined);
       setError((err as Error)?.message || GENERIC);
