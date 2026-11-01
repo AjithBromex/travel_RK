@@ -56,8 +56,20 @@ interface TripsClientProps {
 }
 
 export function getNextReceiptNumber(currentTrips: Trip[]): string {
+  const stored = typeof window !== "undefined" ? getStoredTrips() : [];
+  const map = new Map<string, Trip>();
+  (currentTrips || []).forEach((t) => {
+    if (t && (t.id || t.tripNumber)) map.set(t.id || t.tripNumber, t);
+  });
+  (stored || []).forEach((t) => {
+    if (t && (t.id || t.tripNumber) && !map.has(t.id || t.tripNumber)) {
+      map.set(t.id || t.tripNumber, t);
+    }
+  });
+  const allTrips = Array.from(map.values());
+
   let maxNum = 0;
-  for (const t of currentTrips) {
+  for (const t of allTrips) {
     if (t.receiptNumber) {
       const match = t.receiptNumber.match(/\d+/);
       if (match) {
@@ -68,7 +80,7 @@ export function getNextReceiptNumber(currentTrips: Trip[]): string {
       }
     }
   }
-  const next = maxNum > 0 ? maxNum + 1 : currentTrips.length + 1;
+  const next = Math.max(maxNum, allTrips.length) + 1;
   return `#${String(next).padStart(4, "0")}`;
 }
 
@@ -76,7 +88,7 @@ export function getTripReceiptDisplay(trip: Trip, allTrips: Trip[]): string {
   if (trip.receiptNumber && trip.receiptNumber.trim() !== "") {
     return trip.receiptNumber;
   }
-  const idx = allTrips.findIndex((t) => t.id === trip.id);
+  const idx = allTrips.findIndex((t) => t.id === trip.id || (trip.tripNumber && t.tripNumber === trip.tripNumber));
   const sequentialNum = idx >= 0 ? allTrips.length - idx : 1;
   return `#${String(Math.max(1, sequentialNum)).padStart(4, "0")}`;
 }
@@ -205,6 +217,21 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       });
     }
   }, [vehicleList, form.vehicleId]);
+
+  // Automatically increment receiptNumber to latest sequence when not editing
+  useEffect(() => {
+    if (!editingTripId) {
+      const nextNo = getNextReceiptNumber(trips);
+      setForm((prev) => {
+        if (!prev.receiptNumber || /^#\d+$/.test(prev.receiptNumber)) {
+          if (prev.receiptNumber !== nextNo) {
+            return { ...prev, receiptNumber: nextNo };
+          }
+        }
+        return prev;
+      });
+    }
+  }, [trips, editingTripId]);
 
   // Dynamic Real KPIs
   const totalTripsCount = trips.length;
@@ -963,7 +990,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
-                    RECEIPT NO <span className="text-blue-600 font-mono font-bold">(#0001)</span>
+                    RECEIPT NO
                   </label>
                   <input
                     type="text"
