@@ -61,6 +61,24 @@ function LoginForm() {
     }
   }, [user, callbackUrl, router]);
 
+  useEffect(() => {
+    // Defeat browser password manager aggressive autofill on page load
+    setUserId("");
+    setPassword("");
+    const t1 = setTimeout(() => {
+      setUserId("");
+      setPassword("");
+    }, 100);
+    const t2 = setTimeout(() => {
+      setUserId("");
+      setPassword("");
+    }, 300);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUsername = userId.trim().replace(/@gmail\.com$/i, "").replace(/@.*$/, "").trim().toUpperCase();
@@ -532,7 +550,11 @@ function LoginForm() {
                 </form>
               ) : (
                 /* Main Sign In Form */
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
+                  {/* Invisible dummy inputs to intercept browser password manager auto-population */}
+                  <input type="text" name="fake_user" style={{ display: "none" }} tabIndex={-1} autoComplete="off" />
+                  <input type="password" name="fake_pass" style={{ display: "none" }} tabIndex={-1} autoComplete="off" />
+
                   {/* Username */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -542,6 +564,11 @@ function LoginForm() {
                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                       <input
                         type="text"
+                        name="portal_login_user"
+                        id="portal_login_user"
+                        autoComplete="off"
+                        data-lpignore="true"
+                        data-form-type="other"
                         required
                         placeholder="JAGAN"
                         value={userId}
@@ -580,6 +607,11 @@ function LoginForm() {
                       <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                       <input
                         type={showPassword ? "text" : "password"}
+                        name="portal_login_secret"
+                        id="portal_login_secret"
+                        autoComplete="new-password"
+                        data-lpignore="true"
+                        data-form-type="other"
                         required
                         placeholder="••••••••"
                         value={password}
