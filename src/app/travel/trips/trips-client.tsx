@@ -407,19 +407,19 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   };
 
   const handleDelete = async (trip: Trip) => {
-    const confirmMessage = `Are you sure you want to remove Trip #${trip.tripNumber || trip.id} (${trip.from} -> ${trip.to})?`;
+    const confirmMessage = `Are you sure you want to remove Trip #${trip.tripNumber || trip.id} (${trip.from} -> ${trip.to})? All associated payments, expenses, and records will also be deleted.`;
     if (!window.confirm(confirmMessage)) return;
 
     setDeletingId(trip.id);
     try {
       await deleteTrip(trip.id);
-      const remaining = trips.filter((t) => t.id !== trip.id);
+      const remaining = trips.filter((t) => t.id !== trip.id && t.tripNumber !== trip.tripNumber);
       setTrips(remaining);
       if (editingTripId === trip.id) {
         handleCancelEdit();
       }
       setFeedback({
-        message: `Trip #${trip.tripNumber || trip.id} deleted successfully.`,
+        message: `Trip #${trip.tripNumber || trip.id} and its associated payments and expenses were deleted successfully.`,
         type: "success",
       });
     } catch (err) {

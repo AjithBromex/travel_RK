@@ -277,6 +277,42 @@ export async function updateRow(slug: string, id: string, body: Record<string, u
 
 export async function deleteRow(slug: string, id: string): Promise<boolean> {
   try {
+    if (slug === 'trips') {
+      try {
+        const urlPay = getEndpoint('payments') + (API_KEY ? '&pageSize=300' : '?pageSize=300');
+        const urlExp = getEndpoint('expenses') + (API_KEY ? '&pageSize=300' : '?pageSize=300');
+        const [payRes, expRes] = await Promise.all([
+          fetch(urlPay, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
+          fetch(urlExp, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
+        ]);
+
+        if (payRes && payRes.documents) {
+          for (const d of payRes.documents) {
+            const dec = decodeDoc(d);
+            if (
+              dec.tripId === id ||
+              dec.tripNumber === id ||
+              dec.tripRef === id ||
+              (typeof dec.tripRef === 'string' && dec.tripRef.includes(id))
+            ) {
+              await fetch(getEndpoint('payments', dec.id), { method: 'DELETE' }).catch(() => {});
+            }
+          }
+        }
+
+        if (expRes && expRes.documents) {
+          for (const d of expRes.documents) {
+            const dec = decodeDoc(d);
+            if (dec.tripId === id || dec.tripNumber === id) {
+              await fetch(getEndpoint('expenses', dec.id), { method: 'DELETE' }).catch(() => {});
+            }
+          }
+        }
+      } catch (cascadeErr) {
+        console.warn('[AdminStore] Cascade delete linked records error:', cascadeErr);
+      }
+    }
+
     const res = await fetch(getEndpoint(slug, id), {
       method: 'DELETE',
     });
@@ -285,3 +321,4 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
     return false;
   }
 }
+

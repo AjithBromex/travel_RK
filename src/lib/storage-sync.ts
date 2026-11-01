@@ -179,11 +179,19 @@ export function removeStoredTrip(id: string): void {
 // Payment helpers
 export function getStoredPayments(): Payment[] {
   const list = getLocalData<Payment[]>('payments', [])
-  return list.filter(p => !isDeleted('payments', p.id))
+  return list.filter(
+    p =>
+      !isDeleted('payments', p.id) &&
+      (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
+  )
 }
 
 export function saveStoredPayments(payments: Payment[]): void {
-  const filtered = (payments || []).filter(p => !isDeleted('payments', p.id))
+  const filtered = (payments || []).filter(
+    p =>
+      !isDeleted('payments', p.id) &&
+      (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
+  )
   setLocalData('payments', filtered)
 }
 
@@ -208,11 +216,21 @@ export function removeStoredPayment(id: string): void {
 // Expense helpers
 export function getStoredExpenses(): Expense[] {
   const list = getLocalData<Expense[]>('expenses', [])
-  return list.filter(e => !isDeleted('expenses', e.id))
+  return list.filter(
+    e =>
+      !isDeleted('expenses', e.id) &&
+      (!e.tripId || !isDeleted('trips', e.tripId)) &&
+      (!e.tripNumber || !isDeleted('trips', e.tripNumber))
+  )
 }
 
 export function saveStoredExpenses(expenses: Expense[]): void {
-  const filtered = (expenses || []).filter(e => !isDeleted('expenses', e.id))
+  const filtered = (expenses || []).filter(
+    e =>
+      !isDeleted('expenses', e.id) &&
+      (!e.tripId || !isDeleted('trips', e.tripId)) &&
+      (!e.tripNumber || !isDeleted('trips', e.tripNumber))
+  )
   setLocalData('expenses', filtered)
 }
 
@@ -233,4 +251,5 @@ export function removeStoredExpense(id: string): void {
   const list = getLocalData<Expense[]>('expenses', []).filter(e => e.id !== id)
   setLocalData('expenses', list)
 }
+
 

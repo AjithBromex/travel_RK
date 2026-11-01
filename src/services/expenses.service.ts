@@ -20,6 +20,7 @@ import {
   upsertStoredExpense,
   removeStoredExpense,
   notifyDataChanged,
+  isDeleted,
 } from '@/lib/storage-sync'
 
 const COLLECTION = 'expenses'
@@ -32,12 +33,16 @@ export async function getExpenses(limitCount = 100): Promise<Expense[]> {
     async () => {
       const q = query(collection(db, COLLECTION), orderBy('expenseDate', 'desc'), limit(limitCount))
       const snap = await getDocs(q)
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense))
-      if (list.length > 0) {
-        saveStoredExpenses(list)
-        return list
-      }
-      return cached.length > 0 ? cached : list
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Expense))
+        .filter(
+          e =>
+            !isDeleted('expenses', e.id) &&
+            (!e.tripId || !isDeleted('trips', e.tripId)) &&
+            (!e.tripNumber || !isDeleted('trips', e.tripNumber))
+        )
+      saveStoredExpenses(list)
+      return list.length > 0 ? list : getStoredExpenses()
     },
     { fallback: cached }
   )
@@ -59,6 +64,7 @@ export async function getExpensesByCategory(category: ExpenseCategory): Promise<
 }
 
 export async function getExpensesByTrip(tripId: string): Promise<Expense[]> {
+  if (isDeleted('trips', tripId)) return []
   await waitForAuthReady()
   const cached = getStoredExpenses().filter(e => e.tripId === tripId || (e as any).tripNumber === tripId)
   return withCache(

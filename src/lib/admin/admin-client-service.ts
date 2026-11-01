@@ -197,7 +197,13 @@ export async function fetchAdminRows(slug: string): Promise<Record<string, unkno
       const map = new Map<string, any>();
       cloud.forEach((p) => { if (p?.id) map.set(p.id, p); });
       local.forEach((p) => { if (p?.id && !map.has(p.id)) map.set(p.id, p); });
-      return Array.from(map.values()).map(normalizePayment);
+      return Array.from(map.values())
+        .filter(
+          (p) =>
+            !isDeleted('payments', p.id) &&
+            (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
+        )
+        .map(normalizePayment);
     }
 
     if (slug === 'expenses') {
@@ -206,7 +212,14 @@ export async function fetchAdminRows(slug: string): Promise<Record<string, unkno
       const map = new Map<string, any>();
       cloud.forEach((e) => { if (e?.id) map.set(e.id, e); });
       local.forEach((e) => { if (e?.id && !map.has(e.id)) map.set(e.id, e); });
-      return Array.from(map.values()).map(normalizeExpense);
+      return Array.from(map.values())
+        .filter(
+          (e) =>
+            !isDeleted('expenses', e.id) &&
+            (!e.tripId || !isDeleted('trips', e.tripId)) &&
+            (!e.tripNumber || !isDeleted('trips', e.tripNumber))
+        )
+        .map(normalizeExpense);
     }
 
     if (slug === 'reminders') {

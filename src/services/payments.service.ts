@@ -14,6 +14,7 @@ import {
   getStoredTrips,
   upsertStoredTrip,
   notifyDataChanged,
+  isDeleted,
 } from '@/lib/storage-sync'
 
 const COLLECTION = 'payments'
@@ -27,18 +28,22 @@ export async function getPayments(limitCount = 100): Promise<Payment[]> {
       await waitForAuthReady()
       const q = query(collection(db, COLLECTION), orderBy('paymentDate', 'desc'), limit(limitCount))
       const snap = await getDocs(q)
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Payment))
-      if (list.length > 0) {
-        saveStoredPayments(list)
-        return list
-      }
-      return localFallback.length > 0 ? localFallback : list
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Payment))
+        .filter(
+          p =>
+            !isDeleted('payments', p.id) &&
+            (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
+        )
+      saveStoredPayments(list)
+      return list.length > 0 ? list : getStoredPayments()
     },
     { fallback: localFallback }
   )
 }
 
 export async function getPaymentsByTrip(tripId: string): Promise<Payment[]> {
+  if (isDeleted('trips', tripId)) return []
   const localFallback = getStoredPayments().filter(p => p.tripId === tripId)
 
   return withCache(
