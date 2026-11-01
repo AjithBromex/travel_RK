@@ -33,28 +33,43 @@ export default function AdminLoginPage() {
       });
 
     try {
+      const resolvedEmail = email.trim().includes('@')
+        ? email.trim().toLowerCase()
+        : `${email.trim().toLowerCase()}@gmail.com`;
+
       let idToken: string;
       try {
-        const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const cred = await signInWithEmailAndPassword(auth, resolvedEmail, password);
         idToken = await cred.user.getIdToken();
-      } catch (authErr) {
-        await post({ failedEmail: email.trim() }).catch(() => undefined);
+      } catch (authErr: unknown) {
+        await post({ failedEmail: resolvedEmail }).catch(() => undefined);
+        const code = (authErr as { code?: string })?.code;
+        if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+          throw new Error('Invalid email/username or password.');
+        }
+        if (code === 'auth/too-many-requests') {
+          throw new Error('Too many failed attempts. Access temporarily restricted for security.');
+        }
         throw new Error(GENERIC);
       }
 
       const res = await post({ idToken });
       await signOut(auth); // the httpOnly cookie is the admin session; don't keep client auth
-      if (!res.ok) throw new Error(GENERIC);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'This account does not have admin privileges.');
+      }
 
       router.replace('/admin');
-    } catch (err) {
+    } catch (err: unknown) {
       await signOut(auth).catch(() => undefined);
-      setError(GENERIC);
+      setError((err as Error)?.message || GENERIC);
       setPassword('');
     } finally {
       lock.current = false;
       setBusy(false);
     }
+
   }
 
   return (
