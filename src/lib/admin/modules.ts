@@ -148,30 +148,11 @@ export const inr = (n: unknown) => '₹' + Number(n || 0).toLocaleString('en-IN'
 const genId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 
 export const SEED: Record<string, Record<string, unknown>[]> = {
-  users: [
-    { id: genId(), name: 'Ravi Kumar', phone: '9876543210', email: 'ravi@example.com', role: 'Admin', status: 'Active' },
-    { id: genId(), name: 'Anil Das', phone: '9847012345', email: '', role: 'Driver', status: 'Active' },
-    { id: genId(), name: 'Meera Nair', phone: '9446011122', email: 'meera@example.com', role: 'Customer', status: 'Active' },
-  ],
-  vehicles: [
-    { id: genId(), number: 'KL-55-AB-1234', type: 'Tempo Traveller', model: 'Force Traveller', seats: 14, driver: 'Anil Das', status: 'Available', insuranceExpiry: '2026-12-10', serviceDue: '2026-11-20' },
-    { id: genId(), number: 'KL-10-CD-5678', type: 'Car', model: 'Innova Crysta', seats: 7, driver: '', status: 'On trip', insuranceExpiry: '2027-03-01', serviceDue: '2027-01-15' },
-  ],
-  trips: [
-    { id: genId(), customer: 'Meera Nair', vehicle: 'KL-10-CD-5678', from: 'Tirur', to: 'Munnar', startDate: '2026-11-03', endDate: '2026-11-05', amount: 18500, status: 'Scheduled', note: '' },
-  ],
-  payments: [
-    { id: genId(), customer: 'Meera Nair', tripRef: 'Tirur → Munnar', amount: 5000, date: '2026-10-30', method: 'UPI', status: 'Partial', note: 'Advance' },
-  ],
-  expenses: [
-    { id: genId(), category: 'Fuel', vehicle: 'KL-10-CD-5678', amount: 3200, date: '2026-10-29', note: '' },
-  ],
-  cashbook: [
-    { id: genId(), date: '2026-10-30', type: 'In', description: 'Advance – Meera Nair', amount: 5000, mode: 'UPI' },
-    { id: genId(), date: '2026-10-29', type: 'Out', description: 'Diesel', amount: 3200, mode: 'Cash' },
-  ],
-  reminders: [
-    { id: genId(), title: 'Insurance renewal – KL-55-AB-1234', type: 'Insurance', dueDate: '2026-12-10', status: 'Pending', note: '' },
-    { id: genId(), title: 'Service – KL-55-AB-1234', type: 'Service', dueDate: '2026-11-20', status: 'Pending', note: '' },
-  ],
+  users: [],
+  vehicles: [],
+  trips: [],
+  payments: [],
+  expenses: [],
+  cashbook: [],
+  reminders: [],
 };

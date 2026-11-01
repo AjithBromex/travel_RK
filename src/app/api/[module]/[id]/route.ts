@@ -14,7 +14,7 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
   if (!SLUGS.includes(slug)) return nf('Unknown module');
   try {
     const body = await req.json();
-    const row = updateRow(slug, id, body);
+    const row = await updateRow(slug, id, body);
     return row ? NextResponse.json(row) : nf('Record not found');
   } catch (e: unknown) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
@@ -24,7 +24,6 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
 export async function DELETE(_: NextRequest, { params }: RouteContext) {
   const { module: slug, id } = await params;
   if (!SLUGS.includes(slug)) return nf('Unknown module');
-  return deleteRow(slug, id)
-    ? NextResponse.json({ ok: true })
-    : nf('Record not found');
+  const ok = await deleteRow(slug, id);
+  return ok ? NextResponse.json({ ok: true }) : nf('Record not found');
 }

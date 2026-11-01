@@ -22,13 +22,15 @@ const sum = (
   f: (r: Record<string, unknown>) => boolean = () => true
 ) => rows.filter(f).reduce((s, r) => s + Number(r.amount || 0), 0);
 
-export default function Dashboard() {
-  const trips = listRows('trips');
-  const payments = listRows('payments');
-  const expenses = listRows('expenses');
-  const cash = listRows('cashbook');
-  const reminders = listRows('reminders');
-  const vehicles = listRows('vehicles');
+export default async function Dashboard() {
+  const [trips, payments, expenses, cash, reminders, vehicles] = await Promise.all([
+    listRows('trips'),
+    listRows('payments'),
+    listRows('expenses'),
+    listRows('cashbook'),
+    listRows('reminders'),
+    listRows('vehicles'),
+  ]);
 
   const received = sum(payments, (p) => p.status !== 'Pending');
   const spent = sum(expenses);

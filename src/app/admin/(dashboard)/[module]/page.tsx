@@ -22,7 +22,7 @@ export default async function ModulePage({ params }: PageProps) {
       singular={m.singular}
       fields={m.fields}
       columns={m.columns}
-      initial={listRows(slug)}
+      initial={await listRows(slug)}
     />
   );
 }
