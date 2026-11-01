@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Trusted: custom claim set server-side via scripts/set-admin.mjs (Admin SDK).
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+    function COLS() { return ['trips','vehicles','payments','expenses','cashbook','reminders']; }
+    function signedIn() { return request.auth != null; }
+
+    // Audit trail: admins may read; no client can write. adminLoginAttempts is denied by default.
+    match /auditLogs/{id} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false; // written only by the server (Admin SDK)
+    }
+
+    // Business collections from the README.
+    // TODO(tighten): I could not see your document shapes. Signed-in users keep
+    // access so the live app doesn't break; replace with ownership checks
+    // (e.g. resource.data.ownerId == request.auth.uid) once confirmed.
+    match /{col}/{id} {
+      allow read, write: if isAdmin() && col in COLS();
+
+      allow read, delete: if signedIn() && col in COLS();
+      allow create, update: if signedIn() && col in COLS()
+        && !request.resource.data.keys().hasAny(['reviewedBy','reviewedAt','rejectionReason']);
+    }
+
+    // Everything else: denied by default.
+  }
+}

@@ -37,7 +37,9 @@ const navItems = [
   { name: "Reports", href: "/travel/reports", icon: BarChart3 },
   { name: "Reminders", href: "/travel/reminders", icon: Bell },
   { name: "Settings", href: "/travel/settings", icon: Settings },
+  { name: "Admin Portal", href: "/admin", icon: ShieldCheck },
 ];
+
 
 export default function Sidebar({
   collapsed,
