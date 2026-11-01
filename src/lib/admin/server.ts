@@ -7,7 +7,8 @@ import { cookies } from 'next/headers';
 
 export const COOKIE = '__admin_session';
 export const SESSION_MS = 60 * 60 * 1000; // 1 hour
-export const COLLECTIONS = ['users', 'trips', 'vehicles', 'payments', 'expenses', 'cashbook', 'reminders'] as const;
+export const COLLECTIONS = ['users', 'trips', 'vehicles', 'payments', 'expenses', 'cashbook', 'reminders', 'auditLogs'] as const;
+
 
 
 const SECRET_FALLBACK = process.env.NEXTAUTH_SECRET || process.env.SESSION_SECRET || 'rk-travels-admin-fallback-secret-2026';
