@@ -6,15 +6,8 @@ const ADMIN_SECRET = process.env.ADMIN_SESSION_SECRET || 'rk-travel-admin-secret
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // 1. Admin login page
+  // 1. Admin login page - always render login page so administrator must provide credentials
   if (pathname === '/admin/login') {
-    const isAdmin = req.cookies.get('rk_admin')?.value === ADMIN_SECRET;
-    if (isAdmin) {
-      const url = req.nextUrl.clone();
-      url.pathname = '/admin';
-      url.search = '';
-      return NextResponse.redirect(url);
-    }
     return NextResponse.next();
   }
 
