@@ -635,8 +635,25 @@ function LoginForm() {
                 </form>
               )}
 
+                {/* Admin Portal Link */}
+                <div className="mt-4 pt-4 border-t border-slate-200/80">
+                  <Link
+                    href="/admin/login"
+                    className="w-full h-11 flex items-center justify-between px-3.5 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs font-bold text-slate-800 hover:text-blue-600 transition-all cursor-pointer group shadow-2xs"
+                    title="Switch to Admin Portal"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                        <Shield className="w-3.5 h-3.5" />
+                      </div>
+                      <span>Admin Portal Access</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </Link>
+                </div>
+
                 {/* Enterprise Security Badge */}
-                <div className="mt-5 text-center flex items-center justify-center">
+                <div className="mt-3 text-center flex items-center justify-center">
                   <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/90 border border-slate-200/80 rounded-full shadow-2xs">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span className="text-[10px] sm:text-[11px] font-bold text-slate-700">
