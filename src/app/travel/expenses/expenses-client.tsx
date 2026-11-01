@@ -46,16 +46,16 @@ interface ExpensesClientProps {
 }
 
 const CATEGORY_META: Record<
-  ExpenseCategory,
+  string,
   { label: string; badgeClass: string; barColor: string }
 > = {
   fuel: {
-    label: "Diesel",
+    label: "Fuel",
     badgeClass: "bg-emerald-50 text-emerald-700 border border-emerald-200/60",
     barColor: "bg-emerald-500",
   },
   tolls: {
-    label: "Toll",
+    label: "Tolls",
     badgeClass: "bg-sky-50 text-sky-700 border border-sky-200/60",
     barColor: "bg-sky-500",
   },
@@ -70,7 +70,7 @@ const CATEGORY_META: Record<
     barColor: "bg-rose-500",
   },
   office_expense: {
-    label: "Office",
+    label: "Office Expense",
     badgeClass: "bg-slate-100 text-slate-700 border border-slate-200/60",
     barColor: "bg-slate-500",
   },
@@ -127,6 +127,103 @@ export default function ExpensesClient({
       tripId: queryTripId,
     };
   });
+
+  const [customCategories, setCustomCategories] = useState<{ id: string; label: string }[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("rk_custom_expense_categories");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState("");
+  const [categoryModalError, setCategoryModalError] = useState("");
+
+  const allCustomCategories = useMemo(() => {
+    const map = new Map<string, string>();
+    customCategories.forEach((c) => map.set(c.id, c.label));
+    expenses.forEach((e) => {
+      if (e.category && !CATEGORY_META[e.category] && !map.has(e.category)) {
+        const formatted = e.category
+          .split("_")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" ");
+        map.set(e.category, formatted);
+      }
+    });
+    return Array.from(map.entries()).map(([id, label]) => ({ id, label }));
+  }, [customCategories, expenses]);
+
+  const getCategoryInfo = (cat: string) => {
+    if (CATEGORY_META[cat]) return CATEGORY_META[cat];
+    const found = allCustomCategories.find((c) => c.id === cat);
+    if (found) {
+      return {
+        label: found.label,
+        badgeClass: "bg-teal-50 text-teal-700 border border-teal-200/60",
+        barColor: "bg-teal-500",
+      };
+    }
+    const formatted = cat
+      .split("_")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+    return {
+      label: formatted || cat,
+      badgeClass: "bg-teal-50 text-teal-700 border border-teal-200/60",
+      barColor: "bg-teal-500",
+    };
+  };
+
+  const handleCreateCategory = () => {
+    const trimmed = newCategoryInput.trim();
+    if (!trimmed) {
+      setCategoryModalError("Please enter a category name");
+      return;
+    }
+
+    const id = trimmed.toLowerCase().replace(/\s+/g, "_");
+
+    if (CATEGORY_META[id] || CATEGORY_META[trimmed.toLowerCase()]) {
+      const existingKey = id in CATEGORY_META ? id : trimmed.toLowerCase();
+      setForm((prev) => ({ ...prev, category: existingKey as ExpenseCategory }));
+      setShowAddCategoryModal(false);
+      setNewCategoryInput("");
+      setCategoryModalError("");
+      return;
+    }
+
+    const existing = customCategories.find(
+      (c) => c.id === id || c.label.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (existing) {
+      setForm((prev) => ({ ...prev, category: existing.id as ExpenseCategory }));
+      setShowAddCategoryModal(false);
+      setNewCategoryInput("");
+      setCategoryModalError("");
+      return;
+    }
+
+    const newCat = { id, label: trimmed };
+    const updated = [...customCategories, newCat];
+    setCustomCategories(updated);
+    try {
+      localStorage.setItem("rk_custom_expense_categories", JSON.stringify(updated));
+    } catch {}
+
+    setForm((prev) => ({ ...prev, category: id as ExpenseCategory }));
+    setShowAddCategoryModal(false);
+    setNewCategoryInput("");
+    setCategoryModalError("");
+    setFeedback({
+      message: `Category "${trimmed}" added and selected.`,
+      type: "success",
+    });
+    setTimeout(() => setFeedback(null), 3000);
+  };
 
   // Client-side hydration & real-time sync
   useEffect(() => {
@@ -219,10 +316,10 @@ export default function ExpensesClient({
       .filter((e) => e.category === "food")
       .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const otherAmt = expenses
-      .filter((e) => e.category === "office_expense" || e.category === "other" || e.category === "parking")
+      .filter((e) => e.category !== "fuel" && e.category !== "tolls" && e.category !== "maintenance" && e.category !== "food")
       .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-    const totalSum = dieselAmt + tollAmt + maintAmt + foodAmt + otherAmt;
+    const totalSum = (dieselAmt + tollAmt + maintAmt + foodAmt + otherAmt) || 1;
 
     return {
       diesel: { amount: dieselAmt, pct: ((dieselAmt / totalSum) * 100).toFixed(1) },
@@ -366,7 +463,7 @@ export default function ExpensesClient({
     return expenses.filter((e) => {
       if (search.trim()) {
         const query = search.toLowerCase();
-        const matchesCategory = (CATEGORY_META[e.category]?.label || "").toLowerCase().includes(query);
+        const matchesCategory = getCategoryInfo(e.category).label.toLowerCase().includes(query);
         const matchesNotes = (e.notes || "").toLowerCase().includes(query);
         const matchesDesc = (e.description || "").toLowerCase().includes(query);
         const matchesTrip = (e.tripNumber || e.tripId || "").toLowerCase().includes(query);
@@ -407,7 +504,7 @@ export default function ExpensesClient({
       Date: e.expenseDate,
       "Trip ID": e.tripNumber || e.tripId || "-",
       Route: e.vehicleName || "-",
-      Category: CATEGORY_META[e.category]?.label || e.category,
+      Category: getCategoryInfo(e.category).label,
       Amount: e.amount,
       Mode: e.paymentMode.toUpperCase(),
       Notes: e.notes || e.description || "-",
@@ -433,7 +530,7 @@ export default function ExpensesClient({
       formatDate(e.expenseDate),
       e.tripNumber || e.tripId || "-",
       e.vehicleName || "-",
-      CATEGORY_META[e.category]?.label || e.category,
+      getCategoryInfo(e.category).label,
       formatINR(e.amount),
       e.paymentMode.toUpperCase(),
       e.notes || e.description || "-",
@@ -549,7 +646,7 @@ export default function ExpensesClient({
           </div>
         </div>
 
-        {/* CARD 2: DIESEL EXPENSES */}
+        {/* CARD 2: FUEL EXPENSES */}
         <div className="bg-white rounded-[20px] sm:rounded-[22px] p-4 sm:p-5 border border-slate-200/90 shadow-[0_8px_24px_rgba(15,23,42,0.06)] flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -558,7 +655,7 @@ export default function ExpensesClient({
               </div>
               <div>
                 <span className="text-[10px] sm:text-[11px] font-black tracking-wider text-slate-500 uppercase">
-                  DIESEL EXPENSES
+                  FUEL EXPENSES
                 </span>
                 <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-mono-nums">
                   {formatINR(displayDieselMonth)}
@@ -751,26 +848,56 @@ export default function ExpensesClient({
               {/* Row 2: Category * & Amount (₹) * */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1">
-                    <span>Category</span>
-                    <span className="text-rose-500 font-bold">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                      <span>Category</span>
+                      <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCategoryModal(true)}
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3 stroke-[2.5]" />
+                      <span>Add new category</span>
+                    </button>
+                  </div>
                   <div className="relative">
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                       <Tag className="w-3.5 h-3.5" />
                     </span>
                     <select
                       value={form.category}
-                      onChange={(e) => setForm({ ...form, category: e.target.value as ExpenseCategory })}
+                      onChange={(e) => {
+                        if (e.target.value === "__add_new__") {
+                          setShowAddCategoryModal(true);
+                        } else {
+                          setForm({ ...form, category: e.target.value as ExpenseCategory });
+                        }
+                      }}
                       className="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
                     >
-                      <option value="fuel">Diesel</option>
-                      <option value="tolls">Tolls</option>
-                      <option value="maintenance">Maintenance</option>
-                      <option value="food">Food</option>
-                      <option value="office_expense">Office Expense</option>
-                      <option value="parking">Parking</option>
-                      <option value="other">Other</option>
+                      <optgroup label="Standard Categories">
+                        <option value="fuel">Fuel</option>
+                        <option value="tolls">Tolls</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="food">Food</option>
+                        <option value="office_expense">Office Expense</option>
+                        <option value="parking">Parking</option>
+                        <option value="other">Other</option>
+                      </optgroup>
+                      {allCustomCategories.length > 0 && (
+                        <optgroup label="Custom Categories">
+                          {allCustomCategories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      <option value="__add_new__" className="text-blue-600 font-bold">
+                        + Add new category...
+                      </option>
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
@@ -944,12 +1071,18 @@ export default function ExpensesClient({
                     className="appearance-none pl-6 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
                   >
                     <option value="all">Filter</option>
-                    <option value="fuel">Diesel</option>
-                    <option value="tolls">Toll</option>
+                    <option value="fuel">Fuel</option>
+                    <option value="tolls">Tolls</option>
                     <option value="maintenance">Maintenance</option>
                     <option value="food">Food</option>
-                    <option value="office_expense">Office</option>
+                    <option value="office_expense">Office Expense</option>
+                    <option value="parking">Parking</option>
                     <option value="other">Other</option>
+                    {allCustomCategories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
                   </select>
                   <Filter className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1002,7 +1135,7 @@ export default function ExpensesClient({
                     </tr>
                   ) : (
                     paginatedExpenses.map((e) => {
-                      const catInfo = CATEGORY_META[e.category] || CATEGORY_META.other;
+                      const catInfo = getCategoryInfo(e.category);
                       const modeInfo = MODE_META[e.paymentMode] || MODE_META.other;
 
                       return (
@@ -1161,19 +1294,19 @@ export default function ExpensesClient({
           4. BOTTOM 5 CATEGORY BREAKDOWN SUMMARY CARDS (5-Column Grid)
           ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
-        {/* 1. DIESEL */}
+        {/* 1. FUEL */}
         <div className="bg-white rounded-2xl p-3 sm:p-3.5 border border-slate-200/90 shadow-2xs flex items-center gap-3">
           <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-slate-100">
             <Image
               src="/images/expense-thumb-diesel.png"
-              alt="Diesel"
+              alt="Fuel"
               fill
               unoptimized
               className="object-cover"
             />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-bold text-slate-600 leading-tight">Diesel</p>
+            <p className="text-[11px] font-bold text-slate-600 leading-tight">Fuel</p>
             <p className="text-sm sm:text-base font-black text-slate-900 font-mono-nums leading-tight mt-0.5">
               {formatINR(categoryBreakdown.diesel.amount)}
             </p>
@@ -1301,6 +1434,121 @@ export default function ExpensesClient({
           </div>
         </div>
       </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          5. ADD NEW CATEGORY MODAL
+          ───────────────────────────────────────────────────────────── */}
+      {showAddCategoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden transform transition-all scale-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Tag className="w-4 h-4 stroke-[2.2]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Add New Category</h3>
+                  <p className="text-[11px] text-slate-500">Create a custom expense category</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddCategoryModal(false);
+                  setNewCategoryInput("");
+                  setCategoryModalError("");
+                }}
+                className="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Category Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newCategoryInput}
+                  onChange={(e) => {
+                    setNewCategoryInput(e.target.value);
+                    if (categoryModalError) setCategoryModalError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCreateCategory();
+                    }
+                  }}
+                  autoFocus
+                  placeholder="e.g. Fastag, Driver Allowance, Permit"
+                  className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all placeholder:text-slate-400"
+                />
+                {categoryModalError && (
+                  <p className="text-[11px] text-rose-600 font-semibold mt-1">
+                    {categoryModalError}
+                  </p>
+                )}
+              </div>
+
+              {/* Quick suggestions */}
+              <div>
+                <span className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase mb-2">
+                  Quick Suggestions
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    "Fastag / Recharge",
+                    "Driver Allowance",
+                    "Permit & Taxes",
+                    "Tyre / Spare Parts",
+                    "AdBlue / DEF",
+                    "Vehicle Wash",
+                    "Police / RTO",
+                  ].map((sugg) => (
+                    <button
+                      key={sugg}
+                      type="button"
+                      onClick={() => setNewCategoryInput(sugg)}
+                      className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-blue-200"
+                    >
+                      + {sugg}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-slate-100 bg-slate-50/50">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddCategoryModal(false);
+                  setNewCategoryInput("");
+                  setCategoryModalError("");
+                }}
+                className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateCategory}
+                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Add Category</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

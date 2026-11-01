@@ -72,7 +72,16 @@ export interface Payment {
 }
 
 // ─── Expense ───
-export type ExpenseCategory = 'fuel' | 'food' | 'maintenance' | 'tolls' | 'parking' | 'office_expense' | 'other'
+export type ExpenseCategory =
+  | 'fuel'
+  | 'food'
+  | 'maintenance'
+  | 'tolls'
+  | 'parking'
+  | 'office_expense'
+  | 'other'
+  | (string & {})
+
 
 export interface Expense {
   id: string
