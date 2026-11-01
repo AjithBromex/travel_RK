@@ -34,6 +34,7 @@ import {
   exportToPDF,
   formatINR,
   formatDate,
+  capitalizeWords,
 } from "@/lib/utils";
 import type { Trip, Vehicle, TripStatus } from "@/types";
 import {
@@ -1018,8 +1019,9 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     type="text"
                     required
                     placeholder="e.g. Ramesh Patil"
+                    autoCapitalize="words"
                     value={form.customerName}
-                    onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+                    onChange={(e) => setForm({ ...form, customerName: capitalizeWords(e.target.value) })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
                   />
                 </div>
@@ -1048,8 +1050,9 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     type="text"
                     required
                     placeholder="e.g. Pune Central"
+                    autoCapitalize="words"
                     value={form.from}
-                    onChange={(e) => setForm({ ...form, from: e.target.value })}
+                    onChange={(e) => setForm({ ...form, from: capitalizeWords(e.target.value) })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
                   />
                 </div>
@@ -1062,8 +1065,9 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     type="text"
                     required
                     placeholder="e.g. Mumbai Airport T2"
+                    autoCapitalize="words"
                     value={form.to}
-                    onChange={(e) => setForm({ ...form, to: e.target.value })}
+                    onChange={(e) => setForm({ ...form, to: capitalizeWords(e.target.value) })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
                   />
                 </div>
@@ -1130,8 +1134,9 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                   <input
                     type="text"
                     placeholder="e.g. Rajesh Kumar"
+                    autoCapitalize="words"
                     value={form.driverName}
-                    onChange={(e) => setForm({ ...form, driverName: e.target.value })}
+                    onChange={(e) => setForm({ ...form, driverName: capitalizeWords(e.target.value) })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
                   />
                 </div>
@@ -1684,6 +1689,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                   type="text"
                   required
                   placeholder="e.g. MH 12 AB 1234 or KL 55 AB 2525"
+                  autoCapitalize="characters"
                   value={quickVehicleForm.registrationNumber}
                   onChange={(e) =>
                     setQuickVehicleForm({ ...quickVehicleForm, registrationNumber: e.target.value.toUpperCase() })
@@ -1699,9 +1705,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                 <input
                   type="text"
                   placeholder="e.g. Force Traveller, Innova Crysta"
+                  autoCapitalize="words"
                   value={quickVehicleForm.name}
                   onChange={(e) =>
-                    setQuickVehicleForm({ ...quickVehicleForm, name: e.target.value })
+                    setQuickVehicleForm({ ...quickVehicleForm, name: capitalizeWords(e.target.value) })
                   }
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white"
                 />

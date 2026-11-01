@@ -28,6 +28,7 @@ import {
   X,
   Filter,
 } from "lucide-react";
+import { capitalizeWords } from "@/lib/utils";
 import type { Reminder, ReminderCategory, ReminderStatus, Trip, Vehicle } from "@/types";
 import {
   createReminder,
@@ -976,8 +977,9 @@ export default function RemindersClient({
                   type="text"
                   required
                   placeholder="e.g. Oil & Filter Service..."
+                  autoCapitalize="words"
                   value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  onChange={(e) => setForm({ ...form, title: capitalizeWords(e.target.value) })}
                   className="w-full h-10 px-3 rounded-xl bg-slate-50 border border-slate-200/90 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>

@@ -52,6 +52,12 @@ export function isUpcoming(dateStr: string, daysAhead = 7): boolean {
   return diffDays >= 0 && diffDays <= daysAhead
 }
 
+// ─── Text & Name Formatting ───
+export function capitalizeWords(str: string): string {
+  if (!str) return str;
+  return str.replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
+}
+
 // ─── Trip Calculations ───
 export function calcExtraKm(startKm: number, endKm: number, includedKm: number): number {
   const distance = Math.max(0, endKm - startKm)

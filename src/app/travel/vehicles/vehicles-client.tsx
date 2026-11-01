@@ -40,6 +40,7 @@ import {
   isDocumentExpired,
   exportToCSV,
   exportToPDF,
+  capitalizeWords,
 } from "@/lib/utils";
 import type { Vehicle } from "@/types";
 import {
@@ -1181,8 +1182,9 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                       type="text"
                       required
                       placeholder="e.g. KL 55 AE 4725"
+                      autoCapitalize="characters"
                       value={form.registrationNumber}
-                      onChange={(e) => setForm({ ...form, registrationNumber: e.target.value })}
+                      onChange={(e) => setForm({ ...form, registrationNumber: e.target.value.toUpperCase() })}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 uppercase outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400 placeholder:normal-case placeholder:font-sans placeholder:font-normal"
                     />
                   </div>
@@ -1215,8 +1217,9 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                           type="text"
                           autoFocus
                           placeholder="Type name (e.g. Scania Bus, Thar)"
+                          autoCapitalize="words"
                           value={newTypeInput}
-                          onChange={(e) => setNewTypeInput(e.target.value)}
+                          onChange={(e) => setNewTypeInput(capitalizeWords(e.target.value))}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
                               e.preventDefault();
@@ -1292,8 +1295,9 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                     type="text"
                     required
                     placeholder="e.g. Force Traveller, Innova Crysta"
+                    autoCapitalize="words"
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    onChange={(e) => setForm({ ...form, name: capitalizeWords(e.target.value) })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
                   />
                 </div>

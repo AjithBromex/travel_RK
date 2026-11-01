@@ -23,6 +23,7 @@ import {
   QrCode,
   Sliders,
 } from "lucide-react";
+import { capitalizeWords } from "@/lib/utils";
 import type { Trip, Vehicle, Payment, Expense, Reminder } from "@/types";
 
 interface SettingsClientProps {
@@ -662,9 +663,10 @@ export default function SettingsClient({
                   <input
                     type="text"
                     required
+                    autoCapitalize="words"
                     value={modalForm.agencyName}
                     onChange={(e) =>
-                      setModalForm({ ...modalForm, agencyName: e.target.value })
+                      setModalForm({ ...modalForm, agencyName: capitalizeWords(e.target.value) })
                     }
                     className="w-full h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200/90 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
@@ -692,9 +694,10 @@ export default function SettingsClient({
                   <input
                     type="text"
                     required
+                    autoCapitalize="words"
                     value={modalForm.address}
                     onChange={(e) =>
-                      setModalForm({ ...modalForm, address: e.target.value })
+                      setModalForm({ ...modalForm, address: capitalizeWords(e.target.value) })
                     }
                     className="w-full h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200/90 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
