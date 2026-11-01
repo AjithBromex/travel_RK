@@ -645,35 +645,33 @@ function LoginForm() {
                 </div>
               </div>
 
-              {/* Direct Admin Portal Access Button */}
+              {/* Simple Clean Admin Portal Access Button (Matching UI/UX) */}
               <div className="space-y-3">
                 <Link
                   href="/admin/login"
-                  className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white border border-slate-700/80 hover:border-indigo-400/60 shadow-md hover:shadow-indigo-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all group"
+                  className="w-full h-12 flex items-center justify-between px-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-bold text-slate-800 hover:text-blue-600 transition-all cursor-pointer group shadow-2xs"
                   title="Switch to Admin Portal"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center border border-indigo-400/30 group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
+                    <div className="w-7 h-7 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                       <Shield className="w-4 h-4" />
                     </div>
-                    <div className="text-left leading-tight">
-                      <p className="text-xs font-bold text-white tracking-tight">Admin Portal Access</p>
-                      <p className="text-[10px] text-slate-300">System governance &amp; collection records</p>
-                    </div>
+                    <span>Admin Portal Access</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
                 </Link>
 
                 {/* Enterprise Security Badge */}
                 <div className="text-center flex items-center justify-center">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/90 border border-slate-200/80 rounded-full shadow-2xs">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/90 border border-slate-200/80 rounded-full shadow-2xs">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-600">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-700">
                       Enterprise Fleet &amp; Operations Access Only
                     </span>
                   </div>
                 </div>
               </div>
+
 
             </div>
           </div>
