@@ -34,6 +34,21 @@ export default function AdminLogin() {
     if (typeof document !== 'undefined') {
       document.cookie = 'rk_admin=; path=/; max-age=0; SameSite=Lax';
     }
+    setUsername('');
+    setPassword('');
+    // Defeat aggressive password manager auto-population on mount
+    const t1 = setTimeout(() => {
+      setUsername('');
+      setPassword('');
+    }, 100);
+    const t2 = setTimeout(() => {
+      setUsername('');
+      setPassword('');
+    }, 300);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
 
   async function submit(e: React.FormEvent) {
@@ -254,7 +269,11 @@ export default function AdminLogin() {
               )}
 
               {/* Sign In Form */}
-              <form onSubmit={submit} className="space-y-4">
+              <form onSubmit={submit} className="space-y-4" autoComplete="off">
+                {/* Hidden dummy fields to intercept browser/manager autofill heuristics */}
+                <input type="text" name="fake_admin_identity" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+                <input type="password" name="fake_admin_secret" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Admin Email or Username
@@ -263,11 +282,15 @@ export default function AdminLogin() {
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none" />
                     <input
                       type="text"
-                      autoComplete="username"
+                      name="admin_login_id"
+                      id="admin_login_id"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-form-type="other"
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="admin@gmail.com"
+                      placeholder="Enter admin email or username"
                       className="w-full h-11 pl-10 pr-3.5 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                     />
                   </div>
@@ -281,11 +304,15 @@ export default function AdminLogin() {
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none" />
                     <input
                       type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
+                      name="admin_secret_key"
+                      id="admin_secret_key"
+                      autoComplete="new-password"
+                      data-lpignore="true"
+                      data-form-type="other"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••••••"
+                      placeholder="Enter password"
                       className="w-full h-11 pl-10 pr-10 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                     />
                     <button
