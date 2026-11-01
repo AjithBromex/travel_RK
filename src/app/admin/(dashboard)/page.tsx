@@ -18,9 +18,10 @@ import {
   Receipt,
   BookOpen,
   Bell,
+  Users,
 } from 'lucide-react';
 
-const COLS = ['trips', 'vehicles', 'payments', 'expenses', 'cashbook', 'reminders'] as const;
+const COLS = ['users', 'trips', 'vehicles', 'payments', 'expenses', 'cashbook', 'reminders'] as const;
 type Rec = { id: string; [k: string]: unknown };
 
 const s = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v));
@@ -31,6 +32,7 @@ const when = (r: Rec) => {
 const ADMIN_ONLY = ['id', 'reviewedBy', 'reviewedAt', 'rejectionReason', 'createdBy', 'createdAt', 'updatedAt', 'updatedBy'];
 
 const COL_USER_LINKS: Record<(typeof COLS)[number], { path: string; label: string; icon: any }> = {
+  users: { path: '/travel/settings', label: 'View Staff & Roles', icon: Users },
   trips: { path: '/travel/trips', label: 'View in Trips', icon: Bus },
   vehicles: { path: '/travel/vehicles', label: 'View in Vehicles', icon: Car },
   payments: { path: '/travel/payments', label: 'View in Payments', icon: Wallet },
@@ -38,6 +40,7 @@ const COL_USER_LINKS: Record<(typeof COLS)[number], { path: string; label: strin
   cashbook: { path: '/travel/cashbook', label: 'View in Cash Book', icon: BookOpen },
   reminders: { path: '/travel/reminders', label: 'View in Reminders', icon: Bell },
 };
+
 
 export default function AdminDashboard() {
   const [col, setCol] = useState<(typeof COLS)[number]>('trips');
