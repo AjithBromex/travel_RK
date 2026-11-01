@@ -388,7 +388,7 @@ function LoginForm() {
                       <input
                         type="text"
                         required
-                        placeholder="JAGAN"
+                        placeholder="Enter username"
                         value={resetEmail}
                         onChange={(e) => {
                           const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "").toUpperCase();
@@ -458,7 +458,7 @@ function LoginForm() {
                       <input
                         type="text"
                         required
-                        placeholder="JAGAN"
+                        placeholder="Enter username"
                         value={userId}
                         onChange={(e) => {
                           const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "").toUpperCase();
@@ -570,7 +570,7 @@ function LoginForm() {
                         data-lpignore="true"
                         data-form-type="other"
                         required
-                        placeholder="JAGAN"
+                        placeholder="Enter username"
                         value={userId}
                         onChange={(e) => {
                           const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "").toUpperCase();
