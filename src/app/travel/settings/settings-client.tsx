@@ -96,21 +96,26 @@ export default function SettingsClient({
   // Export Data JSON snapshot
   const handleExportData = () => {
     try {
+      const activeTrips = trips?.length ? trips : (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("rk_trips") || "[]") : []);
+      const activeVehicles = vehicles?.length ? vehicles : (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("rk_vehicles") || "[]") : []);
+      const activePayments = payments?.length ? payments : (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("rk_payments") || "[]") : []);
+      const activeExpenses = expenses?.length ? expenses : (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("rk_expenses") || "[]") : []);
+
       const backupPayload = {
         agency: agencyForm.agencyName,
         exportedAt: new Date().toISOString(),
         counts: {
-          trips: trips?.length || 0,
-          vehicles: vehicles?.length || 0,
-          payments: payments?.length || 0,
-          expenses: expenses?.length || 0,
+          trips: activeTrips.length,
+          vehicles: activeVehicles.length,
+          payments: activePayments.length,
+          expenses: activeExpenses.length,
           reminders: reminders?.length || 0,
         },
         collections: {
-          trips,
-          vehicles,
-          payments,
-          expenses,
+          trips: activeTrips,
+          vehicles: activeVehicles,
+          payments: activePayments,
+          expenses: activeExpenses,
           reminders,
         },
       };

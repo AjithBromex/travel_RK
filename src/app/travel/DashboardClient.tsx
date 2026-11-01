@@ -25,6 +25,7 @@ import {
 import { formatINR, formatDateShort, formatDate } from "@/lib/utils";
 import type { DashboardMetrics, Trip, Reminder } from "@/types";
 import { getDashboardData } from "@/services/dashboard.service";
+import { subscribeDataChanged } from "@/lib/storage-sync";
 
 interface DashboardClientProps {
   initialMetrics: DashboardMetrics;
@@ -42,17 +43,27 @@ export default function DashboardClient({
   const [reminders, setReminders] = useState<Reminder[]>(initialReminders || []);
 
   useEffect(() => {
-    getDashboardData()
-      .then((data) => {
-        if (data && data.metrics) {
-          setMetrics(data.metrics);
-          if (data.recentTrips) setTrips(data.recentTrips);
-          if (data.reminders) setReminders(data.reminders);
-        }
-      })
-      .catch((err) => {
-        console.warn("[Dashboard] Client data hydration error:", err);
-      });
+    const refreshDashboard = () => {
+      getDashboardData()
+        .then((data) => {
+          if (data && data.metrics) {
+            setMetrics(data.metrics);
+            if (data.recentTrips) setTrips(data.recentTrips);
+            if (data.reminders) setReminders(data.reminders);
+          }
+        })
+        .catch((err) => {
+          console.warn("[Dashboard] Client data hydration error:", err);
+        });
+    };
+
+    refreshDashboard();
+
+    const unsubscribe = subscribeDataChanged(() => {
+      refreshDashboard();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   return (
@@ -705,22 +716,31 @@ export default function DashboardClient({
                 {/* Fleet Health Alert Banner */}
                 <div className="pt-0.5">
                   {(metrics.vehicleServiceDue || 0) > 0 ? (
-                    <div className="flex items-start gap-2 text-xs text-rose-700 bg-rose-50/80 p-2.5 rounded-xl border border-rose-200/70">
-                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                    <Link
+                      href="/travel/vehicles"
+                      className="flex items-start gap-2 text-xs text-rose-700 bg-rose-50/80 hover:bg-rose-100/80 p-2.5 rounded-xl border border-rose-200/70 transition-colors cursor-pointer group"
+                    >
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5 group-hover:scale-110 transition-transform" />
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-[11px]">Maintenance Attention</p>
+                        <p className="font-bold text-[11px] flex items-center justify-between">
+                          <span>Maintenance Attention</span>
+                          <span className="text-[10px] text-rose-600 font-normal underline">View Fleet →</span>
+                        </p>
                         <p className="text-[10px] text-rose-600 truncate">
                           {metrics.vehicleServiceDue} vehicle(s) require service.
                         </p>
                       </div>
-                    </div>
+                    </Link>
                   ) : (
-                    <div className="flex items-center gap-2 text-xs text-[#065F46] bg-[#ECFDF5] p-2.5 rounded-xl border border-[#A7F3D0]">
+                    <Link
+                      href="/travel/vehicles"
+                      className="flex items-center gap-2 text-xs text-[#065F46] bg-[#ECFDF5] hover:bg-emerald-100/60 p-2.5 rounded-xl border border-[#A7F3D0] transition-colors cursor-pointer"
+                    >
                       <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0" />
                       <span className="font-semibold text-[11px] truncate">
                         All vehicles up to date on maintenance
                       </span>
-                    </div>
+                    </Link>
                   )}
                 </div>
               </div>
@@ -728,7 +748,7 @@ export default function DashboardClient({
 
             {/* Bottom Full-Width Soft Gray Bar */}
             <Link
-              href="/travel/payments"
+              href="/travel/cashbook"
               className="w-full py-2.5 rounded-xl bg-[#F0F4F8] hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 transition-colors mt-auto"
             >
               <span>Manage Cash &amp; Ledger</span>

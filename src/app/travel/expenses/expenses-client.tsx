@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import {
@@ -26,10 +28,17 @@ import {
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Expense, ExpenseCategory, PaymentMode, Trip } from "@/types";
 import {
+  getExpenses,
   createExpense,
   updateExpense,
   deleteExpense,
 } from "@/services/expenses.service";
+import { getTrips } from "@/services/trips.service";
+import {
+  getStoredExpenses,
+  getStoredTrips,
+  subscribeDataChanged,
+} from "@/lib/storage-sync";
 
 interface ExpensesClientProps {
   initialExpenses: Expense[];
@@ -101,11 +110,61 @@ export default function ExpensesClient({
   initialExpenses,
   trips,
 }: ExpensesClientProps) {
+  const searchParams = useSearchParams();
   const [expenses, setExpenses] = useState<Expense[]>(() => {
-    return initialExpenses || [];
+    if (initialExpenses && initialExpenses.length > 0) return initialExpenses;
+    return getStoredExpenses();
+  });
+  const [tripList, setTripList] = useState<Trip[]>(() => {
+    if (trips && trips.length > 0) return trips;
+    return getStoredTrips();
   });
 
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(() => {
+    const queryTripId = searchParams?.get("tripId") || "";
+    return {
+      ...EMPTY_FORM,
+      tripId: queryTripId,
+    };
+  });
+
+  // Client-side hydration & real-time sync
+  useEffect(() => {
+    const fetchFreshData = async () => {
+      try {
+        const [freshExpenses, freshTrips] = await Promise.all([
+          getExpenses(100),
+          getTrips(100),
+        ]);
+        if (freshExpenses && freshExpenses.length > 0) setExpenses(freshExpenses);
+        if (freshTrips && freshTrips.length > 0) setTripList(freshTrips);
+      } catch (err) {
+        console.warn("[ExpensesClient] Background fetch failed:", err);
+      }
+    };
+
+    fetchFreshData();
+
+    const unsubscribe = subscribeDataChanged((entity) => {
+      if (entity === "expenses" || entity === "all") {
+        setExpenses(getStoredExpenses());
+      }
+      if (entity === "trips" || entity === "all") {
+        setTripList(getStoredTrips());
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Update tripId if query param changes
+  useEffect(() => {
+    const paramTripId = searchParams?.get("tripId");
+    if (paramTripId) {
+      setForm((prev) => ({ ...prev, tripId: paramTripId }));
+    }
+  }, [searchParams]);
+
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -250,7 +309,7 @@ export default function ExpensesClient({
     setFeedback(null);
 
     try {
-      const selectedTrip = trips.find((t) => t.id === form.tripId || t.tripNumber === form.tripId);
+      const selectedTrip = tripList.find((t) => t.id === form.tripId || t.tripNumber === form.tripId);
       const descText = form.billRef.trim()
         ? `Bill #${form.billRef.replace(/^Bill\s*#?/i, "").trim()}`
         : form.notes.trim() || `${CATEGORY_META[form.category].label} Expense`;
@@ -263,7 +322,7 @@ export default function ExpensesClient({
         amount: parsedAmount,
         paymentMode: form.paymentMode,
         description: descText,
-        vehicleName: selectedTrip ? `${selectedTrip.from || "Origin"} → ${selectedTrip.to || "Destination"}` : "",
+        vehicleName: selectedTrip ? `${selectedTrip.vehicleName ? selectedTrip.vehicleName + ' • ' : ''}${selectedTrip.from || "Origin"} → ${selectedTrip.to || "Destination"}` : "",
         notes: form.notes.trim(),
       };
 
@@ -661,10 +720,10 @@ export default function ExpensesClient({
                       onChange={(e) => setForm({ ...form, tripId: e.target.value })}
                       className="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
                     >
-                      <option value="">Select trip</option>
-                      {trips.map((t) => (
+                      <option value="">Select trip (General Expense)</option>
+                      {tripList.map((t) => (
                         <option key={t.id} value={t.id}>
-                          Trip #{t.tripNumber || t.id.slice(0, 5)} • {t.from || "Start"} → {t.to || "End"}
+                          Trip #{t.tripNumber || t.id.slice(0, 5)} • {t.from || "Start"} → {t.to || "End"} {t.vehicleName ? `(${t.vehicleName})` : ""}
                         </option>
                       ))}
                     </select>
@@ -961,9 +1020,12 @@ export default function ExpensesClient({
                                   <Bus className="w-3.5 h-3.5" />
                                 </div>
                                 <div>
-                                  <p className="font-bold text-slate-900 leading-tight">
+                                  <Link
+                                    href={`/travel/trips?search=${encodeURIComponent(e.tripNumber || e.tripId || "")}`}
+                                    className="font-bold text-blue-600 hover:text-blue-800 hover:underline leading-tight block"
+                                  >
                                     Trip #{e.tripNumber || e.tripId}
-                                  </p>
+                                  </Link>
                                   {e.vehicleName && (
                                     <p className="text-[10px] text-slate-400 leading-tight">
                                       {e.vehicleName}

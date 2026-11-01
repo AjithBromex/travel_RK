@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import {
@@ -31,6 +32,7 @@ import {
   MoreVertical,
   Navigation,
   FileText,
+  Bus,
 } from "lucide-react";
 import {
   normalizeRegNumber,
@@ -46,6 +48,10 @@ import {
   updateVehicle,
   deleteVehicle,
 } from "@/services/vehicles.service";
+import {
+  getStoredVehicles,
+  subscribeDataChanged,
+} from "@/lib/storage-sync";
 
 interface VehiclesClientProps {
   initialVehicles: Vehicle[];
@@ -115,7 +121,8 @@ const EMPTY_FORM = {
 
 export default function VehiclesClient({ initialVehicles }: VehiclesClientProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
-    return initialVehicles || [];
+    if (initialVehicles && initialVehicles.length > 0) return initialVehicles;
+    return getStoredVehicles();
   });
 
   const [search, setSearch] = useState("");
@@ -131,7 +138,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
   const formRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  const fetchVehiclesData = () => {
     getVehicles(100)
       .then((data) => {
         if (data && data.length > 0) {
@@ -141,6 +148,19 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
       .catch((err) => {
         console.warn("[Vehicles] Client data hydration error:", err);
       });
+  };
+
+  useEffect(() => {
+    fetchVehiclesData();
+
+    // Subscribe to cross-page updates
+    const unsubscribe = subscribeDataChanged((entity) => {
+      if (entity === "vehicles" || entity === "all") {
+        fetchVehiclesData();
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
   const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
   const [photoProcessing, setPhotoProcessing] = useState(false);
@@ -1655,17 +1675,28 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                           </p>
                         </div>
 
-                        {/* Row 3: Meta Chips (Seats & Fuel) */}
-                        <div className="flex items-center gap-3 pt-2 border-t border-slate-100 text-[10px] text-slate-500 font-medium">
-                          <div className="flex items-center gap-1.5">
-                            <Users className="w-3 h-3 text-slate-400" />
-                            <span>{seats}</span>
+                        {/* Row 3: Meta Chips (Seats & Fuel) & Book Trip Action */}
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px] text-slate-500 font-medium">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-3 h-3 text-slate-400" />
+                              <span>{seats}</span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <Fuel className="w-3 h-3 text-slate-400" />
+                              <span>{fuel}</span>
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
-                            <Fuel className="w-3 h-3 text-slate-400" />
-                            <span>{fuel}</span>
-                          </div>
+                          <Link
+                            href={`/travel/trips?vehicleId=${vehicle.id}`}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 px-2 py-0.5 rounded-lg transition-colors"
+                            title="Dispatch trip with this vehicle"
+                          >
+                            <Bus className="w-2.5 h-2.5" />
+                            <span>Book Trip</span>
+                          </Link>
                         </div>
                       </div>
                     </div>
@@ -1721,6 +1752,14 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
+                        <Link
+                          href={`/travel/trips?vehicleId=${vehicle.id}`}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 px-2 py-0.5 rounded-lg transition-colors mr-1"
+                          title="Dispatch trip with this vehicle"
+                        >
+                          <Bus className="w-2.5 h-2.5" />
+                          <span>Book Trip</span>
+                        </Link>
                         <button
                           type="button"
                           onClick={() => handleEdit(vehicle)}

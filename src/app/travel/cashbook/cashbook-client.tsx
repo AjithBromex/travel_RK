@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import {
@@ -35,6 +36,9 @@ import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { CashBookEntry, PaymentMode, Trip, ExpenseCategory } from "@/types";
 import { createPayment } from "@/services/payments.service";
 import { createExpense } from "@/services/expenses.service";
+import { getCashBookEntries } from "@/services/cashbook.service";
+import { getTrips } from "@/services/trips.service";
+import { getStoredTrips, subscribeDataChanged } from "@/lib/storage-sync";
 
 interface CashBookClientProps {
   initialEntries: CashBookEntry[];
@@ -67,29 +71,72 @@ export default function CashBookClient({
   initialEntries,
   trips = [],
 }: CashBookClientProps) {
-  // Map raw initialEntries to DisplayCashBookItems if available, otherwise start with empty array
+  const [tripList, setTripList] = useState<Trip[]>(() => {
+    if (trips && trips.length > 0) return trips;
+    return getStoredTrips();
+  });
+
+  const transformEntries = useCallback((entriesList: CashBookEntry[], currentTrips: Trip[]): DisplayCashBookItem[] => {
+    return (entriesList || []).map((e) => {
+      const trip = currentTrips.find((t) => t.id === e.tripId || t.tripNumber === e.tripId);
+      const isInflow = (e.cashIn || 0) > 0;
+      return {
+        id: e.id,
+        date: e.date,
+        direction: isInflow ? "inflow" : "outflow",
+        typeTitle: isInflow ? "Customer Payment" : e.type === "driver_payment" ? "Driver Settlement" : "Expense",
+        typeSubtitle: e.description || "General Cash Entry",
+        tripNumber: trip?.tripNumber || (e.tripId !== "general" ? e.tripId : ""),
+        tripRoute: trip ? `${trip.vehicleName ? trip.vehicleName + " • " : ""}${trip.from || "Origin"} → ${trip.to || "Destination"}` : "",
+        amount: isInflow ? e.cashIn : e.cashOut,
+        paymentMode: e.paymentMode || "cash",
+        balance: e.balance || 0,
+        notes: e.description || "",
+      };
+    });
+  }, []);
+
   const [items, setItems] = useState<DisplayCashBookItem[]>(() => {
     if (initialEntries && initialEntries.length > 0) {
-      return initialEntries.map((e) => {
-        const trip = trips.find((t) => t.id === e.tripId || t.tripNumber === e.tripId);
-        const isInflow = (e.cashIn || 0) > 0;
-        return {
-          id: e.id,
-          date: e.date,
-          direction: isInflow ? "inflow" : "outflow",
-          typeTitle: isInflow ? "Customer Payment" : e.type === "driver_payment" ? "Driver Settlement" : "Expense",
-          typeSubtitle: e.description || "General Cash Entry",
-          tripNumber: trip?.tripNumber || e.tripId || "",
-          tripRoute: trip ? `${trip.from || "Origin"} → ${trip.to || "Destination"}` : "",
-          amount: isInflow ? e.cashIn : e.cashOut,
-          paymentMode: e.paymentMode || "cash",
-          balance: e.balance || 0,
-          notes: e.description || "",
-        };
-      });
+      return transformEntries(initialEntries, tripList);
     }
     return [];
   });
+
+  // Client-side hydration & real-time sync
+  useEffect(() => {
+    const refreshData = async () => {
+      try {
+        const [freshEntries, freshTrips] = await Promise.all([
+          getCashBookEntries(),
+          getTrips(100),
+        ]);
+        const validTrips = freshTrips && freshTrips.length > 0 ? freshTrips : getStoredTrips();
+        setTripList(validTrips);
+        if (freshEntries && freshEntries.length > 0) {
+          setItems(transformEntries(freshEntries, validTrips));
+        }
+      } catch (err) {
+        console.warn("[CashBookClient] Hydration warning:", err);
+      }
+    };
+
+    refreshData();
+
+    const unsubscribe = subscribeDataChanged((entity) => {
+      if (
+        entity === "cashbook" ||
+        entity === "payments" ||
+        entity === "expenses" ||
+        entity === "trips" ||
+        entity === "all"
+      ) {
+        refreshData();
+      }
+    });
+
+    return () => unsubscribe();
+  }, [transformEntries]);
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -177,9 +224,9 @@ export default function CashBookClient({
     setFeedback(null);
 
     try {
-      const selectedTrip = trips.find((t) => t.id === form.tripId || t.tripNumber === form.tripId);
+      const selectedTrip = tripList.find((t) => t.id === form.tripId || t.tripNumber === form.tripId);
       const tripNumberStr = selectedTrip?.tripNumber || form.tripId || "";
-      const tripRouteStr = selectedTrip ? `${selectedTrip.from || "Origin"} → ${selectedTrip.to || "Destination"}` : "";
+      const tripRouteStr = selectedTrip ? `${selectedTrip.vehicleName ? selectedTrip.vehicleName + ' • ' : ''}${selectedTrip.from || "Origin"} → ${selectedTrip.to || "Destination"}` : "";
 
       let typeTitle = "Customer Payment";
       let typeSubtitle = form.notes.trim() || "General Inflow";
@@ -795,10 +842,10 @@ export default function CashBookClient({
                       onChange={(e) => setForm({ ...form, tripId: e.target.value })}
                       className="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
                     >
-                      <option value="">Select trip</option>
-                      {trips.map((t) => (
+                      <option value="">Select trip (General Inflow/Outflow)</option>
+                      {tripList.map((t) => (
                         <option key={t.id} value={t.id}>
-                          Trip #{t.tripNumber || t.id.slice(0, 5)} • {t.from || "Start"} → {t.to || "End"}
+                          Trip #{t.tripNumber || t.id.slice(0, 5)} • {t.from || "Start"} → {t.to || "End"} {t.vehicleName ? `(${t.vehicleName})` : ""}
                         </option>
                       ))}
                     </select>
@@ -1087,9 +1134,12 @@ export default function CashBookClient({
                           <td className="py-3 px-3">
                             {item.tripNumber ? (
                               <div>
-                                <p className="font-bold text-slate-800 leading-tight">
+                                <Link
+                                  href={`/travel/trips?search=${encodeURIComponent(item.tripNumber)}`}
+                                  className="font-bold text-blue-600 hover:text-blue-800 hover:underline leading-tight block"
+                                >
                                   Trip #{item.tripNumber}
-                                </p>
+                                </Link>
                                 {item.tripRoute && (
                                   <p className="text-[10px] text-slate-400 leading-tight">
                                     {item.tripRoute}

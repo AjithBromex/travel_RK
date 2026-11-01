@@ -32,6 +32,12 @@ import {
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Payment, Trip, PaymentType, PaymentMode } from "@/types";
 import { getPayments, createPayment, deletePayment } from "@/services/payments.service";
+import { getTrips } from "@/services/trips.service";
+import {
+  getStoredPayments,
+  getStoredTrips,
+  subscribeDataChanged,
+} from "@/lib/storage-sync";
 
 interface PaymentsClientProps {
   initialPayments: Payment[];
@@ -39,7 +45,16 @@ interface PaymentsClientProps {
 }
 
 export default function PaymentsClient({ initialPayments, trips }: PaymentsClientProps) {
-  const [payments, setPayments] = useState<Payment[]>(initialPayments || []);
+  const [payments, setPayments] = useState<Payment[]>(() => {
+    if (initialPayments && initialPayments.length > 0) return initialPayments;
+    return getStoredPayments();
+  });
+
+  const [tripList, setTripList] = useState<Trip[]>(() => {
+    if (trips && trips.length > 0) return trips;
+    return getStoredTrips();
+  });
+
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -50,7 +65,7 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
   const amountInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const fetchPaymentsData = () => {
     getPayments(100)
       .then((data) => {
         if (data && data.length > 0) {
@@ -58,8 +73,53 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
         }
       })
       .catch((err) => {
-        console.warn("[Payments] Client data hydration error:", err);
+        console.warn("[Payments] Client payments hydration error:", err);
       });
+  };
+
+  const fetchTripsData = () => {
+    getTrips(100)
+      .then((data) => {
+        if (data && data.length > 0) {
+          setTripList(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("[Payments] Client trips hydration error:", err);
+      });
+  };
+
+  useEffect(() => {
+    fetchPaymentsData();
+    fetchTripsData();
+
+    // Check URL parameters for preset trip selection from Trips page
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const qTripId = params.get("tripId");
+      const qAmount = params.get("amount");
+      const qType = params.get("type") as PaymentType;
+      if (qTripId) {
+        setForm((prev) => ({
+          ...prev,
+          tripId: qTripId,
+          amount: qAmount || prev.amount,
+          type: qType || prev.type,
+        }));
+      }
+    }
+
+    // Subscribe to cross-page synchronization
+    const unsubscribe = subscribeDataChanged((entity) => {
+      if (entity === "payments" || entity === "all") {
+        fetchPaymentsData();
+      }
+      if (entity === "trips" || entity === "all") {
+        fetchTripsData();
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -75,6 +135,23 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
 
   const [form, setForm] = useState(emptyForm);
 
+  const handleTripSelect = (selectedId: string) => {
+    const trip = tripList.find((t) => t.id === selectedId || t.tripNumber === selectedId);
+    let autoAmount = form.amount;
+    if (trip) {
+      if (form.type === "customer_received" && Number(trip.customerBalance) > 0) {
+        autoAmount = String(trip.customerBalance);
+      } else if (form.type === "driver_payment" && Number(trip.driverBalance) > 0) {
+        autoAmount = String(trip.driverBalance);
+      }
+    }
+    setForm((prev) => ({
+      ...prev,
+      tripId: selectedId,
+      amount: autoAmount || prev.amount,
+    }));
+  };
+
   // Dynamic Real KPIs strictly from actual payments & trips data
   const realTotalInflow = payments
     .filter((p) => p.type === "customer_received")
@@ -84,7 +161,7 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
     .filter((p) => p.type === "driver_payment")
     .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-  const realPendingDues = trips.reduce(
+  const realPendingDues = tripList.reduce(
     (sum, t) => sum + (Number(t.customerBalance) > 0 ? Number(t.customerBalance) : 0),
     0
   );
@@ -129,10 +206,31 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
       };
 
       setPayments((prev) => [newPayment, ...prev]);
+
+      // Update local trip dues immediately if linked to a trip
+      if (form.tripId && form.tripId !== "general") {
+        setTripList((prev) =>
+          prev.map((t) => {
+            if (t.id === form.tripId || t.tripNumber === form.tripId) {
+              if (form.type === "customer_received") {
+                const newPaid = (Number(t.customerPaid) || 0) + amountNum;
+                const newBal = Math.max(0, (Number(t.totalFare) || 0) - newPaid);
+                return { ...t, customerPaid: newPaid, customerBalance: newBal };
+              } else if (form.type === "driver_payment") {
+                const newDriverPaid = (Number(t.driverPaid) || 0) + amountNum;
+                const newDriverBal = Math.max(0, (Number(t.driverAgreedPay) || 0) - newDriverPaid);
+                return { ...t, driverPaid: newDriverPaid, driverBalance: newDriverBal };
+              }
+            }
+            return t;
+          })
+        );
+      }
+
       setFeedback({
         message: form.type === "customer_received"
-          ? "Customer receipt recorded successfully!"
-          : "Driver payout voucher recorded successfully!",
+          ? "Customer receipt recorded successfully! Trip balance updated."
+          : "Driver payout voucher recorded successfully! Driver balance updated.",
         type: "success",
       });
       setForm(emptyForm);
@@ -545,25 +643,40 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
 
               {/* Linked Trip Booking Dropdown */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1.5 flex items-center gap-1">
-                  <span>Linked Trip Booking</span>
-                  <span className="text-rose-500 font-bold">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <span>Linked Trip Booking</span>
+                    <span className="text-rose-500 font-bold">*</span>
+                  </label>
+                  <Link
+                    href="/travel/trips"
+                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <span>View Trips</span>
+                    <ChevronDown className="w-3 h-3 -rotate-90" />
+                  </Link>
+                </div>
                 <div className="relative">
                   <select
                     value={form.tripId}
-                    onChange={(e) => setForm({ ...form, tripId: e.target.value })}
+                    onChange={(e) => handleTripSelect(e.target.value)}
                     className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
                   >
                     <option value="">🔍 General / Unlinked Payment</option>
-                    {trips.map((t) => (
+                    {tripList.map((t) => (
                       <option key={t.id} value={t.tripNumber || t.id}>
                         Trip #{t.tripNumber || t.id.slice(0, 6)} • {t.customerName || "Customer"} ({t.from || "Start"} → {t.to || "End"})
+                        {Number(t.customerBalance) > 0 ? ` • Due: ₹${Number(t.customerBalance).toLocaleString("en-IN")}` : " • Fully Paid"}
                       </option>
                     ))}
                   </select>
                   <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
+                {tripList.length === 0 && (
+                  <p className="text-[10px] text-amber-600 mt-1">
+                    No trips found. <Link href="/travel/trips" className="font-bold underline text-blue-600">Create a trip here</Link>.
+                  </p>
+                )}
               </div>
 
               {/* Amount & Date (2 columns) */}
@@ -890,12 +1003,40 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
                           </div>
                         </td>
                         <td className="py-3 px-3">
-                          <div className="font-bold text-slate-900">
-                            {p.tripId ? `Trip #${p.tripId}` : "General Payment"}
-                          </div>
-                          {p.notes && (
-                            <p className="text-[10px] text-slate-400 line-clamp-1">{p.notes}</p>
-                          )}
+                          {(() => {
+                            const linkedTrip = tripList.find((t) => t.id === p.tripId || t.tripNumber === p.tripId);
+                            if (linkedTrip) {
+                              return (
+                                <div>
+                                  <Link
+                                    href="/travel/trips"
+                                    className="font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 flex-wrap"
+                                    title="View Trip Bookings"
+                                  >
+                                    <span>Trip #{linkedTrip.tripNumber || linkedTrip.id.slice(0, 6)}</span>
+                                    <span className="text-slate-400 font-normal">•</span>
+                                    <span className="text-slate-800">{linkedTrip.customerName}</span>
+                                  </Link>
+                                  <p className="text-[10px] text-slate-500 mt-0.5">
+                                    {linkedTrip.from} → {linkedTrip.to}
+                                  </p>
+                                  {p.notes && (
+                                    <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{p.notes}</p>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return (
+                              <div>
+                                <div className="font-bold text-slate-900">
+                                  {p.tripId && p.tripId !== "general" ? `Trip #${p.tripId}` : "General Payment"}
+                                </div>
+                                {p.notes && (
+                                  <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{p.notes}</p>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="py-3 px-3">
                           <span
@@ -978,9 +1119,27 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
                       <div className="text-xl font-black text-slate-900 font-mono-nums">
                         {formatINR(p.amount)}
                       </div>
-                      <p className="text-xs font-semibold text-slate-700 mt-0.5">
-                        {p.tripId ? `Linked: Trip #${p.tripId}` : "General / Unlinked Voucher"}
-                      </p>
+                      {(() => {
+                        const linkedTrip = tripList.find((t) => t.id === p.tripId || t.tripNumber === p.tripId);
+                        if (linkedTrip) {
+                          return (
+                            <div className="mt-1">
+                              <Link
+                                href="/travel/trips"
+                                className="text-xs font-bold text-blue-600 hover:underline block truncate"
+                              >
+                                Trip #{linkedTrip.tripNumber || linkedTrip.id.slice(0, 6)} • {linkedTrip.customerName}
+                              </Link>
+                              <p className="text-[10px] text-slate-500 truncate">{linkedTrip.from} → {linkedTrip.to}</p>
+                            </div>
+                          );
+                        }
+                        return (
+                          <p className="text-xs font-semibold text-slate-700 mt-0.5">
+                            {p.tripId && p.tripId !== "general" ? `Linked: Trip #${p.tripId}` : "General / Unlinked Voucher"}
+                          </p>
+                        );
+                      })()}
                       {p.notes && (
                         <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{p.notes}</p>
                       )}

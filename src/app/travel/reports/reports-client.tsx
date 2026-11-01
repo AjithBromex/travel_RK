@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import {
@@ -22,6 +23,17 @@ import {
 } from "lucide-react";
 import { formatINR, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Trip, Vehicle, Expense, Payment } from "@/types";
+import { getTrips } from "@/services/trips.service";
+import { getVehicles } from "@/services/vehicles.service";
+import { getExpenses } from "@/services/expenses.service";
+import { getPayments } from "@/services/payments.service";
+import {
+  getStoredTrips,
+  getStoredVehicles,
+  getStoredExpenses,
+  getStoredPayments,
+  subscribeDataChanged,
+} from "@/lib/storage-sync";
 
 interface ReportsClientProps {
   trips: Trip[];
@@ -54,13 +66,70 @@ interface TopRouteItem {
 }
 
 export default function ReportsClient({
-  trips,
-  vehicles,
-  expenses,
-  payments,
+  trips: initialTrips,
+  vehicles: initialVehicles,
+  expenses: initialExpenses,
+  payments: initialPayments,
 }: ReportsClientProps) {
-  const [dateFrom, setDateFrom] = useState("2026-10-01");
-  const [dateTo, setDateTo] = useState("2026-10-30");
+  const [tripsData, setTripsData] = useState<Trip[]>(() =>
+    initialTrips && initialTrips.length > 0 ? initialTrips : getStoredTrips()
+  );
+  const [vehiclesData, setVehiclesData] = useState<Vehicle[]>(() =>
+    initialVehicles && initialVehicles.length > 0 ? initialVehicles : getStoredVehicles()
+  );
+  const [expensesData, setExpensesData] = useState<Expense[]>(() =>
+    initialExpenses && initialExpenses.length > 0 ? initialExpenses : getStoredExpenses()
+  );
+  const [paymentsData, setPaymentsData] = useState<Payment[]>(() =>
+    initialPayments && initialPayments.length > 0 ? initialPayments : getStoredPayments()
+  );
+
+  useEffect(() => {
+    const refreshAll = async () => {
+      try {
+        const [freshTrips, freshVehicles, freshExpenses, freshPayments] = await Promise.all([
+          getTrips(100),
+          getVehicles(),
+          getExpenses(100),
+          getPayments(100),
+        ]);
+        if (freshTrips && freshTrips.length > 0) setTripsData(freshTrips);
+        if (freshVehicles && freshVehicles.length > 0) setVehiclesData(freshVehicles);
+        if (freshExpenses && freshExpenses.length > 0) setExpensesData(freshExpenses);
+        if (freshPayments && freshPayments.length > 0) setPaymentsData(freshPayments);
+      } catch (err) {
+        console.warn("[ReportsClient] Refresh warning:", err);
+      }
+    };
+
+    refreshAll();
+
+    const unsubscribe = subscribeDataChanged(() => {
+      setTripsData(getStoredTrips());
+      setVehiclesData(getStoredVehicles());
+      setExpensesData(getStoredExpenses());
+      setPaymentsData(getStoredPayments());
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const trips = tripsData;
+  const vehicles = vehiclesData;
+  const expenses = expensesData;
+  const payments = paymentsData;
+
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().split("T")[0];
+  });
+  const [dateTo, setDateTo] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    d.setDate(0);
+    return d.toISOString().split("T")[0];
+  });
   const [vehicleFilter, setVehicleFilter] = useState("all");
   const [routeFilter, setRouteFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");

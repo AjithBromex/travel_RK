@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -34,6 +35,8 @@ import {
   toggleReminderStatus,
   deleteReminder,
 } from "@/services/reminders.service";
+import { getVehicles } from "@/services/vehicles.service";
+import { getStoredVehicles, subscribeDataChanged } from "@/lib/storage-sync";
 
 interface RemindersClientProps {
   initialReminders: Reminder[];
@@ -81,14 +84,40 @@ export default function RemindersClient({
   initialReminders,
   vehicles,
 }: RemindersClientProps) {
+  const [vehicleList, setVehicleList] = useState<Vehicle[]>(() =>
+    vehicles && vehicles.length > 0 ? vehicles : getStoredVehicles()
+  );
+
+  useEffect(() => {
+    const fetchFreshVehicles = async () => {
+      try {
+        const fresh = await getVehicles();
+        if (fresh && fresh.length > 0) setVehicleList(fresh);
+      } catch (err) {
+        console.warn("[RemindersClient] Vehicle fetch error:", err);
+      }
+    };
+    fetchFreshVehicles();
+
+    const unsubscribe = subscribeDataChanged((entity) => {
+      if (entity === "vehicles" || entity === "all") {
+        setVehicleList(getStoredVehicles());
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   // Convert initialReminders from Firestore into ReminderItem format (strictly real data)
   const [items, setItems] = useState<ReminderItem[]>(() => {
     if (!initialReminders || initialReminders.length === 0) {
       return [];
     }
 
+    const currentVehicles = vehicles && vehicles.length > 0 ? vehicles : getStoredVehicles();
+
     return initialReminders.map((r) => {
-      const matchedVeh = vehicles.find((v) => v.id === r.relatedEntityId);
+      const matchedVeh = currentVehicles.find((v) => v.id === r.relatedEntityId);
       let cat: ReminderItem["category"] = "Vehicle Service";
       if (r.category === "documents") cat = "Insurance";
       else if (r.category === "driver") cat = "Driver Compliance";
@@ -123,13 +152,21 @@ export default function RemindersClient({
   const initialFormState = {
     title: "",
     category: "Vehicle Service" as ReminderItem["category"],
-    relatedVehicleId: vehicles[0]?.id || "",
+    relatedVehicleId: vehicleList[0]?.id || "",
     dueDate: getDefaultDueDate(6),
     reminderType: "one_time" as "one_time" | "repeat",
     notes: "",
   };
 
   const [form, setForm] = useState(initialFormState);
+
+  // Auto-select first vehicle once vehicleList loads if form has none selected
+  useEffect(() => {
+    if (!form.relatedVehicleId && vehicleList.length > 0) {
+      setForm((prev) => ({ ...prev, relatedVehicleId: vehicleList[0].id }));
+    }
+  }, [vehicleList, form.relatedVehicleId]);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -145,7 +182,7 @@ export default function RemindersClient({
       setForm({
         title: "Insurance Renewal",
         category: "Insurance",
-        relatedVehicleId: vehicles[0]?.id || "",
+        relatedVehicleId: vehicleList[0]?.id || "",
         dueDate: getDefaultDueDate(30),
         reminderType: "one_time",
         notes: "Vehicle insurance expiry & policy renewal document submission.",
@@ -154,7 +191,7 @@ export default function RemindersClient({
       setForm({
         title: "Fitness Certificate",
         category: "Compliance",
-        relatedVehicleId: vehicles[1]?.id || vehicles[0]?.id || "",
+        relatedVehicleId: vehicleList[1]?.id || vehicleList[0]?.id || "",
         dueDate: getDefaultDueDate(21),
         reminderType: "one_time",
         notes: "RC fitness renewal & RTO annual vehicle inspection clearance.",
@@ -163,7 +200,7 @@ export default function RemindersClient({
       setForm({
         title: "Periodic Service",
         category: "Vehicle Service",
-        relatedVehicleId: vehicles[0]?.id || "",
+        relatedVehicleId: vehicleList[0]?.id || "",
         dueDate: getDefaultDueDate(14),
         reminderType: "one_time",
         notes: "Engine oil, fuel filter change & 10,000 km routine brake inspection.",
@@ -197,7 +234,7 @@ export default function RemindersClient({
     const todayStr = new Date().toISOString().split("T")[0];
     const itemStatus: "upcoming" | "overdue" = form.dueDate < todayStr ? "overdue" : "upcoming";
 
-    const matchedVeh = vehicles.find((v) => v.id === form.relatedVehicleId);
+    const matchedVeh = vehicleList.find((v) => v.id === form.relatedVehicleId);
     let vehicleReg = matchedVeh ? matchedVeh.registrationNumber : "KL 07 CF 2211";
     let vehicleModel = matchedVeh ? matchedVeh.name : "Fleet Vehicle";
     let vehicleImage = matchedVeh?.photoUrl || "/images/fleet-crysta.jpg";
@@ -309,11 +346,11 @@ export default function RemindersClient({
   // Edit existing item
   const handleStartEdit = (item: ReminderItem) => {
     setEditingId(item.id);
-    const matched = vehicles.find((v) => v.registrationNumber === item.vehicleReg);
+    const matched = vehicleList.find((v) => v.registrationNumber === item.vehicleReg);
     setForm({
       title: item.title,
       category: item.category,
-      relatedVehicleId: matched?.id || vehicles[0]?.id || "",
+      relatedVehicleId: matched?.id || vehicleList[0]?.id || "",
       dueDate: item.dueDate,
       reminderType: item.reminderType,
       notes: item.notes || "",
@@ -995,7 +1032,7 @@ export default function RemindersClient({
                     className="w-full h-10 pl-9 pr-7 rounded-xl bg-slate-50 border border-slate-200/90 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none transition-all cursor-pointer"
                   >
                     <option value="">-- No vehicle selected --</option>
-                    {vehicles.map((v) => (
+                    {vehicleList.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.registrationNumber} ({v.name})
                       </option>

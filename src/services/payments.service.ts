@@ -1,51 +1,151 @@
 import {
-  collection, doc, getDocs, addDoc, deleteDoc,
+  collection, doc, getDocs, addDoc, deleteDoc, updateDoc,
   query, where, orderBy, limit,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
-import type { Payment } from '@/types'
+import type { Payment, Trip } from '@/types'
 import { withCache, invalidateCache } from '@/lib/cache'
+import {
+  waitForAuthReady,
+  getStoredPayments,
+  saveStoredPayments,
+  upsertStoredPayment,
+  removeStoredPayment,
+  getStoredTrips,
+  upsertStoredTrip,
+  notifyDataChanged,
+} from '@/lib/storage-sync'
 
 const COLLECTION = 'payments'
 
 export async function getPayments(limitCount = 100): Promise<Payment[]> {
+  const localFallback = getStoredPayments()
+
   return withCache(
     `payments:list:${limitCount}`,
     async () => {
+      await waitForAuthReady()
       const q = query(collection(db, COLLECTION), orderBy('paymentDate', 'desc'), limit(limitCount))
       const snap = await getDocs(q)
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Payment))
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Payment))
+      if (list.length > 0) {
+        saveStoredPayments(list)
+        return list
+      }
+      return localFallback.length > 0 ? localFallback : list
     },
-    { fallback: [] }
+    { fallback: localFallback }
   )
 }
 
 export async function getPaymentsByTrip(tripId: string): Promise<Payment[]> {
+  const localFallback = getStoredPayments().filter(p => p.tripId === tripId)
+
   return withCache(
     `payments:trip:${tripId}`,
     async () => {
+      await waitForAuthReady()
       const q = query(collection(db, COLLECTION), where('tripId', '==', tripId))
       const snap = await getDocs(q)
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Payment))
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Payment))
+      return list.length > 0 ? list : localFallback
     },
-    { fallback: [] }
+    { fallback: localFallback }
   )
 }
 
 export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  await waitForAuthReady()
   const now = new Date().toISOString()
-  const docRef = await addDoc(collection(db, COLLECTION), {
+
+  let docId = `pay_${Date.now()}`
+  try {
+    const docRef = await addDoc(collection(db, COLLECTION), {
+      ...data,
+      createdAt: now,
+      updatedAt: now,
+    })
+    docId = docRef.id
+  } catch (err) {
+    console.warn('[PaymentsService] Firestore write fallback to local:', err)
+  }
+
+  const newPayment: Payment = {
+    id: docId,
     ...data,
     createdAt: now,
     updatedAt: now,
-  })
+  }
+
+  upsertStoredPayment(newPayment)
+
+  // Synchronize trip balance if linked to a trip
+  if (data.tripId && data.tripId !== 'general') {
+    try {
+      const trips = getStoredTrips()
+      const trip = trips.find(t => t.id === data.tripId || t.tripNumber === data.tripId)
+      if (trip) {
+        let updatedCustomerPaid = Number(trip.customerPaid) || 0
+        let updatedCustomerBalance = Number(trip.customerBalance) || 0
+        let updatedDriverPaid = Number(trip.driverPaid) || 0
+        let updatedDriverBalance = Number(trip.driverBalance) || 0
+
+        if (data.type === 'customer_received') {
+          updatedCustomerPaid += Number(data.amount) || 0
+          const total = Number(trip.totalFare) || 0
+          updatedCustomerBalance = Math.max(0, total - updatedCustomerPaid)
+        } else if (data.type === 'driver_payment') {
+          updatedDriverPaid += Number(data.amount) || 0
+          const agreed = Number(trip.driverAgreedPay) || 0
+          updatedDriverBalance = Math.max(0, agreed - updatedDriverPaid)
+        }
+
+        const tripUpdates: Partial<Trip> = {
+          customerPaid: updatedCustomerPaid,
+          customerBalance: updatedCustomerBalance,
+          driverPaid: updatedDriverPaid,
+          driverBalance: updatedDriverBalance,
+          updatedAt: now,
+        }
+
+        upsertStoredTrip({ ...trip, ...tripUpdates })
+
+        try {
+          await updateDoc(doc(db, 'trips', trip.id), tripUpdates)
+        } catch (tripErr) {
+          console.warn('[PaymentsService] Linked trip update fallback to local:', tripErr)
+        }
+      }
+    } catch (syncErr) {
+      console.warn('[PaymentsService] Error updating linked trip dues:', syncErr)
+    }
+  }
+
   invalidateCache('payments')
+  invalidateCache('trips')
+  invalidateCache('cashbook')
+  invalidateCache('reports')
   invalidateCache('dashboard')
-  return docRef.id
+  notifyDataChanged('payments')
+  notifyDataChanged('trips')
+
+  return docId
 }
 
 export async function deletePayment(id: string): Promise<void> {
-  await deleteDoc(doc(db, COLLECTION, id))
+  await waitForAuthReady()
+  try {
+    await deleteDoc(doc(db, COLLECTION, id))
+  } catch (err) {
+    console.warn('[PaymentsService] Firestore delete fallback to local:', err)
+  }
+
+  removeStoredPayment(id)
   invalidateCache('payments')
+  invalidateCache('trips')
+  invalidateCache('cashbook')
+  invalidateCache('reports')
   invalidateCache('dashboard')
+  notifyDataChanged('payments')
+  notifyDataChanged('trips')
 }

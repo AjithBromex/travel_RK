@@ -42,7 +42,12 @@ import {
   updateTrip,
   deleteTrip,
 } from "@/services/trips.service";
-import { getVehicles } from "@/services/vehicles.service";
+import { getVehicles, createVehicle } from "@/services/vehicles.service";
+import {
+  getStoredVehicles,
+  getStoredTrips,
+  subscribeDataChanged,
+} from "@/lib/storage-sync";
 
 interface TripsClientProps {
   initialTrips: Trip[];
@@ -76,8 +81,16 @@ export function getTripReceiptDisplay(trip: Trip, allTrips: Trip[]): string {
 }
 
 export default function TripsClient({ initialTrips, vehicles }: TripsClientProps) {
-  const [trips, setTrips] = useState<Trip[]>(initialTrips || []);
-  const [vehicleList, setVehicleList] = useState<Vehicle[]>(vehicles || []);
+  const [trips, setTrips] = useState<Trip[]>(() => {
+    if (initialTrips && initialTrips.length > 0) return initialTrips;
+    return getStoredTrips();
+  });
+
+  const [vehicleList, setVehicleList] = useState<Vehicle[]>(() => {
+    if (vehicles && vehicles.length > 0) return vehicles;
+    return getStoredVehicles();
+  });
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editingTripId, setEditingTripId] = useState<string | null>(null);
@@ -87,7 +100,17 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const formRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  // Quick Add Vehicle Modal state inside Trips
+  const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
+  const [quickVehicleForm, setQuickVehicleForm] = useState({
+    registrationNumber: "",
+    name: "",
+    type: "Force Traveller",
+    extraKmRate: 25,
+  });
+  const [quickVehicleLoading, setQuickVehicleLoading] = useState(false);
+
+  const fetchTripsData = () => {
     getTrips(100)
       .then((data) => {
         if (data && data.length > 0) {
@@ -97,7 +120,9 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       .catch((err) => {
         console.warn("[Trips] Client data hydration error:", err);
       });
+  };
 
+  const fetchVehiclesData = () => {
     getVehicles(100)
       .then((data) => {
         if (data && data.length > 0) {
@@ -107,6 +132,32 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       .catch((err) => {
         console.warn("[Trips] Client vehicles hydration error:", err);
       });
+  };
+
+  useEffect(() => {
+    fetchTripsData();
+    fetchVehiclesData();
+
+    // Cross-page real-time sync listener
+    const unsubscribe = subscribeDataChanged((entity) => {
+      if (entity === "trips" || entity === "all") {
+        fetchTripsData();
+      }
+      if (entity === "vehicles" || entity === "all") {
+        fetchVehiclesData();
+      }
+    });
+
+    // Check URL parameters for preset vehicle selection
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const paramVehicleId = params.get("vehicleId");
+      if (paramVehicleId) {
+        setForm((prev) => ({ ...prev, vehicleId: paramVehicleId }));
+      }
+    }
+
+    return () => unsubscribe();
   }, []);
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -137,6 +188,22 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   };
 
   const [form, setForm] = useState(emptyForm);
+
+  // Automatically select first vehicle if form has no vehicle selected and vehicles are available
+  useEffect(() => {
+    if (vehicleList.length > 0 && !form.vehicleId) {
+      const first = vehicleList[0];
+      setForm((prev) => {
+        if (prev.vehicleId) return prev;
+        return {
+          ...prev,
+          vehicleId: first.id,
+          vehicleName: first.name ? `${first.name} (${first.registrationNumber})` : first.registrationNumber,
+          extraKmRate: first.extraKmRate || prev.extraKmRate || 25,
+        };
+      });
+    }
+  }, [vehicleList, form.vehicleId]);
 
   // Dynamic Real KPIs
   const totalTripsCount = trips.length;
@@ -179,15 +246,79 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   ]);
 
   const handleVehicleChange = (vehicleId: string) => {
-    const selected = vehicleList.find((v) => v.id === vehicleId) || vehicles.find((v) => v.id === vehicleId);
+    const list = vehicleList.length > 0 ? vehicleList : vehicles;
+    const selected = list.find((v) => v.id === vehicleId);
     setForm((prev) => ({
       ...prev,
       vehicleId,
       vehicleName: selected
-        ? `${selected.name} (${selected.registrationNumber})`
+        ? (selected.name ? `${selected.name} (${selected.registrationNumber})` : selected.registrationNumber)
         : "",
       extraKmRate: selected?.extraKmRate || prev.extraKmRate,
     }));
+  };
+
+  const handleQuickAddVehicle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const reg = quickVehicleForm.registrationNumber.trim().toUpperCase();
+    if (!reg) {
+      setFeedback({ message: "Please enter vehicle registration number", type: "error" });
+      return;
+    }
+
+    setQuickVehicleLoading(true);
+    try {
+      const vName = quickVehicleForm.name.trim() || reg;
+      const rate = Number(quickVehicleForm.extraKmRate) || 25;
+      const payload: Omit<Vehicle, "id" | "createdAt" | "updatedAt"> = {
+        registrationNumber: reg,
+        registrationNumberNormalized: reg.replace(/[^A-Z0-9]/g, ""),
+        name: vName,
+        type: quickVehicleForm.type,
+        extraKmRate: rate,
+        currentKm: 0,
+        nextServiceKm: 10000,
+        insuranceExpiry: "",
+        permitExpiry: "",
+        pollutionExpiry: "",
+        status: "active",
+        notes: "Added via Quick Add in Trips",
+      };
+
+      const newId = await createVehicle(payload);
+      const newVehicle: Vehicle = {
+        id: newId,
+        ...payload,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      setVehicleList((prev) => [newVehicle, ...prev]);
+      setForm((prev) => ({
+        ...prev,
+        vehicleId: newId,
+        vehicleName: `${vName} (${reg})`,
+        extraKmRate: rate,
+      }));
+
+      setIsAddVehicleOpen(false);
+      setQuickVehicleForm({
+        registrationNumber: "",
+        name: "",
+        type: "Force Traveller",
+        extraKmRate: 25,
+      });
+      setFeedback({
+        message: `Vehicle ${vName} (${reg}) registered & assigned to trip!`,
+        type: "success",
+      });
+    } catch (err) {
+      console.error("Quick add vehicle error:", err);
+      setFeedback({ message: "Failed to add vehicle", type: "error" });
+    } finally {
+      setQuickVehicleLoading(false);
+      setTimeout(() => setFeedback(null), 3500);
+    }
   };
 
   const handleQuickTripPreset = () => {
@@ -281,11 +412,12 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     setFeedback(null);
 
     try {
-      const selectedVehicle = vehicles.find((v) => v.id === form.vehicleId);
+      const allVehicles = vehicleList.length > 0 ? vehicleList : vehicles;
+      const selectedVehicle = allVehicles.find((v) => v.id === form.vehicleId);
       const vehicleName =
         form.vehicleName ||
         (selectedVehicle
-          ? `${selectedVehicle.name} (${selectedVehicle.registrationNumber})`
+          ? (selectedVehicle.name ? `${selectedVehicle.name} (${selectedVehicle.registrationNumber})` : selectedVehicle.registrationNumber)
           : "");
 
       const assignedReceiptNo = (form.receiptNumber && form.receiptNumber.trim()) || getNextReceiptNumber(trips);
@@ -942,21 +1074,31 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">
-                      ASSIGNED VEHICLE
+                      ASSIGNED VEHICLE <span className="text-rose-500">*</span>
                     </label>
-                    <Link
-                      href="/travel/vehicles"
-                      className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3 stroke-[2.5]" />
-                      <span>Manage Fleet</span>
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setIsAddVehicleOpen(true)}
+                        className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200/80 flex items-center gap-0.5 cursor-pointer transition-colors"
+                      >
+                        <Plus className="w-3 h-3 stroke-[2.5]" />
+                        <span>Quick Add</span>
+                      </button>
+                      <Link
+                        href="/travel/vehicles"
+                        className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <span>Fleet</span>
+                        <ArrowRight className="w-2.5 h-2.5" />
+                      </Link>
+                    </div>
                   </div>
                   <div className="relative">
                     <select
                       value={form.vehicleId}
                       onChange={(e) => handleVehicleChange(e.target.value)}
-                      className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
+                      className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer font-sans"
                     >
                       <option value="">Select vehicle...</option>
                       {(vehicleList.length > 0 ? vehicleList : vehicles).map((v) => (
@@ -968,9 +1110,16 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                   {vehicleList.length === 0 && vehicles.length === 0 && (
-                    <p className="text-[10px] text-amber-600 mt-1">
-                      No vehicles found. <Link href="/travel/vehicles" className="font-bold underline">Add one here</Link>.
-                    </p>
+                    <div className="text-[10px] text-amber-600 mt-1 flex items-center justify-between">
+                      <span>No vehicles registered yet.</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddVehicleOpen(true)}
+                        className="font-bold underline text-blue-600 cursor-pointer"
+                      >
+                        + Add vehicle now
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -1291,20 +1440,44 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                         <p className="text-[11px] text-slate-500 mt-1">
                           {trip.customerName} {trip.customerPhone && `• ${trip.customerPhone}`}
                         </p>
-                        {trip.vehicleName && (
-                          <p className="text-[10px] text-slate-400 mt-0.5 truncate">
-                            Vehicle: {trip.vehicleName}
-                          </p>
-                        )}
+                        {(() => {
+                          const resolvedVeh =
+                            trip.vehicleName ||
+                            (vehicleList.find((v) => v.id === trip.vehicleId)?.name
+                              ? `${vehicleList.find((v) => v.id === trip.vehicleId)?.name} (${vehicleList.find((v) => v.id === trip.vehicleId)?.registrationNumber})`
+                              : vehicleList.find((v) => v.id === trip.vehicleId)?.registrationNumber);
+                          if (!resolvedVeh) return null;
+                          return (
+                            <p className="text-[10px] text-slate-600 font-semibold mt-1 truncate flex items-center gap-1 bg-slate-50 border border-slate-200/60 px-2 py-0.5 rounded-lg w-fit">
+                              <Bus className="w-3 h-3 text-blue-600 shrink-0" />
+                              <span>{resolvedVeh}</span>
+                            </p>
+                          );
+                        })()}
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs gap-2">
                       <div>
                         <span className="text-[10px] text-slate-400 block">Total Fare</span>
                         <span className="font-extrabold font-mono text-slate-900">
                           ₹{Number(trip.totalFare).toLocaleString("en-IN")}
                         </span>
+                        {Number(trip.customerBalance) > 0 && (
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded">
+                              Due ₹{Number(trip.customerBalance).toLocaleString("en-IN")}
+                            </span>
+                            <Link
+                              href={`/travel/payments?tripId=${trip.tripNumber || trip.id}&amount=${trip.customerBalance}&type=customer_received`}
+                              className="text-[9px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-1.5 py-0.2 rounded transition-colors inline-flex items-center gap-0.5"
+                              title="Record payment in Payments Ledger"
+                            >
+                              <CreditCard className="w-2.5 h-2.5" />
+                              <span>Collect</span>
+                            </Link>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1">
@@ -1363,9 +1536,29 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                         <ArrowRight className="w-3 h-3 text-blue-600 shrink-0" />
                         <span>{trip.to}</span>
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
-                        {trip.customerName} • {trip.tripDate} {trip.vehicleName && `• ${trip.vehicleName}`}
-                      </p>
+                      {(() => {
+                        const resolvedVeh =
+                          trip.vehicleName ||
+                          (vehicleList.find((v) => v.id === trip.vehicleId)?.name
+                            ? `${vehicleList.find((v) => v.id === trip.vehicleId)?.name} (${vehicleList.find((v) => v.id === trip.vehicleId)?.registrationNumber})`
+                            : vehicleList.find((v) => v.id === trip.vehicleId)?.registrationNumber);
+                        return (
+                          <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                            <span>{trip.customerName}</span>
+                            <span>•</span>
+                            <span>{trip.tripDate}</span>
+                            {resolvedVeh && (
+                              <>
+                                <span>•</span>
+                                <span className="inline-flex items-center gap-1 text-slate-700 font-semibold bg-white border border-slate-200/80 px-1.5 py-0.5 rounded-md">
+                                  <Bus className="w-3 h-3 text-blue-600 shrink-0" />
+                                  <span>{resolvedVeh}</span>
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
@@ -1374,9 +1567,19 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                           ₹{Number(trip.totalFare).toLocaleString("en-IN")}
                         </span>
                         {Number(trip.customerBalance) > 0 && (
-                          <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded block mt-0.5">
-                            Due ₹{Number(trip.customerBalance).toLocaleString("en-IN")}
-                          </span>
+                          <div className="flex items-center justify-end gap-1 mt-0.5">
+                            <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded block">
+                              Due ₹{Number(trip.customerBalance).toLocaleString("en-IN")}
+                            </span>
+                            <Link
+                              href={`/travel/payments?tripId=${trip.tripNumber || trip.id}&amount=${trip.customerBalance}&type=customer_received`}
+                              className="text-[9px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-1.5 py-0.2 rounded transition-colors inline-flex items-center gap-0.5"
+                              title="Record payment in Payments Ledger"
+                            >
+                              <CreditCard className="w-2.5 h-2.5" />
+                              <span>Collect</span>
+                            </Link>
+                          </div>
                         )}
                       </div>
 
@@ -1448,6 +1651,119 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
           </div>
         </div>
       </div>
+
+      {/* Quick Add Vehicle Modal for immediate addition inside Trips */}
+      {isAddVehicleOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-100 relative space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Bus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Quick Register Vehicle</h3>
+                  <p className="text-[10px] text-slate-400">Add vehicle and select it for this trip immediately</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddVehicleOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickAddVehicle} className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Registration Number <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. MH 12 AB 1234 or KL 55 AB 2525"
+                  value={quickVehicleForm.registrationNumber}
+                  onChange={(e) =>
+                    setQuickVehicleForm({ ...quickVehicleForm, registrationNumber: e.target.value.toUpperCase() })
+                  }
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 uppercase tracking-wider outline-none focus:border-blue-500 focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Vehicle Name / Model
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Force Traveller, Innova Crysta"
+                  value={quickVehicleForm.name}
+                  onChange={(e) =>
+                    setQuickVehicleForm({ ...quickVehicleForm, name: e.target.value })
+                  }
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Vehicle Type
+                  </label>
+                  <select
+                    value={quickVehicleForm.type}
+                    onChange={(e) =>
+                      setQuickVehicleForm({ ...quickVehicleForm, type: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    <option value="Force Traveller">Force Traveller</option>
+                    <option value="Innova Crysta">Innova Crysta</option>
+                    <option value="Force Urbania">Force Urbania</option>
+                    <option value="Volvo Coach">Volvo Coach</option>
+                    <option value="Sedan">Sedan</option>
+                    <option value="SUV">SUV</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Extra KM Rate (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={quickVehicleForm.extraKmRate}
+                    onChange={(e) =>
+                      setQuickVehicleForm({ ...quickVehicleForm, extraKmRate: Number(e.target.value) || 0 })
+                    }
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-500 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddVehicleOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={quickVehicleLoading}
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/25 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {quickVehicleLoading ? "Registering..." : "Register & Select"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
