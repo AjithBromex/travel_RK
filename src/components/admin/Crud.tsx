@@ -269,7 +269,7 @@ export default function Crud({
               <span>Admin Control Master</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
-              {title} Directory &amp; Ledger
+              {title}{' '}Directory &amp; Ledger
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 font-medium max-w-xl">
               Inspect, manage, filter, and adjust real-time {singular} records across the agency.
@@ -400,18 +400,20 @@ export default function Crud({
                   ))}
                   <td className="py-3.5 px-4 sm:px-5 text-right whitespace-nowrap">
                     <div className="inline-flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setErr('');
-                          setForm({ ...r });
-                        }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                        title="Edit record"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span>Edit</span>
-                      </button>
+                      {slug !== 'users' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setErr('');
+                            setForm({ ...r });
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          title="Edit record"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => remove(r)}
