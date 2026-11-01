@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Search,
   Plus,
@@ -10,9 +10,16 @@ import {
   Loader2,
   AlertCircle,
   FileText,
+  RefreshCw,
 } from 'lucide-react';
 import type { FieldConfig } from '@/lib/admin/modules';
 import { inr } from '@/lib/admin/modules';
+import {
+  fetchAdminRows,
+  saveAdminRow,
+  deleteAdminRow,
+} from '@/lib/admin/admin-client-service';
+import { subscribeDataChanged } from '@/lib/storage-sync';
 
 const BADGE_STYLES: Record<string, string> = {
   Active: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80',
@@ -73,7 +80,36 @@ export default function Crud({
   const [q, setQ] = useState('');
   const [form, setForm] = useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [err, setErr] = useState('');
+
+  const loadLiveRows = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const live = await fetchAdminRows(slug);
+      if (live && live.length > 0) {
+        setRows(live);
+      } else if (initial && initial.length > 0 && rows.length === 0) {
+        setRows(initial);
+      }
+    } catch (e) {
+      console.warn(`[Crud] Error loading live ${slug}:`, e);
+    } finally {
+      setSyncing(false);
+    }
+  }, [slug, initial, rows.length]);
+
+  useEffect(() => {
+    loadLiveRows();
+
+    const unsub = subscribeDataChanged((entity) => {
+      if (entity === slug || entity === 'all') {
+        loadLiveRows();
+      }
+    });
+
+    return () => unsub();
+  }, [slug, loadLiveRows]);
 
   const cols = columns.map((k) => fields.find((f) => f.key === k)!).filter(Boolean);
   const shown = useMemo(
@@ -100,35 +136,53 @@ export default function Crud({
     setErr('');
     const edit = Boolean(form.id);
     try {
-      const res = await fetch(`/api/${slug}${edit ? '/' + form.id : ''}`, {
-        method: edit ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
+      // 1. Save directly via unified application client service (updates Firestore + localStorage + caches)
+      const savedRecord = await saveAdminRow(slug, form);
       setBusy(false);
-      if (!res.ok) {
-        setErr(data.error || 'Could not save record');
-        return;
-      }
-      setRows(
-        edit ? rows.map((r) => (r.id === data.id ? data : r)) : [data, ...rows]
+      setRows((prev) =>
+        edit
+          ? prev.map((r) => (r.id === savedRecord.id ? savedRecord : r))
+          : [savedRecord, ...prev]
       );
       setForm(null);
-    } catch {
-      setBusy(false);
-      setErr('Failed to connect to server.');
+    } catch (clientErr: any) {
+      // Fallback to API route if client service fails
+      try {
+        const res = await fetch(`/api/${slug}${edit ? '/' + form.id : ''}`, {
+          method: edit ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        });
+        const data = await res.json();
+        setBusy(false);
+        if (!res.ok) {
+          setErr(data.error || clientErr?.message || 'Could not save record');
+          return;
+        }
+        setRows((prev) =>
+          edit ? prev.map((r) => (r.id === data.id ? data : r)) : [data, ...prev]
+        );
+        setForm(null);
+      } catch {
+        setBusy(false);
+        setErr(clientErr?.message || 'Failed to save record.');
+      }
     }
   }
 
   async function remove(r: Record<string, unknown>) {
     if (!confirm(`Are you sure you want to delete this ${singular}?`)) return;
     try {
-      const res = await fetch(`/api/${slug}/${r.id}`, { method: 'DELETE' });
-      if (res.ok) setRows(rows.filter((x) => x.id !== r.id));
-      else alert('Could not delete record');
+      await deleteAdminRow(slug, String(r.id));
+      setRows((prev) => prev.filter((x) => x.id !== r.id));
     } catch {
-      alert('Error connecting to server.');
+      try {
+        const res = await fetch(`/api/${slug}/${r.id}`, { method: 'DELETE' });
+        if (res.ok) setRows((prev) => prev.filter((x) => x.id !== r.id));
+        else alert('Could not delete record');
+      } catch {
+        alert('Error deleting record.');
+      }
     }
   }
 
@@ -136,6 +190,7 @@ export default function Crud({
   const total = moneyCol
     ? shown.reduce((s, r) => s + Number(r[moneyCol.key] || 0), 0)
     : null;
+
 
   return (
     <div className="space-y-5">
@@ -167,6 +222,17 @@ export default function Crud({
               className="w-full sm:w-64 h-10 pl-9 pr-3.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 shadow-2xs transition-all"
             />
           </div>
+
+          <button
+            type="button"
+            onClick={loadLiveRows}
+            disabled={syncing}
+            className="h-10 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+            title="Refresh live data"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${syncing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Sync</span>
+          </button>
 
           <button
             type="button"

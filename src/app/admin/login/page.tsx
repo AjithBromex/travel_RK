@@ -12,6 +12,8 @@ import {
   AlertCircle,
   Loader2,
 } from 'lucide-react';
+import { auth } from '@/lib/firebase/config';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -31,11 +33,19 @@ export default function AdminLogin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-      setBusy(false);
       if (res.ok) {
+        // Authenticate client-side Firebase Auth if credentials match Firebase account
+        try {
+          const email = username.includes('@') ? username : `${username.toLowerCase()}@gmail.com`;
+          await signInWithEmailAndPassword(auth, email, password);
+        } catch (firebaseAuthErr) {
+          console.warn('[AdminLogin] Firebase client auth notice:', firebaseAuthErr);
+        }
+        setBusy(false);
         router.push('/admin');
         router.refresh();
       } else {
+        setBusy(false);
         const data = await res.json().catch(() => ({}));
         setErr(data.error || 'Invalid admin credentials');
       }

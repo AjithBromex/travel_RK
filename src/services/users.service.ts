@@ -134,3 +134,14 @@ export async function findUserByUsername(username: string): Promise<UserProfile 
     return null
   }
 }
+
+export async function getAllUsers(): Promise<UserProfile[]> {
+  try {
+    const snap = await getDocs(collection(db, COLLECTION))
+    return snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile))
+  } catch (err) {
+    console.warn('[Users] Error listing users:', err)
+    return []
+  }
+}
+
