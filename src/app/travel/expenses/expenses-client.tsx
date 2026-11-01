@@ -136,8 +136,8 @@ export default function ExpensesClient({
           getExpenses(100),
           getTrips(100),
         ]);
-        if (freshExpenses && freshExpenses.length > 0) setExpenses(freshExpenses);
-        if (freshTrips && freshTrips.length > 0) setTripList(freshTrips);
+        if (Array.isArray(freshExpenses)) setExpenses(freshExpenses);
+        if (Array.isArray(freshTrips)) setTripList(freshTrips);
       } catch (err) {
         console.warn("[ExpensesClient] Background fetch failed:", err);
       }

@@ -22,6 +22,7 @@ import {
   upsertStoredTrip,
   removeStoredTrip,
   notifyDataChanged,
+  isDeleted,
 } from '@/lib/storage-sync'
 
 const COLLECTION = 'trips'
@@ -35,16 +36,17 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
       await waitForAuthReady()
       const q = query(collection(db, COLLECTION), orderBy('createdAt', 'desc'), limit(limitCount))
       const snap = await getDocs(q)
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Trip))
-      if (list.length > 0) {
-        saveStoredTrips(list)
-        return list
-      }
-      return localFallback.length > 0 ? localFallback : list
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Trip))
+        .filter(t => !isDeleted('trips', t.id) && (!t.tripNumber || !isDeleted('trips', t.tripNumber)))
+
+      saveStoredTrips(list)
+      return list.length > 0 ? list : getStoredTrips()
     },
     { fallback: localFallback }
   )
 }
+
 
 export async function getRecentTrips(count = 5): Promise<Trip[]> {
   const localFallback = getStoredTrips().slice(0, count)
@@ -180,8 +182,16 @@ export async function deleteTrip(id: string): Promise<void> {
   try {
     await deleteDoc(doc(db, COLLECTION, id))
   } catch (err) {
-    console.warn('[TripsService] Firestore delete fallback to local:', err)
+    console.warn('[TripsService] Firestore delete by ID fallback:', err)
   }
+
+  try {
+    const q = query(collection(db, COLLECTION), where('tripNumber', '==', id))
+    const snap = await getDocs(q)
+    for (const d of snap.docs) {
+      await deleteDoc(d.ref)
+    }
+  } catch {}
 
   removeStoredTrip(id)
   invalidateCache('trips')
@@ -190,4 +200,5 @@ export async function deleteTrip(id: string): Promise<void> {
   invalidateCache('reports')
   invalidateCache('dashboard')
   notifyDataChanged('trips')
+  notifyDataChanged('all')
 }

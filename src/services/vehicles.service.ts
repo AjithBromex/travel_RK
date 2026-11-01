@@ -13,6 +13,7 @@ import {
   upsertStoredVehicle,
   removeStoredVehicle,
   notifyDataChanged,
+  isDeleted,
 } from '@/lib/storage-sync'
 
 const COLLECTION = 'vehicles'
@@ -29,16 +30,17 @@ export async function getVehicles(limitCount?: number): Promise<Vehicle[]> {
         ? query(baseCol, orderBy('createdAt', 'desc'), limit(limitCount))
         : query(baseCol, orderBy('createdAt', 'desc'))
       const snap = await getDocs(q)
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Vehicle))
-      if (list.length > 0) {
-        saveStoredVehicles(list)
-        return list
-      }
-      return localFallback.length > 0 ? localFallback : list
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Vehicle))
+        .filter(v => !isDeleted('vehicles', v.id))
+
+      saveStoredVehicles(list)
+      return list.length > 0 ? list : getStoredVehicles()
     },
     { fallback: localFallback }
   )
 }
+
 
 export async function getActiveVehicles(): Promise<Vehicle[]> {
   const localFallback = getStoredVehicles().filter(v => v.status === 'active')
@@ -141,12 +143,22 @@ export async function deleteVehicle(id: string): Promise<void> {
   try {
     await deleteDoc(doc(db, COLLECTION, id))
   } catch (err) {
-    console.warn('[VehiclesService] Firestore delete fallback to local:', err)
+    console.warn('[VehiclesService] Firestore delete by ID fallback:', err)
   }
+
+  try {
+    const q = query(collection(db, COLLECTION), where('registrationNumber', '==', id))
+    const snap = await getDocs(q)
+    for (const d of snap.docs) {
+      await deleteDoc(d.ref)
+    }
+  } catch {}
 
   removeStoredVehicle(id)
   invalidateCache('vehicles')
   invalidateCache('trips')
   invalidateCache('dashboard')
   notifyDataChanged('vehicles')
+  notifyDataChanged('all')
 }
+

@@ -371,4 +371,5 @@ export async function deleteAdminRow(slug: string, id: string): Promise<void> {
     await deleteReminder(id);
   }
   notifyDataChanged(slug as any);
+  notifyDataChanged('all');
 }

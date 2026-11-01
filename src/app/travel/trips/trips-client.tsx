@@ -126,7 +126,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   const fetchTripsData = () => {
     getTrips(100)
       .then((data) => {
-        if (data && data.length > 0) {
+        if (Array.isArray(data)) {
           setTrips(data);
         }
       })
@@ -138,7 +138,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   const fetchVehiclesData = () => {
     getVehicles(100)
       .then((data) => {
-        if (data && data.length > 0) {
+        if (Array.isArray(data)) {
           setVehicleList(data);
         }
       })

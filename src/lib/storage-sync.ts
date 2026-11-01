@@ -79,16 +79,57 @@ export function subscribeDataChanged(callback: (entity: string) => void): () => 
   }
 }
 
+// Deleted records tracking to guarantee cross-page and cloud synchronization
+export function markAsDeleted(entity: string, id: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(`rk_deleted_${entity}`)
+    const set = new Set<string>(raw ? JSON.parse(raw) : [])
+    set.add(id)
+    localStorage.setItem(`rk_deleted_${entity}`, JSON.stringify(Array.from(set)))
+  } catch (err) {
+    console.warn(`[Sync] Error marking ${entity} as deleted:`, err)
+  }
+}
+
+export function unmarkDeleted(entity: string, id: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(`rk_deleted_${entity}`)
+    if (!raw) return
+    const set = new Set<string>(JSON.parse(raw))
+    set.delete(id)
+    localStorage.setItem(`rk_deleted_${entity}`, JSON.stringify(Array.from(set)))
+  } catch (err) {
+    console.warn(`[Sync] Error unmarking ${entity} as deleted:`, err)
+  }
+}
+
+export function isDeleted(entity: string, id: string): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const raw = localStorage.getItem(`rk_deleted_${entity}`)
+    if (!raw) return false
+    const set = new Set<string>(JSON.parse(raw))
+    return set.has(id)
+  } catch {
+    return false
+  }
+}
+
 // Vehicle helpers
 export function getStoredVehicles(): Vehicle[] {
-  return getLocalData<Vehicle[]>('vehicles', [])
+  const list = getLocalData<Vehicle[]>('vehicles', [])
+  return list.filter(v => !isDeleted('vehicles', v.id))
 }
 
 export function saveStoredVehicles(vehicles: Vehicle[]): void {
-  setLocalData('vehicles', vehicles)
+  const filtered = (vehicles || []).filter(v => !isDeleted('vehicles', v.id))
+  setLocalData('vehicles', filtered)
 }
 
 export function upsertStoredVehicle(vehicle: Vehicle): void {
+  unmarkDeleted('vehicles', vehicle.id)
   const list = getStoredVehicles()
   const idx = list.findIndex(v => v.id === vehicle.id)
   if (idx >= 0) {
@@ -100,20 +141,25 @@ export function upsertStoredVehicle(vehicle: Vehicle): void {
 }
 
 export function removeStoredVehicle(id: string): void {
-  const list = getStoredVehicles().filter(v => v.id !== id)
-  saveStoredVehicles(list)
+  markAsDeleted('vehicles', id)
+  const list = getLocalData<Vehicle[]>('vehicles', []).filter(v => v.id !== id && v.registrationNumber !== id)
+  setLocalData('vehicles', list)
 }
 
 // Trip helpers
 export function getStoredTrips(): Trip[] {
-  return getLocalData<Trip[]>('trips', [])
+  const list = getLocalData<Trip[]>('trips', [])
+  return list.filter(t => !isDeleted('trips', t.id) && (!t.tripNumber || !isDeleted('trips', t.tripNumber)))
 }
 
 export function saveStoredTrips(trips: Trip[]): void {
-  setLocalData('trips', trips)
+  const filtered = (trips || []).filter(t => !isDeleted('trips', t.id) && (!t.tripNumber || !isDeleted('trips', t.tripNumber)))
+  setLocalData('trips', filtered)
 }
 
 export function upsertStoredTrip(trip: Trip): void {
+  unmarkDeleted('trips', trip.id)
+  if (trip.tripNumber) unmarkDeleted('trips', trip.tripNumber)
   const list = getStoredTrips()
   const idx = list.findIndex(t => t.id === trip.id || (trip.tripNumber && t.tripNumber === trip.tripNumber))
   if (idx >= 0) {
@@ -125,20 +171,24 @@ export function upsertStoredTrip(trip: Trip): void {
 }
 
 export function removeStoredTrip(id: string): void {
-  const list = getStoredTrips().filter(t => t.id !== id && t.tripNumber !== id)
-  saveStoredTrips(list)
+  markAsDeleted('trips', id)
+  const list = getLocalData<Trip[]>('trips', []).filter(t => t.id !== id && t.tripNumber !== id)
+  setLocalData('trips', list)
 }
 
 // Payment helpers
 export function getStoredPayments(): Payment[] {
-  return getLocalData<Payment[]>('payments', [])
+  const list = getLocalData<Payment[]>('payments', [])
+  return list.filter(p => !isDeleted('payments', p.id))
 }
 
 export function saveStoredPayments(payments: Payment[]): void {
-  setLocalData('payments', payments)
+  const filtered = (payments || []).filter(p => !isDeleted('payments', p.id))
+  setLocalData('payments', filtered)
 }
 
 export function upsertStoredPayment(payment: Payment): void {
+  unmarkDeleted('payments', payment.id)
   const list = getStoredPayments()
   const idx = list.findIndex(p => p.id === payment.id)
   if (idx >= 0) {
@@ -150,20 +200,24 @@ export function upsertStoredPayment(payment: Payment): void {
 }
 
 export function removeStoredPayment(id: string): void {
-  const list = getStoredPayments().filter(p => p.id !== id)
-  saveStoredPayments(list)
+  markAsDeleted('payments', id)
+  const list = getLocalData<Payment[]>('payments', []).filter(p => p.id !== id)
+  setLocalData('payments', list)
 }
 
 // Expense helpers
 export function getStoredExpenses(): Expense[] {
-  return getLocalData<Expense[]>('expenses', [])
+  const list = getLocalData<Expense[]>('expenses', [])
+  return list.filter(e => !isDeleted('expenses', e.id))
 }
 
 export function saveStoredExpenses(expenses: Expense[]): void {
-  setLocalData('expenses', expenses)
+  const filtered = (expenses || []).filter(e => !isDeleted('expenses', e.id))
+  setLocalData('expenses', filtered)
 }
 
 export function upsertStoredExpense(expense: Expense): void {
+  unmarkDeleted('expenses', expense.id)
   const list = getStoredExpenses()
   const idx = list.findIndex(e => e.id === expense.id)
   if (idx >= 0) {
@@ -175,6 +229,8 @@ export function upsertStoredExpense(expense: Expense): void {
 }
 
 export function removeStoredExpense(id: string): void {
-  const list = getStoredExpenses().filter(e => e.id !== id)
-  saveStoredExpenses(list)
+  markAsDeleted('expenses', id)
+  const list = getLocalData<Expense[]>('expenses', []).filter(e => e.id !== id)
+  setLocalData('expenses', list)
 }
+

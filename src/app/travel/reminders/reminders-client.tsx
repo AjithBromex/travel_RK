@@ -93,7 +93,7 @@ export default function RemindersClient({
     const fetchFreshVehicles = async () => {
       try {
         const fresh = await getVehicles();
-        if (fresh && fresh.length > 0) setVehicleList(fresh);
+        if (Array.isArray(fresh)) setVehicleList(fresh);
       } catch (err) {
         console.warn("[RemindersClient] Vehicle fetch error:", err);
       }

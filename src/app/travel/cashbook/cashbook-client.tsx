@@ -113,7 +113,7 @@ export default function CashBookClient({
         ]);
         const validTrips = freshTrips && freshTrips.length > 0 ? freshTrips : getStoredTrips();
         setTripList(validTrips);
-        if (freshEntries && freshEntries.length > 0) {
+        if (Array.isArray(freshEntries)) {
           setItems(transformEntries(freshEntries, validTrips));
         }
       } catch (err) {

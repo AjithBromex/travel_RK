@@ -142,7 +142,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
   const fetchVehiclesData = () => {
     getVehicles(100)
       .then((data) => {
-        if (data && data.length > 0) {
+        if (Array.isArray(data)) {
           setVehicles(data);
         }
       })

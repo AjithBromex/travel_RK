@@ -93,10 +93,10 @@ export default function ReportsClient({
           getExpenses(100),
           getPayments(100),
         ]);
-        if (freshTrips && freshTrips.length > 0) setTripsData(freshTrips);
-        if (freshVehicles && freshVehicles.length > 0) setVehiclesData(freshVehicles);
-        if (freshExpenses && freshExpenses.length > 0) setExpensesData(freshExpenses);
-        if (freshPayments && freshPayments.length > 0) setPaymentsData(freshPayments);
+        if (Array.isArray(freshTrips)) setTripsData(freshTrips);
+        if (Array.isArray(freshVehicles)) setVehiclesData(freshVehicles);
+        if (Array.isArray(freshExpenses)) setExpensesData(freshExpenses);
+        if (Array.isArray(freshPayments)) setPaymentsData(freshPayments);
       } catch (err) {
         console.warn("[ReportsClient] Refresh warning:", err);
       }

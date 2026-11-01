@@ -68,7 +68,7 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
   const fetchPaymentsData = () => {
     getPayments(100)
       .then((data) => {
-        if (data && data.length > 0) {
+        if (Array.isArray(data)) {
           setPayments(data);
         }
       })
@@ -80,7 +80,7 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
   const fetchTripsData = () => {
     getTrips(100)
       .then((data) => {
-        if (data && data.length > 0) {
+        if (Array.isArray(data)) {
           setTripList(data);
         }
       })
