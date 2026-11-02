@@ -130,6 +130,7 @@ export default function AdminTopbar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={true}
                     className={`inline-flex items-center gap-1.5 px-2.5 2xl:px-3.5 py-1 2xl:py-1.5 rounded-full text-[11px] 2xl:text-xs font-bold transition-all whitespace-nowrap ${
                       active
                         ? 'bg-[#0D62FE] text-white shadow-xs'
@@ -228,6 +229,7 @@ export default function AdminTopbar() {
                     <Link
                       key={item.href}
                       href={item.href}
+                      prefetch={true}
                       className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-colors ${
                         active
                           ? 'bg-[#0D62FE] text-white shadow-sm'

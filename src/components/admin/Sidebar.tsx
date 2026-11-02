@@ -82,6 +82,7 @@ export default function Sidebar() {
             <Link
               key={slug}
               href={href}
+              prefetch={true}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
                 active
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'

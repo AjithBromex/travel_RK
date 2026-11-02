@@ -147,20 +147,37 @@ function normalize(slug: string, d: Record<string, any>): Record<string, any> {
   return d;
 }
 
+// Memory cache to eliminate redundant network roundtrips during tab switching
+const rowsCache = new Map<string, { time: number; data: Record<string, unknown>[] }>();
+const CACHE_TTL_MS = 15000; // 15 seconds fast cache
+
 export async function listRows(slug: string): Promise<Record<string, unknown>[]> {
+  const cached = rowsCache.get(slug);
+  if (cached && Date.now() - cached.time < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5s timeout
+
     const url = getEndpoint(slug) + (API_KEY ? '&pageSize=200' : '?pageSize=200');
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, {
+      cache: 'no-store',
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeoutId));
+
     if (!res.ok) {
-      // If collection doesn't exist yet or is empty in Firestore
-      return [];
+      return cached?.data || [];
     }
     const json = await res.json();
     const docs = (json.documents || []).map(decodeDoc);
-    return docs.map((d: Record<string, any>) => normalize(slug, d));
+    const normalized = docs.map((d: Record<string, any>) => normalize(slug, d));
+    rowsCache.set(slug, { time: Date.now(), data: normalized });
+    return normalized;
   } catch (err) {
     console.warn(`[AdminStore] Error fetching Firestore collection ${slug}:`, err);
-    return [];
+    return cached?.data || [];
   }
 }
 
@@ -229,6 +246,7 @@ export async function createRow(slug: string, body: Record<string, unknown>): Pr
   }
 
   const doc = await res.json();
+  rowsCache.delete(slug);
   return normalize(slug, decodeDoc(doc));
 }
 
@@ -316,6 +334,11 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
     const res = await fetch(getEndpoint(slug, id), {
       method: 'DELETE',
     });
+    rowsCache.delete(slug);
+    if (slug === 'trips') {
+      rowsCache.delete('payments');
+      rowsCache.delete('expenses');
+    }
     return res.ok;
   } catch {
     return false;
