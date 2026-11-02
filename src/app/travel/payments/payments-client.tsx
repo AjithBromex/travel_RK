@@ -360,13 +360,12 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       alert("No payments recorded yet to export.");
       return;
     }
-    const headers = ["Payment ID", "Trip ID", "Type", "Amount", "Date", "Mode", "Notes"];
+    const headers = ["Date", "Trip Reference", "Type", "Amount", "Mode", "Notes"];
     const data = filteredPayments.map((p) => [
-      p.id,
-      p.tripId || "General",
+      formatDate(p.paymentDate),
+      p.tripId && p.tripId !== "general" ? `Trip #${p.tripId}` : "General Payment",
       p.type === "customer_received" ? "Customer Inflow" : "Driver Payout",
       formatINR(p.amount),
-      formatDate(p.paymentDate),
       p.paymentMode.toUpperCase(),
       p.notes || "-",
     ]);
