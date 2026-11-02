@@ -704,18 +704,6 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
           <div className="absolute inset-0 max-w-xl sm:max-w-2xl bg-gradient-to-r from-slate-950/85 via-slate-950/40 to-transparent pointer-events-none" />
         </div>
 
-        {/* Cursive Art Overlay on Large Screens: "Explore More Together" */}
-        <div className="hidden lg:block absolute right-8 top-10 select-none pointer-events-none opacity-90 pr-4">
-          <div className="relative w-36 h-24">
-            <Image
-              src="/images/explore-script-crop.png"
-              alt="Explore More Together"
-              fill
-              unoptimized
-              className="object-contain"
-            />
-          </div>
-        </div>
 
         {/* Top Floating Action Pill Buttons (Aligned to Right on Desktop) */}
         <div className="relative z-10 flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 flex-wrap w-full">
