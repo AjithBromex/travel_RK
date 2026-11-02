@@ -356,12 +356,12 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
   };
 
   const handleExportPDF = () => {
-    if (payments.length === 0) {
+    if (filteredPayments.length === 0) {
       alert("No payments recorded yet to export.");
       return;
     }
-    const headers = ["Payment ID", "Trip ID", "Type", "Amount (INR)", "Date", "Mode", "Notes"];
-    const data = payments.map((p) => [
+    const headers = ["Payment ID", "Trip ID", "Type", "Amount", "Date", "Mode", "Notes"];
+    const data = filteredPayments.map((p) => [
       p.id,
       p.tripId || "General",
       p.type === "customer_received" ? "Customer Inflow" : "Driver Payout",
@@ -370,10 +370,10 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       p.paymentMode.toUpperCase(),
       p.notes || "-",
     ]);
-    const totalInflow = payments
+    const totalInflow = filteredPayments
       .filter((p) => p.type === "customer_received")
       .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const totalPayout = payments
+    const totalPayout = filteredPayments
       .filter((p) => p.type === "driver_payment")
       .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
@@ -383,8 +383,9 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       filename: `Payments_Ledger_${todayStr}.pdf`,
       headers,
       data,
+      orientation: "landscape",
       summary: [
-        { label: "Total Transactions", value: String(payments.length) },
+        { label: "Total Transactions", value: String(filteredPayments.length) },
         { label: "Total Inflow", value: formatINR(totalInflow) },
         { label: "Driver Payouts", value: formatINR(totalPayout) },
         { label: "Net Cash Flow", value: formatINR(totalInflow - totalPayout) },

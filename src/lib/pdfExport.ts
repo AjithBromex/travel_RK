@@ -287,23 +287,48 @@ export async function exportToPDF({
       },
       didParseCell: (hookData) => {
         if (hookData.section === 'body') {
-          // Column 0 (Metric / Indicator / Name): Bold Dark Charcoal (#0A192F)
-          if (hookData.column.index === 0) {
+          const colIndex = hookData.column.index
+          const cellRaw = String(hookData.cell.raw ?? '').trim()
+          const headerName = String(headers[colIndex] ?? '').toLowerCase()
+
+          // 1. Primary Identifier column (Metric, Receipt #, Reg Number, Payment ID)
+          if (colIndex === 0) {
             hookData.cell.styles.fontStyle = 'bold'
-            hookData.cell.styles.textColor = [10, 25, 47]
-            hookData.cell.styles.fontSize = orientation === 'landscape' ? 9.2 : 9.8
+            hookData.cell.styles.textColor = [10, 25, 47] // Deep Charcoal (#0A192F)
           }
-          // Column 1 (Amount / Ratio): Bold Deep Navy (#031E44)
-          else if (hookData.column.index === 1) {
+          // 2. Currency or Financial Values (Fare, Balance, Amount, Revenue, Inflow, Payout, or ₹)
+          else if (
+            cellRaw.startsWith('₹') ||
+            cellRaw.startsWith('Rs.') ||
+            headerName.includes('amount') ||
+            headerName.includes('fare') ||
+            headerName.includes('balance') ||
+            headerName.includes('ratio') ||
+            headerName.includes('revenue') ||
+            headerName.includes('payout') ||
+            headerName.includes('price') ||
+            headerName.includes('inflow')
+          ) {
             hookData.cell.styles.fontStyle = 'bold'
-            hookData.cell.styles.textColor = [3, 30, 68]
-            hookData.cell.styles.fontSize = orientation === 'landscape' ? 9.8 : 10.5
+            hookData.cell.styles.textColor = [3, 30, 68] // Deep Navy (#031E44)
           }
-          // Column 2 (Period Note / Description): Strong bold text (#1E293B)
+          // 3. Status column (Active, Completed, Confirmed, Paid, Service Due, etc.)
+          else if (headerName.includes('status')) {
+            hookData.cell.styles.fontStyle = 'bold'
+            const upper = cellRaw.toUpperCase()
+            if (upper.includes('ACTIVE') || upper.includes('COMPLETED') || upper.includes('CONFIRMED') || upper.includes('PAID')) {
+              hookData.cell.styles.textColor = [16, 120, 60] // Deep emerald green
+            } else if (upper.includes('DUE') || upper.includes('PENDING') || upper.includes('OVERDUE')) {
+              hookData.cell.styles.textColor = [180, 83, 9] // Rich amber / burnt orange
+            } else {
+              hookData.cell.styles.textColor = [30, 41, 59]
+            }
+          }
+          // 4. All other descriptive columns (Date, Route, Vehicle, Driver, Period Note, Notes)
+          // Strong bold slate charcoal (#1E293B) for maximum strength and contrast
           else {
             hookData.cell.styles.fontStyle = 'bold'
             hookData.cell.styles.textColor = [30, 41, 59]
-            hookData.cell.styles.fontSize = orientation === 'landscape' ? 8.8 : 9.5
           }
         }
       },
