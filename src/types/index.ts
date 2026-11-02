@@ -30,6 +30,7 @@ export interface Trip {
   vehicleId: string
   vehicleName?: string
   driverName: string
+  driverPhone?: string
   customerName: string
   customerPhone: string
   from: string

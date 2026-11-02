@@ -178,7 +178,7 @@ export function buildInvoiceData(
     vehicleType: detectedType,
     vehicleDistance: distanceVal,
     driverName: trip?.driverName || '-',
-    driverMobile: '-',
+    driverMobile: trip?.driverPhone || '-',
     dutyStart: trip?.tripDate || '-',
     dutyEnd: '-',
     remarks: payment.notes

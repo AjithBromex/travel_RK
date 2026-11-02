@@ -185,6 +185,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       ? `${vehicles[0].name} (${vehicles[0].registrationNumber})`
       : "",
     driverName: "",
+    driverPhone: "",
     driverAgreedPay: 0,
     customerName: "",
     customerPhone: "",
@@ -357,6 +358,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       customerName: "Ramesh Patil",
       customerPhone: "9876543210",
       driverName: "Rajesh Kumar",
+      driverPhone: "9876543210",
       includedKm: 100,
       baseFare: 3500,
       advanceReceived: 1000,
@@ -379,6 +381,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       vehicleId: trip.vehicleId || "",
       vehicleName: trip.vehicleName || "",
       driverName: trip.driverName || "",
+      driverPhone: trip.driverPhone || "",
       driverAgreedPay: trip.driverAgreedPay || 0,
       customerName: trip.customerName || "",
       customerPhone: trip.customerPhone || "",
@@ -456,6 +459,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         vehicleId: form.vehicleId,
         vehicleName,
         driverName: form.driverName.trim(),
+        driverPhone: form.driverPhone ? form.driverPhone.trim() : "",
         driverAgreedPay: Number(form.driverAgreedPay) || 0,
         customerName: form.customerName.trim(),
         customerPhone: form.customerPhone.trim(),
@@ -534,6 +538,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
           t.from.toLowerCase().includes(query) ||
           t.to.toLowerCase().includes(query) ||
           (t.driverName && t.driverName.toLowerCase().includes(query)) ||
+          (t.driverPhone && t.driverPhone.toLowerCase().includes(query)) ||
           (t.vehicleName && t.vehicleName.toLowerCase().includes(query));
         if (!matches) return false;
       }
@@ -560,7 +565,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       From: t.from,
       To: t.to,
       Vehicle: t.vehicleName || "-",
-      Driver: t.driverName || "-",
+      Driver: t.driverName ? `${t.driverName}${t.driverPhone ? ` (${t.driverPhone})` : ""}` : "-",
       "Total Fare (INR)": t.totalFare,
       "Advance Received": t.advanceReceived,
       "Customer Balance": t.customerBalance,
@@ -593,7 +598,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       t.customerName,
       `${t.from} → ${t.to}`,
       t.vehicleName || "-",
-      t.driverName || "-",
+      t.driverName ? `${t.driverName}${t.driverPhone ? ` (${t.driverPhone})` : ""}` : "-",
       formatINR(t.totalFare),
       formatINR(t.customerBalance),
       t.status.toUpperCase(),
@@ -1094,60 +1099,61 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                 </div>
               </div>
 
-              {/* Row 4: Assigned Vehicle & Driver Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">
-                      ASSIGNED VEHICLE <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setIsAddVehicleOpen(true)}
-                        className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200/80 flex items-center gap-0.5 cursor-pointer transition-colors"
-                      >
-                        <Plus className="w-3 h-3 stroke-[2.5]" />
-                        <span>Quick Add</span>
-                      </button>
-                      <Link
-                        href="/travel/vehicles"
-                        className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 cursor-pointer"
-                      >
-                        <span>Fleet</span>
-                        <ArrowRight className="w-2.5 h-2.5" />
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={form.vehicleId}
-                      onChange={(e) => handleVehicleChange(e.target.value)}
-                      className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer font-sans"
+              {/* Row 4: Assigned Vehicle */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">
+                    ASSIGNED VEHICLE <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddVehicleOpen(true)}
+                      className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200/80 flex items-center gap-0.5 cursor-pointer transition-colors"
                     >
-                      <option value="">Select vehicle...</option>
-                      {(vehicleList.length > 0 ? vehicleList : vehicles).map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name || v.registrationNumber} ({v.registrationNumber}){v.type ? ` • ${v.type}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Plus className="w-3 h-3 stroke-[2.5]" />
+                      <span>Quick Add</span>
+                    </button>
+                    <Link
+                      href="/travel/vehicles"
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <span>Fleet</span>
+                      <ArrowRight className="w-2.5 h-2.5" />
+                    </Link>
                   </div>
-                  {vehicleList.length === 0 && vehicles.length === 0 && (
-                    <div className="text-[10px] text-amber-600 mt-1 flex items-center justify-between">
-                      <span>No vehicles registered yet.</span>
-                      <button
-                        type="button"
-                        onClick={() => setIsAddVehicleOpen(true)}
-                        className="font-bold underline text-blue-600 cursor-pointer"
-                      >
-                        + Add vehicle now
-                      </button>
-                    </div>
-                  )}
                 </div>
+                <div className="relative">
+                  <select
+                    value={form.vehicleId}
+                    onChange={(e) => handleVehicleChange(e.target.value)}
+                    className="w-full appearance-none px-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer font-sans"
+                  >
+                    <option value="">Select vehicle...</option>
+                    {(vehicleList.length > 0 ? vehicleList : vehicles).map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name || v.registrationNumber} ({v.registrationNumber}){v.type ? ` • ${v.type}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+                {vehicleList.length === 0 && vehicles.length === 0 && (
+                  <div className="text-[10px] text-amber-600 mt-1 flex items-center justify-between">
+                    <span>No vehicles registered yet.</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddVehicleOpen(true)}
+                      className="font-bold underline text-blue-600 cursor-pointer"
+                    >
+                      + Add vehicle now
+                    </button>
+                  </div>
+                )}
+              </div>
 
+              {/* Row 5: Driver Name & Driver Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
                     DRIVER NAME
@@ -1158,6 +1164,19 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     autoCapitalize="words"
                     value={form.driverName}
                     onChange={(e) => setForm({ ...form, driverName: capitalizeWords(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
+                    DRIVER PHONE
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. 9876543210"
+                    value={form.driverPhone}
+                    onChange={(e) => setForm({ ...form, driverPhone: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
                   />
                 </div>
@@ -1466,6 +1485,12 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                         <p className="text-[11px] text-slate-500 mt-1">
                           {trip.customerName} {trip.customerPhone && `• ${trip.customerPhone}`}
                         </p>
+                        {trip.driverName && (
+                          <p className="text-[10px] text-slate-500 mt-0.5">
+                            Driver: <span className="text-slate-700 font-semibold">{trip.driverName}</span>
+                            {trip.driverPhone && <span className="text-slate-400"> ({trip.driverPhone})</span>}
+                          </p>
+                        )}
                         {(() => {
                           const resolvedVeh =
                             trip.vehicleName ||
