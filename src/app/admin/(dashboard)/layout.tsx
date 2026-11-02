@@ -1,4 +1,5 @@
 import AdminTopbar from '@/components/admin/AdminTopbar';
+import MobileBottomNav from '@/components/MobileBottomNav';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +20,12 @@ export default function DashboardShellLayout({ children }: { children: React.Rea
 
       <div className="w-full relative z-10 flex flex-col min-h-screen">
         <AdminTopbar />
-        <main className="flex-1 w-full p-2.5 sm:p-4 md:p-6 lg:p-8 max-w-[1520px] mx-auto transition-all">
+        <main className="flex-1 w-full p-2.5 sm:p-4 md:p-6 lg:p-8 pb-24 xl:pb-8 max-w-[1520px] mx-auto transition-all">
           {children}
         </main>
       </div>
+
+      <MobileBottomNav isAdmin={true} />
     </div>
   );
 }

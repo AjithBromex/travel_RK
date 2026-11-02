@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import MobileBottomNav from "./MobileBottomNav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -35,10 +36,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content area */}
       <div className="w-full relative z-10">
         <Topbar onToggleMobileSidebar={() => setMobileOpen(!mobileOpen)} />
-        <main className="p-3 sm:p-5 lg:p-6 min-h-[calc(100vh-68px)] max-w-[1520px] mx-auto">
+        <main className="p-3 sm:p-5 lg:p-6 pb-24 xl:pb-8 min-h-[calc(100vh-68px)] max-w-[1520px] mx-auto">
           {children}
         </main>
       </div>
+
+      {/* Dedicated Mobile Bottom Navigation Bar */}
+      <MobileBottomNav />
     </div>
   );
 }

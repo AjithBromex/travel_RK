@@ -309,10 +309,10 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
         {/* Main Floating Row */}
         <div className="flex items-center justify-between gap-3 w-full">
           {/* 1. LEFT: PILL-SHAPED BRAND CAPSULE */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={onToggleMobileSidebar}
-              className="xl:hidden p-2 rounded-full bg-white/95 border border-slate-200/90 hover:bg-slate-100 text-slate-700 cursor-pointer shadow-xs transition-colors"
+              className="xl:hidden p-2 rounded-full bg-white/95 border border-slate-200/90 hover:bg-slate-100 text-slate-700 cursor-pointer shadow-xs transition-colors shrink-0"
               aria-label="Toggle navigation"
             >
               <Menu className="w-4 h-4" />
@@ -326,22 +326,22 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                   : "bg-white/95 border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)]"
               }`}
             >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 relative shrink-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#0F172A] p-0.5 flex items-center justify-center relative shrink-0 shadow-xs">
                 <Image
                   src="/images/rk-logo.png"
                   alt="RK Travel Hub"
                   fill
                   priority
                   unoptimized
-                  className="object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
+                  className="object-contain p-0.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
                 />
               </div>
 
               <div className="flex flex-col justify-center leading-none text-left">
-                <span className="text-[12px] sm:text-[13px] font-black tracking-tight text-[#0F172A] uppercase leading-none">
-                  RK TRAVEL HUB
+                <span className="text-[11.5px] sm:text-[13px] font-black tracking-tight text-[#0F172A] uppercase leading-none">
+                  RK TRAVEL <span className="text-[#0284C7]">HUB</span>
                 </span>
-                <span className="hidden min-[360px]:inline-block text-[7.5px] sm:text-[8px] font-extrabold tracking-[0.16em] text-slate-400 uppercase mt-0.5 leading-none">
+                <span className="text-[7px] sm:text-[8px] font-extrabold tracking-[0.14em] text-slate-400 uppercase mt-0.5 leading-none">
                   TRAVEL BEYOND BORDERS
                 </span>
               </div>
@@ -627,20 +627,20 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
             <div ref={profileRef} className="relative">
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-1.5 p-0.5 pr-2.5 rounded-full bg-white/95 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] hover:bg-slate-100/80 transition-colors cursor-pointer select-none backdrop-blur-md"
+                className="flex items-center gap-1.5 p-0.5 sm:p-1 pr-2 sm:pr-2.5 rounded-full bg-white/95 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] hover:bg-slate-100/80 transition-colors cursor-pointer select-none backdrop-blur-md"
               >
-                <div className="w-7 h-7 rounded-full bg-[#18181B] text-white flex items-center justify-center font-black text-xs uppercase shadow-xs shrink-0">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#18181B] text-white flex items-center justify-center font-black text-[11px] sm:text-xs uppercase shadow-xs shrink-0">
                   {userName.charAt(0).toUpperCase() || "A"}
                 </div>
-                <div className="hidden xl:flex flex-col text-left leading-none">
-                  <span className="text-[11px] font-bold text-slate-900 leading-tight uppercase tracking-wider">
+                <div className="flex flex-col text-left leading-none">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-900 leading-tight uppercase tracking-wider max-w-[58px] sm:max-w-none truncate">
                     {userName}
                   </span>
-                  <span className="text-[9px] text-slate-400 capitalize leading-none mt-0.5">
+                  <span className="text-[8.5px] sm:text-[9px] text-slate-400 capitalize leading-none mt-0.5">
                     {userRole}
                   </span>
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <ChevronDown className="w-3 h-3 text-slate-400 shrink-0 ml-0.5" />
               </button>
 
               {/* Profile Dropdown Menu */}

@@ -423,7 +423,7 @@ export default function ReportsClient({
       {/* ─────────────────────────────────────────────────────────────
           2. TOP 4 HORIZONTAL METRIC CARDS (Exact 1:1 Overlap on Hero)
           ───────────────────────────────────────────────────────────── */}
-      <div className="-mt-10 sm:-mt-12 lg:-mt-14 relative z-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 px-2 sm:px-4">
+      <div className="-mt-10 sm:-mt-12 lg:-mt-14 relative z-20 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 px-1 sm:px-4">
         {/* CARD 1: TOTAL TRIPS */}
         <div className="bg-white rounded-[20px] sm:rounded-[22px] p-4 sm:p-5 border border-slate-200/90 shadow-[0_8px_24px_rgba(15,23,42,0.06)] flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
