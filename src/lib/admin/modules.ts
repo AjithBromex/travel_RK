@@ -51,12 +51,12 @@ export const MODULES: Record<string, ModuleConfig> = {
     singular: 'user',
     fields: [
       T('name', 'Full name', { required: true }),
-      T('phone', 'Phone', { required: true }),
+      T('phone', 'Phone'),
       T('email', 'Email'),
       S('role', 'Role', ['Customer', 'Staff', 'Driver', 'Admin']),
       S('status', 'Status', ['Active', 'Blocked']),
     ],
-    columns: ['name', 'phone', 'email', 'role', 'status'],
+    columns: ['name', 'email', 'role', 'status'],
   },
   vehicles: {
     title: 'Vehicles',
