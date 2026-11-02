@@ -51,8 +51,14 @@ export default function AdminLogin() {
     };
   }, []);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (busy) return;
+    if (!username.trim() || !password) {
+      setErr('Please enter both username and password.');
+      return;
+    }
+
     setBusy(true);
     setErr('');
 
@@ -60,19 +66,18 @@ export default function AdminLogin() {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: username.trim(), password }),
       });
+
       if (res.ok) {
-        // Authenticate client-side Firebase Auth if credentials match Firebase account
-        try {
-          const email = username.includes('@') ? username : `${username.toLowerCase()}@gmail.com`;
-          await signInWithEmailAndPassword(auth, email, password);
-        } catch (firebaseAuthErr) {
+        // Authenticate client-side Firebase Auth asynchronously without blocking page transition
+        const email = username.includes('@') ? username.trim() : `${username.trim().toLowerCase()}@gmail.com`;
+        signInWithEmailAndPassword(auth, email, password).catch((firebaseAuthErr) => {
           console.warn('[AdminLogin] Firebase client auth notice:', firebaseAuthErr);
-        }
-        setBusy(false);
-        router.push('/admin');
-        router.refresh();
+        });
+
+        // Instant redirect to admin console
+        window.location.href = '/admin';
       } else {
         setBusy(false);
         const data = await res.json().catch(() => ({}));
@@ -83,6 +88,13 @@ export default function AdminLogin() {
       setErr('Connection error. Please try again.');
     }
   }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submit();
+    }
+  };
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-x-hidden font-sans bg-[#050B17] selection:bg-blue-600 selection:text-white">
@@ -280,6 +292,7 @@ export default function AdminLogin() {
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
+                      onKeyDown={handleKeyDown}
                       placeholder="Enter admin email or username"
                       className="w-full h-11 pl-10 pr-3.5 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                     />
@@ -302,6 +315,7 @@ export default function AdminLogin() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      onKeyDown={handleKeyDown}
                       placeholder="Enter password"
                       className="w-full h-11 pl-10 pr-10 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                     />
