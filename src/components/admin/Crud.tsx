@@ -49,7 +49,7 @@ const BADGE_STYLES: Record<string, string> = {
   Out: 'bg-rose-50 text-rose-700 border border-rose-200/90',
 };
 
-function Cell({ f, v }: { f: FieldConfig; v: unknown }) {
+function Cell({ f, v, row }: { f: FieldConfig; v: unknown; row?: Record<string, unknown> }) {
   if (f.type === 'money') {
     return <span className="font-extrabold text-slate-900 tracking-tight">{inr(v)}</span>;
   }
@@ -62,9 +62,22 @@ function Cell({ f, v }: { f: FieldConfig; v: unknown }) {
       </span>
     );
   }
+
+  let displayVal = v;
+  if (f.key === 'email' && (!v || String(v).trim() === '') && row) {
+    const cleanName = String(row.name || (row as any).displayName || (row as any).userId || '')
+      .trim()
+      .replace(/@gmail\.com$/i, '')
+      .replace(/@.*$/, '')
+      .toLowerCase();
+    if (cleanName && !cleanName.startsWith('usr_')) {
+      displayVal = `${cleanName}@gmail.com`;
+    }
+  }
+
   return (
     <span className="text-slate-800 font-medium">
-      {(v as React.ReactNode) || <span className="text-slate-300 font-normal">–</span>}
+      {(displayVal as React.ReactNode) || <span className="text-slate-300 font-normal">–</span>}
     </span>
   );
 }
@@ -88,7 +101,22 @@ export default function Crud({
   columns,
   initial,
 }: CrudProps) {
-  const [rows, setRows] = useState<Record<string, unknown>[]>(initial);
+  const sanitizeRows = useCallback((rawList: Record<string, unknown>[]) => {
+    if (slug !== 'users' || !Array.isArray(rawList)) return rawList;
+    return rawList.map((r) => {
+      const existingEmail = String(r.email || (r as any).userEmail || (r as any).mail || '').trim();
+      if (existingEmail) return { ...r, email: existingEmail };
+      const cleanName = String(r.name || (r as any).displayName || (r as any).userId || '')
+        .trim()
+        .replace(/@gmail\.com$/i, '')
+        .replace(/@.*$/, '')
+        .toLowerCase();
+      const fallbackEmail = cleanName && !cleanName.startsWith('usr_') ? `${cleanName}@gmail.com` : '';
+      return fallbackEmail ? { ...r, email: fallbackEmail } : r;
+    });
+  }, [slug]);
+
+  const [rows, setRows] = useState<Record<string, unknown>[]>(() => sanitizeRows(initial));
   const [q, setQ] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
   const [page, setPage] = useState(1);
@@ -103,16 +131,16 @@ export default function Crud({
     try {
       const live = await fetchAdminRows(slug);
       if (live && live.length > 0) {
-        setRows(live);
+        setRows(sanitizeRows(live));
       } else if (initial && initial.length > 0 && rows.length === 0) {
-        setRows(initial);
+        setRows(sanitizeRows(initial));
       }
     } catch (e) {
       console.warn(`[Crud] Live row fetch notice for ${slug}:`, e);
     } finally {
       isFetchingRef.current = false;
     }
-  }, [slug, initial, rows.length]);
+  }, [slug, initial, rows.length, sanitizeRows]);
 
   useEffect(() => {
     // Only load if initial was empty
@@ -460,7 +488,7 @@ export default function Crud({
                         f.type === 'money' ? 'text-right' : ''
                       }`}
                     >
-                      <Cell f={f} v={r[f.key]} />
+                      <Cell f={f} v={r[f.key]} row={r} />
                     </td>
                   ))}
                   <td className="py-3 px-3.5 sm:px-5 text-right whitespace-nowrap">

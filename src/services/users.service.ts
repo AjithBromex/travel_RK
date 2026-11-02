@@ -20,7 +20,15 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     const docRef = doc(db, COLLECTION, uid)
     const snap = await getDoc(docRef)
     if (!snap.exists()) return null
-    return snap.data() as UserProfile
+    const data = snap.data() as UserProfile
+    if (!data.email || !data.email.trim()) {
+      const cleanUser = String(data.userId || data.displayName || '').trim().replace(/@.*$/, '').toLowerCase()
+      if (cleanUser) {
+        data.email = `${cleanUser}@gmail.com`
+        updateDoc(docRef, { email: data.email }).catch(() => {})
+      }
+    }
+    return data
   } catch (err) {
     console.warn(`[Users] Error fetching user profile for ${uid}:`, err)
     return null
@@ -38,6 +46,8 @@ export async function createStaffRecord(
 ): Promise<void> {
   const now = new Date().toISOString()
   const cleanId = (staffData.userId || staffData.displayName || staffData.email?.split('@')[0] || '').toUpperCase()
+  const fallbackEmail = cleanId ? `${cleanId.toLowerCase()}@gmail.com` : ''
+  const email = staffData.email || fallbackEmail
   try {
     const staffDocRef = doc(db, 'staff', uid)
     await setDoc(
@@ -48,7 +58,7 @@ export async function createStaffRecord(
         displayName: staffData.displayName || cleanId || 'Staff Member',
         userId: cleanId,
         username: cleanId,
-        email: staffData.email || '',
+        email,
         phone: staffData.phone || '',
         role: 'staff',
         isActive: true,
@@ -69,10 +79,12 @@ export async function createUserProfile(
   const now = new Date().toISOString()
   const role = profile.role || 'staff'
   const cleanUserId = (profile.userId || profile.displayName || profile.email?.split('@')[0] || '').toUpperCase()
+  const rawEmail = String(profile.email || '').trim()
+  const email = rawEmail || (cleanUserId ? `${cleanUserId.toLowerCase()}@gmail.com` : '')
   const newProfile: UserProfile = {
     uid,
-    email: profile.email || '',
-    displayName: profile.displayName || profile.email?.split('@')[0] || 'User',
+    email,
+    displayName: profile.displayName || cleanUserId || 'User',
     role,
     userId: cleanUserId,
     isActive: profile.isActive !== undefined ? profile.isActive : true,
@@ -139,7 +151,27 @@ export async function findUserByUsername(username: string): Promise<UserProfile 
 export async function getAllUsers(): Promise<UserProfile[]> {
   try {
     const snap = await getDocs(collection(db, COLLECTION))
-    return snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile))
+    return snap.docs.map(d => {
+      const data = d.data() as Partial<UserProfile>
+      const rawEmail = String(data.email || '').trim()
+      const cleanUser = String(data.userId || data.displayName || (data as any).name || (data as any).username || d.id || '')
+        .trim()
+        .replace(/@gmail\.com$/i, '')
+        .replace(/@.*$/, '')
+        .toLowerCase()
+      const fallbackEmail = cleanUser && !cleanUser.startsWith('usr_') ? `${cleanUser}@gmail.com` : ''
+      const email = rawEmail || fallbackEmail
+
+      if (!rawEmail && fallbackEmail && d.id) {
+        updateDoc(d.ref, { email: fallbackEmail }).catch(() => {})
+      }
+
+      return {
+        uid: d.id,
+        ...data,
+        email,
+      } as UserProfile
+    })
   } catch (err) {
     console.warn('[Users] Error listing users:', err)
     return []

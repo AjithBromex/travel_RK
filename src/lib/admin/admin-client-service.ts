@@ -190,11 +190,20 @@ export function normalizeUser(u: Partial<UserProfile> & Record<string, any>): Re
   const recId = String(u.uid || u.id || '');
   const isConfirmed = Boolean((u as any).isConfirmed || (recId && isRecordConfirmed('users', recId)));
 
+  const rawEmail = String(u.email || (u as any).userEmail || (u as any).mail || '').trim();
+  const cleanUser = String(u.userId || u.displayName || (u as any).name || (u as any).username || recId || '')
+    .trim()
+    .replace(/@gmail\.com$/i, '')
+    .replace(/@.*$/, '')
+    .toLowerCase();
+  const fallbackEmail = cleanUser && !cleanUser.startsWith('usr_') ? `${cleanUser}@gmail.com` : '';
+  const email = rawEmail || fallbackEmail;
+
   return {
     id: u.uid || u.id || `usr_${Math.random().toString(36).slice(2)}`,
-    name: u.displayName || u.userId || u.name || 'Staff User',
+    name: u.displayName || u.userId || (u as any).name || 'Staff User',
     phone: u.phone || '',
-    email: u.email || '',
+    email,
     role: u.role ? (u.role.charAt(0).toUpperCase() + u.role.slice(1)) : 'Staff',
     status: u.isActive === false ? 'Blocked' : 'Active',
     isConfirmed,
@@ -418,10 +427,15 @@ export async function saveAdminRow(
   }
 
   if (slug === 'users') {
+    const rawName = String(form.name || '');
+    const cleanId = rawName.trim().replace(/@gmail\.com$/i, '').replace(/@.*$/, '').toLowerCase();
+    const rawEmail = String(form.email || '').trim();
+    const email = rawEmail || (cleanId ? `${cleanId}@gmail.com` : '');
+
     const userData: any = {
-      displayName: String(form.name || ''),
+      displayName: rawName,
       phone: String(form.phone || ''),
-      email: String(form.email || ''),
+      email,
       role: String(form.role || 'staff').toLowerCase(),
       isActive: form.status !== 'Blocked',
     };

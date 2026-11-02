@@ -86,10 +86,22 @@ export async function signInUser(
       userId: loginUsername,
       role: 'staff',
     })
-  } else if (profile.displayName !== loginUsername && loginUsername) {
-    // Keep profile displayName in sync with the login username
-    profile = { ...profile, displayName: loginUsername, userId: loginUsername }
-    updateUserProfile(credential.user.uid, { displayName: loginUsername, userId: loginUsername }).catch(() => {})
+  } else {
+    const updates: Partial<UserProfile> = {}
+    if (profile.displayName !== loginUsername && loginUsername) {
+      profile.displayName = loginUsername
+      profile.userId = loginUsername
+      updates.displayName = loginUsername
+      updates.userId = loginUsername
+    }
+    if (!profile.email) {
+      const resolvedEmail = credential.user.email || email || `${loginUsername.toLowerCase()}@gmail.com`
+      profile.email = resolvedEmail
+      updates.email = resolvedEmail
+    }
+    if (Object.keys(updates).length > 0) {
+      updateUserProfile(credential.user.uid, updates).catch(() => {})
+    }
   }
 
   return { user: credential.user, profile }

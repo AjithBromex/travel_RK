@@ -59,11 +59,20 @@ function encodeFirestoreValue(val: any): any {
 
 function normalize(slug: string, d: Record<string, any>): Record<string, any> {
   if (slug === 'users') {
+    const rawEmail = String(d.email || d.userEmail || d.mail || '').trim();
+    const cleanUser = String(d.userId || d.displayName || d.name || d.username || d.id || '')
+      .trim()
+      .replace(/@gmail\.com$/i, '')
+      .replace(/@.*$/, '')
+      .toLowerCase();
+    const fallbackEmail = cleanUser && !cleanUser.startsWith('usr_') ? `${cleanUser}@gmail.com` : '';
+    const email = rawEmail || fallbackEmail;
+
     return {
       id: d.id,
       name: d.displayName || d.userId || d.name || 'Staff User',
       phone: d.phone || '',
-      email: d.email || '',
+      email,
       role: d.role ? (d.role.charAt(0).toUpperCase() + d.role.slice(1)) : 'Staff',
       status: d.isActive === false ? 'Blocked' : 'Active',
     };
@@ -225,6 +234,8 @@ export async function createRow(slug: string, body: Record<string, unknown>): Pr
   } else if (slug === 'users') {
     payload.displayName = cleaned.name;
     payload.userId = cleaned.name;
+    const cleanId = String(cleaned.name || '').trim().replace(/@gmail\.com$/i, '').replace(/@.*$/, '').toLowerCase();
+    payload.email = cleaned.email || (cleanId ? `${cleanId}@gmail.com` : '');
     payload.role = String(cleaned.role || 'staff').toLowerCase();
     payload.isActive = cleaned.status !== 'Blocked';
   }
@@ -270,6 +281,8 @@ export async function updateRow(slug: string, id: string, body: Record<string, u
     payload.description = cleaned.note;
   } else if (slug === 'users') {
     payload.displayName = cleaned.name;
+    const cleanId = String(cleaned.name || '').trim().replace(/@gmail\.com$/i, '').replace(/@.*$/, '').toLowerCase();
+    payload.email = cleaned.email || (cleanId ? `${cleanId}@gmail.com` : '');
     payload.role = String(cleaned.role || 'staff').toLowerCase();
     payload.isActive = cleaned.status !== 'Blocked';
   }

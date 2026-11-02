@@ -61,11 +61,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           let profile = await getUserProfile(currentUser.uid)
           if (!profile) {
+            const cleanId = (currentUser.displayName || currentUser.email?.split('@')[0] || 'STAFF').toUpperCase()
+            const fallbackEmail = currentUser.email || `${cleanId.toLowerCase()}@gmail.com`
             profile = await createUserProfile(currentUser.uid, {
-              email: currentUser.email || '',
-              displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Staff Member',
+              email: fallbackEmail,
+              displayName: currentUser.displayName || cleanId || 'Staff Member',
               role: 'staff',
-              userId: currentUser.email?.split('@')[0]?.toUpperCase() || 'STAFF',
+              userId: cleanId,
             })
           }
           setUserProfile(profile)
