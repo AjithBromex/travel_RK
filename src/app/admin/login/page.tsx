@@ -117,7 +117,12 @@ export default function AdminLogin() {
         {/* Top Floating Mini Header */}
         <div className="flex items-center justify-between py-2 sm:py-3">
           <Link
-            href="/login"
+            href="/login?switch=true"
+            onClick={() => {
+              if (typeof document !== 'undefined') {
+                document.cookie = 'firebase_auth=; path=/; max-age=0; SameSite=Lax';
+              }
+            }}
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 backdrop-blur-md text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <ArrowLeft className="w-3.5 h-3.5" />

@@ -29,11 +29,12 @@ import { getFriendlyAuthErrorMessage } from "@/lib/firebase/auth";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn, signUp, resetPassword, user } = useAuth();
+  const { signIn, signUp, resetPassword, signOut, user } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const urlError = searchParams.get("error");
+  const isSwitch = searchParams.get("switch") === "true";
   const initialError =
     urlError === "Unauthorized"
       ? "You are not authorized to view that page. Please log in with an authorized account."
@@ -53,13 +54,18 @@ function LoginForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/travel";
 
   useEffect(() => {
+    if (isSwitch) {
+      signOut().catch(() => {});
+      return;
+    }
+
     if (user) {
       const destination = callbackUrl.startsWith("/travel")
         ? callbackUrl
         : "/travel";
       router.replace(destination);
     }
-  }, [user, callbackUrl, router]);
+  }, [user, callbackUrl, router, isSwitch, signOut]);
 
   useEffect(() => {
     // Defeat browser password manager aggressive autofill on page load

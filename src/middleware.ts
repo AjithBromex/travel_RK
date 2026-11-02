@@ -44,9 +44,10 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If already logged in and visiting /login -> send to /travel
+  // If already logged in and visiting /login -> send to /travel, unless ?switch=true is provided
   if (isLoginPage) {
-    if (isLoggedIn) {
+    const isSwitch = req.nextUrl.searchParams.get('switch') === 'true';
+    if (isLoggedIn && !isSwitch) {
       const url = req.nextUrl.clone();
       url.pathname = '/travel';
       return NextResponse.redirect(url);
