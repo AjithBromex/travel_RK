@@ -350,6 +350,66 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     }
   };
 
+  const handlePhoneKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    currentVal: string
+  ) => {
+    // Allow navigational and editing control keys
+    const allowedSpecialKeys = [
+      "Backspace",
+      "Delete",
+      "Tab",
+      "Escape",
+      "Enter",
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowDown",
+      "Home",
+      "End",
+    ];
+    if (allowedSpecialKeys.includes(e.key)) return;
+
+    // Allow standard keyboard shortcuts (Ctrl/Cmd + A, C, V, X, Z)
+    if (e.ctrlKey || e.metaKey) return;
+
+    // Reject ANY non-digit character (only 0-9 allowed)
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+      return;
+    }
+
+    // Check if user currently has text selected to be replaced
+    const target = e.currentTarget;
+    const hasSelection =
+      target.selectionStart !== null &&
+      target.selectionEnd !== null &&
+      target.selectionStart !== target.selectionEnd;
+
+    // Block typing more than 10 digits
+    const digitsOnly = currentVal.replace(/\D/g, "");
+    if (digitsOnly.length >= 10 && !hasSelection) {
+      e.preventDefault();
+    }
+  };
+
+  const handlePhonePaste = (
+    e: React.ClipboardEvent<HTMLInputElement>,
+    currentVal: string,
+    setter: (val: string) => void
+  ) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData("text") || "";
+    const cleanPasted = pastedText.replace(/\D/g, "");
+    const target = e.currentTarget;
+    const start = target.selectionStart ?? currentVal.length;
+    const end = target.selectionEnd ?? currentVal.length;
+    const before = currentVal.slice(0, start);
+    const after = currentVal.slice(end);
+    const combined = (before + cleanPasted + after).replace(/\D/g, "").slice(0, 10);
+    setter(combined);
+  };
+
   const handleQuickTripPreset = () => {
     setForm((prev) => ({
       ...prev,
@@ -381,10 +441,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       vehicleId: trip.vehicleId || "",
       vehicleName: trip.vehicleName || "",
       driverName: trip.driverName || "",
-      driverPhone: trip.driverPhone || "",
+      driverPhone: (trip.driverPhone || "").replace(/\D/g, "").slice(0, 10),
       driverAgreedPay: trip.driverAgreedPay || 0,
       customerName: trip.customerName || "",
-      customerPhone: trip.customerPhone || "",
+      customerPhone: (trip.customerPhone || "").replace(/\D/g, "").slice(0, 10),
       from: trip.from || "",
       to: trip.to || "",
       startingKm: trip.startingKm || 0,
@@ -1094,12 +1154,25 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     inputMode="numeric"
                     maxLength={10}
                     pattern="[0-9]{10}"
-                    title="10-digit phone number"
+                    title="10-digit phone number (numbers only)"
                     placeholder="e.g. 9876543210 (10 digits)"
                     value={form.customerPhone}
+                    onKeyDown={(e) => handlePhoneKeyDown(e, form.customerPhone)}
+                    onPaste={(e) =>
+                      handlePhonePaste(e, form.customerPhone, (val) =>
+                        setForm((prev) => ({ ...prev, customerPhone: val }))
+                      )
+                    }
                     onChange={(e) => {
                       const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
-                      setForm({ ...form, customerPhone: digits });
+                      setForm((prev) => ({ ...prev, customerPhone: digits }));
+                    }}
+                    onInput={(e) => {
+                      const target = e.currentTarget;
+                      const sanitized = target.value.replace(/\D/g, "").slice(0, 10);
+                      if (target.value !== sanitized) {
+                        target.value = sanitized;
+                      }
                     }}
                     className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 ${
                       form.customerPhone && form.customerPhone.length < 10
@@ -1234,12 +1307,25 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     inputMode="numeric"
                     maxLength={10}
                     pattern="[0-9]{10}"
-                    title="10-digit phone number"
+                    title="10-digit phone number (numbers only)"
                     placeholder="e.g. 9876543210 (10 digits)"
                     value={form.driverPhone}
+                    onKeyDown={(e) => handlePhoneKeyDown(e, form.driverPhone)}
+                    onPaste={(e) =>
+                      handlePhonePaste(e, form.driverPhone, (val) =>
+                        setForm((prev) => ({ ...prev, driverPhone: val }))
+                      )
+                    }
                     onChange={(e) => {
                       const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
-                      setForm({ ...form, driverPhone: digits });
+                      setForm((prev) => ({ ...prev, driverPhone: digits }));
+                    }}
+                    onInput={(e) => {
+                      const target = e.currentTarget;
+                      const sanitized = target.value.replace(/\D/g, "").slice(0, 10);
+                      if (target.value !== sanitized) {
+                        target.value = sanitized;
+                      }
                     }}
                     className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 ${
                       form.driverPhone && form.driverPhone.length < 10
