@@ -334,15 +334,8 @@ export default function AdminLogin() {
                 </button>
               </form>
 
-              {/* Footer Backlink */}
-              <div className="pt-4 mt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-bold transition-colors"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Back to User Login</span>
-                </Link>
+              {/* Footer */}
+              <div className="pt-4 mt-6 border-t border-slate-100 flex items-center justify-end text-xs text-slate-500">
                 <span className="text-[11px] font-semibold text-slate-400">
                   Enterprise v2.4
                 </span>
