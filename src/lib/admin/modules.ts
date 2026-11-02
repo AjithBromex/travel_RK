@@ -66,12 +66,11 @@ export const MODULES: Record<string, ModuleConfig> = {
       S('type', 'Type', ['Car', 'Van', 'Tempo Traveller', 'Mini Bus', 'Bus']),
       T('model', 'Model'),
       { key: 'seats', label: 'Seats', type: 'number' },
-      T('driver', 'Driver'),
       S('status', 'Status', ['Available', 'On trip', 'Maintenance']),
       D('insuranceExpiry', 'Insurance expiry'),
       D('serviceDue', 'Next service'),
     ],
-    columns: ['number', 'type', 'model', 'seats', 'driver', 'status', 'insuranceExpiry'],
+    columns: ['number', 'type', 'model', 'seats', 'status', 'insuranceExpiry'],
   },
   trips: {
     title: 'Trips',
