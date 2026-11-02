@@ -451,6 +451,26 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
           ? (selectedVehicle.name ? `${selectedVehicle.name} (${selectedVehicle.registrationNumber})` : selectedVehicle.registrationNumber)
           : "");
 
+      const cleanCustomerPhone = form.customerPhone.replace(/\D/g, "");
+      if (cleanCustomerPhone && cleanCustomerPhone.length !== 10) {
+        setFeedback({
+          message: "Customer phone must be exactly 10 digits.",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const cleanDriverPhone = form.driverPhone.replace(/\D/g, "");
+      if (cleanDriverPhone && cleanDriverPhone.length !== 10) {
+        setFeedback({
+          message: "Driver phone must be exactly 10 digits.",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
       const assignedReceiptNo = (form.receiptNumber && form.receiptNumber.trim()) || getNextReceiptNumber(trips);
 
       const tripPayload = {
@@ -459,10 +479,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         vehicleId: form.vehicleId,
         vehicleName,
         driverName: form.driverName.trim(),
-        driverPhone: form.driverPhone ? form.driverPhone.trim() : "",
+        driverPhone: cleanDriverPhone,
         driverAgreedPay: Number(form.driverAgreedPay) || 0,
         customerName: form.customerName.trim(),
-        customerPhone: form.customerPhone.trim(),
+        customerPhone: cleanCustomerPhone,
         from: form.from.trim(),
         to: form.to.trim(),
         startingKm: Number(form.startingKm) || 0,
@@ -1053,15 +1073,39 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
-                    CUSTOMER PHONE
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">
+                      CUSTOMER PHONE
+                    </label>
+                    {form.customerPhone && (
+                      <span
+                        className={`text-[10px] font-bold ${
+                          form.customerPhone.length === 10
+                            ? "text-emerald-600"
+                            : "text-amber-600"
+                        }`}
+                      >
+                        {form.customerPhone.length}/10 digits
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="tel"
-                    placeholder="e.g. 9876543210"
+                    inputMode="numeric"
+                    maxLength={10}
+                    pattern="[0-9]{10}"
+                    title="10-digit phone number"
+                    placeholder="e.g. 9876543210 (10 digits)"
                     value={form.customerPhone}
-                    onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setForm({ ...form, customerPhone: digits });
+                    }}
+                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 ${
+                      form.customerPhone && form.customerPhone.length < 10
+                        ? "border-amber-300 focus:border-amber-500 focus:bg-white"
+                        : "border-slate-200 focus:border-blue-500 focus:bg-white"
+                    }`}
                   />
                 </div>
               </div>
@@ -1169,15 +1213,39 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
-                    DRIVER PHONE
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">
+                      DRIVER PHONE
+                    </label>
+                    {form.driverPhone && (
+                      <span
+                        className={`text-[10px] font-bold ${
+                          form.driverPhone.length === 10
+                            ? "text-emerald-600"
+                            : "text-amber-600"
+                        }`}
+                      >
+                        {form.driverPhone.length}/10 digits
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="tel"
-                    placeholder="e.g. 9876543210"
+                    inputMode="numeric"
+                    maxLength={10}
+                    pattern="[0-9]{10}"
+                    title="10-digit phone number"
+                    placeholder="e.g. 9876543210 (10 digits)"
                     value={form.driverPhone}
-                    onChange={(e) => setForm({ ...form, driverPhone: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setForm({ ...form, driverPhone: digits });
+                    }}
+                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 ${
+                      form.driverPhone && form.driverPhone.length < 10
+                        ? "border-amber-300 focus:border-amber-500 focus:bg-white"
+                        : "border-slate-200 focus:border-blue-500 focus:bg-white"
+                    }`}
                   />
                 </div>
               </div>
