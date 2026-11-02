@@ -175,7 +175,7 @@ export default function AdminTopbar() {
                       <p className="text-[11px] text-slate-500 truncate">admin@gmail.com</p>
                     </div>
 
-                    <div className="py-1 border-b border-slate-100">
+                    <div className="hidden sm:block py-1 border-b border-slate-100">
                       <Link
                         href="/admin/settings"
                         onClick={() => setProfileOpen(false)}

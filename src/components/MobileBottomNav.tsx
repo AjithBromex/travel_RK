@@ -58,7 +58,6 @@ export default function MobileBottomNav({ isAdmin = false }: { isAdmin?: boolean
     { name: "Cash Book", href: "/admin/cashbook", icon: BookOpen, desc: "Master cashbook & registers" },
     { name: "Reminders", href: "/admin/reminders", icon: Bell, desc: "Compliance & vehicle documents" },
     { name: "Users", href: "/admin/users", icon: Users, desc: "Staff & user role permissions" },
-    { name: "Settings", href: "/admin/settings", icon: Settings, desc: "System settings & security" },
   ];
 
   const primaryTabs = isAdmin ? primaryAdminTabs : primaryUserTabs;
