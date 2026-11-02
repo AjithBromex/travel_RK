@@ -10,17 +10,25 @@ import { auth } from './config'
 import { getUserProfile, createUserProfile, updateUserProfile, findUserByUsername } from '@/services/users.service'
 import type { UserProfile, UserRole } from '@/types'
 
-export function setSessionCookie() {
+export async function setSessionCookie() {
   if (typeof document !== 'undefined') {
     // 7 days expiration
     const maxAge = 60 * 60 * 24 * 7
     document.cookie = `firebase_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`
+    try {
+      await fetch('/api/auth/session', { method: 'POST', keepalive: true })
+    } catch {
+      // Fallback in document.cookie
+    }
   }
 }
 
-export function clearSessionCookie() {
+export async function clearSessionCookie() {
   if (typeof document !== 'undefined') {
     document.cookie = 'firebase_auth=; path=/; max-age=0; SameSite=Lax'
+    try {
+      await fetch('/api/auth/session', { method: 'DELETE', keepalive: true })
+    } catch {}
   }
 }
 
@@ -34,14 +42,21 @@ async function resolveLoginEmail(identifier: string): Promise<string> {
     return trimmed
   }
 
-  // Look up username in Firestore users
-  const profile = await findUserByUsername(trimmed)
-  if (profile?.email) {
-    return profile.email
+  const fallback = `${trimmed.toLowerCase()}@gmail.com`
+
+  try {
+    // Quick race with 350ms timeout to avoid hanging unauthenticated Firestore permissions
+    const lookupPromise = findUserByUsername(trimmed)
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 350))
+    const profile = await Promise.race([lookupPromise, timeoutPromise])
+    if (profile?.email) {
+      return profile.email
+    }
+  } catch {
+    // Fall back to standard username pattern
   }
 
-  // Default fallback email pattern for usernames: @gmail.com
-  return `${trimmed.toLowerCase()}@gmail.com`
+  return fallback
 }
 
 /**
@@ -53,7 +68,7 @@ export async function signInUser(
 ): Promise<{ user: User; profile: UserProfile | null }> {
   const email = await resolveLoginEmail(identifier)
   const credential = await signInWithEmailAndPassword(auth, email, password)
-  setSessionCookie()
+  await setSessionCookie()
 
   const loginUsername = (
     identifier.trim().replace(/@gmail\.com$/i, '').replace(/@.*$/, '') ||
