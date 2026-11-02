@@ -33,6 +33,7 @@ import {
   Navigation,
   FileText,
   Bus,
+  Lock,
 } from "lucide-react";
 import {
   normalizeRegNumber,
@@ -52,6 +53,7 @@ import {
 import {
   getStoredVehicles,
   subscribeDataChanged,
+  isRecordConfirmed,
 } from "@/lib/storage-sync";
 
 interface VehiclesClientProps {
@@ -454,6 +456,10 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
   };
 
   const handleEdit = (v: Vehicle) => {
+    if (v.isConfirmed || isRecordConfirmed('vehicles', v.id, v)) {
+      alert("This vehicle has been confirmed by Admin and cannot be edited.");
+      return;
+    }
     setEditingVehicleId(v.id);
     const seatsMatch = (v.notes || "").match(/(\d+)\s*Seats/i);
     const fuelMatch = (v.notes || "").match(/(Diesel|Petrol|CNG|EV)/i);
@@ -485,6 +491,10 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
   };
 
   const handleDelete = async (vehicle: Vehicle) => {
+    if (vehicle.isConfirmed || isRecordConfirmed('vehicles', vehicle.id, vehicle)) {
+      alert("This vehicle has been confirmed by Admin and cannot be deleted.");
+      return;
+    }
     const confirmMessage = `Are you sure you want to remove ${vehicle.name || vehicle.registrationNumber} (${vehicle.registrationNumber}) from your fleet?`;
     if (!window.confirm(confirmMessage)) return;
 
@@ -1627,29 +1637,38 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                                   onClick={(e) => e.stopPropagation()}
                                   className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-lg border border-slate-200/80 py-1 z-30 text-xs font-semibold"
                                 >
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      handleEdit(vehicle);
-                                      setActiveMenuVehicleId(null);
-                                    }}
-                                    className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
-                                  >
-                                    <Edit2 className="w-3 h-3 text-blue-600" />
-                                    <span>Edit</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={deletingId === vehicle.id}
-                                    onClick={() => {
-                                      handleDelete(vehicle);
-                                      setActiveMenuVehicleId(null);
-                                    }}
-                                    className="w-full text-left px-3 py-1.5 hover:bg-rose-50 flex items-center gap-2 text-rose-600 cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3 h-3 text-rose-600" />
-                                    <span>Delete</span>
-                                  </button>
+                                  {vehicle.isConfirmed || isRecordConfirmed('vehicles', vehicle.id, vehicle) ? (
+                                    <div className="px-3 py-1.5 text-emerald-700 bg-emerald-50/70 flex items-center gap-1.5 text-[11px] font-bold">
+                                      <Lock className="w-3 h-3 text-emerald-600" />
+                                      <span>Confirmed (Locked)</span>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleEdit(vehicle);
+                                          setActiveMenuVehicleId(null);
+                                        }}
+                                        className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
+                                      >
+                                        <Edit2 className="w-3 h-3 text-blue-600" />
+                                        <span>Edit</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={deletingId === vehicle.id}
+                                        onClick={() => {
+                                          handleDelete(vehicle);
+                                          setActiveMenuVehicleId(null);
+                                        }}
+                                        className="w-full text-left px-3 py-1.5 hover:bg-rose-50 flex items-center gap-2 text-rose-600 cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3 h-3 text-rose-600" />
+                                        <span>Delete</span>
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -1746,21 +1765,35 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
                           <Bus className="w-2.5 h-2.5" />
                           <span>Book Trip</span>
                         </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(vehicle)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={deletingId === vehicle.id}
-                          onClick={() => handleDelete(vehicle)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {vehicle.isConfirmed || isRecordConfirmed('vehicles', vehicle.id, vehicle) ? (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            title="Confirmed by Admin. Editing and deletion are locked."
+                          >
+                            <Lock className="w-3 h-3 text-emerald-600" />
+                            <span>Confirmed (Locked)</span>
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(vehicle)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                              title="Edit vehicle"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={deletingId === vehicle.id}
+                              onClick={() => handleDelete(vehicle)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Delete vehicle"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   );

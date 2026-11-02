@@ -30,6 +30,7 @@ import {
   FileText,
   Printer,
   Eye,
+  Lock,
 } from "lucide-react";
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Payment, Trip, Vehicle, PaymentType, PaymentMode } from "@/types";
@@ -41,6 +42,7 @@ import {
   getStoredTrips,
   getStoredVehicles,
   subscribeDataChanged,
+  isRecordConfirmed,
 } from "@/lib/storage-sync";
 import InvoiceModal from "@/components/InvoiceModal";
 import SearchableTripSelect from "@/components/SearchableTripSelect";
@@ -314,6 +316,11 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
   };
 
   const handleDelete = async (payment: Payment) => {
+    if (payment.isConfirmed || isRecordConfirmed('payments', payment.id, payment)) {
+      alert("This payment has been confirmed by Admin and cannot be deleted.");
+      return;
+    }
+
     if (!window.confirm(`Are you sure you want to delete this payment of ${formatINR(payment.amount)}?`)) {
       return;
     }
@@ -1186,15 +1193,25 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                             >
                               <Download className="w-3.5 h-3.5" />
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(p)}
-                              disabled={deletingId === p.id}
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                              title="Delete Payment Record"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {p.isConfirmed || isRecordConfirmed('payments', p.id, p) ? (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                title="Confirmed by Admin. Deletion is locked."
+                              >
+                                <Lock className="w-2.5 h-2.5 text-emerald-600" />
+                                <span>Confirmed</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(p)}
+                                disabled={deletingId === p.id}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Delete Payment Record"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1277,15 +1294,25 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                         >
                           <Download className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(p)}
-                          disabled={deletingId === p.id}
-                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {p.isConfirmed || isRecordConfirmed('payments', p.id, p) ? (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            title="Confirmed by Admin. Deletion is locked."
+                          >
+                            <Lock className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>Confirmed</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(p)}
+                            disabled={deletingId === p.id}
+                            className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

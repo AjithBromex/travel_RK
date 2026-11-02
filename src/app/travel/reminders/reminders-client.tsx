@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   X,
   Filter,
+  Lock,
 } from "lucide-react";
 import { capitalizeWords } from "@/lib/utils";
 import type { Reminder, ReminderCategory, ReminderStatus, Trip, Vehicle } from "@/types";
@@ -44,6 +45,7 @@ import {
   upsertStoredReminder,
   removeStoredReminder,
   subscribeDataChanged,
+  isRecordConfirmed,
 } from "@/lib/storage-sync";
 
 interface RemindersClientProps {
@@ -460,6 +462,11 @@ export default function RemindersClient({
 
   // Delete reminder
   const handleDelete = async (id: string) => {
+    const item = items.find((i) => i.id === id);
+    if (isRecordConfirmed('reminders', id, item as any)) {
+      alert("This reminder has been confirmed by Admin and cannot be deleted.");
+      return;
+    }
     setActiveMenuId(null);
     if (!confirm("Are you sure you want to delete this reminder?")) return;
     setItems((prev) => prev.filter((i) => i.id !== id));
@@ -1453,22 +1460,31 @@ export default function RemindersClient({
                               {/* Dropdown Popover */}
                               {activeMenuId === item.id && (
                                 <div className="absolute right-0 top-8 z-30 w-36 bg-white rounded-xl shadow-lg border border-slate-200 py-1 text-left">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleStatus(item)}
-                                    className="w-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>{isCompleted ? "Mark Pending" : "Mark Done"}</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelete(item.id)}
-                                    className="w-full px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                    <span>Delete</span>
-                                  </button>
+                                  {isRecordConfirmed('reminders', item.id, item as any) ? (
+                                    <div className="px-3 py-1.5 text-emerald-700 bg-emerald-50/70 flex items-center gap-1.5 text-[11px] font-bold">
+                                      <Lock className="w-3 h-3 text-emerald-600" />
+                                      <span>Confirmed (Locked)</span>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleStatus(item)}
+                                        className="w-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                                      >
+                                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                        <span>{isCompleted ? "Mark Pending" : "Mark Done"}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDelete(item.id)}
+                                        className="w-full px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                        <span>Delete</span>
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               )}
                             </div>

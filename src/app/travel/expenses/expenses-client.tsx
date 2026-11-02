@@ -24,6 +24,7 @@ import {
   Tag,
   CreditCard,
   Edit2,
+  Lock,
 } from "lucide-react";
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Expense, ExpenseCategory, PaymentMode, Trip } from "@/types";
@@ -38,6 +39,7 @@ import {
   getStoredExpenses,
   getStoredTrips,
   subscribeDataChanged,
+  isRecordConfirmed,
 } from "@/lib/storage-sync";
 import SearchableTripSelect from "@/components/SearchableTripSelect";
 
@@ -332,6 +334,10 @@ export default function ExpensesClient({
   }, [expenses]);
 
   const handleEdit = (expense: Expense) => {
+    if (expense.isConfirmed || isRecordConfirmed('expenses', expense.id, expense)) {
+      alert("This expense has been confirmed by Admin and cannot be edited.");
+      return;
+    }
     setEditingExpenseId(expense.id);
     setActiveMenuId(null);
     setForm({
@@ -357,6 +363,10 @@ export default function ExpensesClient({
   };
 
   const handleDelete = async (expense: Expense) => {
+    if (expense.isConfirmed || isRecordConfirmed('expenses', expense.id, expense)) {
+      alert("This expense has been confirmed by Admin and cannot be deleted.");
+      return;
+    }
     setActiveMenuId(null);
     const confirmMsg = `Are you sure you want to delete this ${
       CATEGORY_META[expense.category]?.label || "expense"
@@ -1183,24 +1193,33 @@ export default function ExpensesClient({
                               </button>
 
                               {activeMenuId === e.id && (
-                                <div className="absolute right-0 mt-1 w-28 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1 text-left">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEdit(e)}
-                                    className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 font-medium cursor-pointer"
-                                  >
-                                    <Edit2 className="w-3 h-3 text-slate-500" />
-                                    <span>Edit</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelete(e)}
-                                    disabled={deletingId === e.id}
-                                    className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-1.5 font-medium cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3 h-3 text-rose-500" />
-                                    <span>Delete</span>
-                                  </button>
+                                <div className="absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1 text-left">
+                                  {e.isConfirmed || isRecordConfirmed('expenses', e.id, e) ? (
+                                    <div className="px-3 py-1.5 text-emerald-700 bg-emerald-50/70 flex items-center gap-1.5 text-[11px] font-bold">
+                                      <Lock className="w-3 h-3 text-emerald-600" />
+                                      <span>Confirmed (Locked)</span>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEdit(e)}
+                                        className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 font-medium cursor-pointer"
+                                      >
+                                        <Edit2 className="w-3 h-3 text-slate-500" />
+                                        <span>Edit</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDelete(e)}
+                                        disabled={deletingId === e.id}
+                                        className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-1.5 font-medium cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3 h-3 text-rose-500" />
+                                        <span>Delete</span>
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               )}
                             </div>

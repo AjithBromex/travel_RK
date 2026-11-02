@@ -15,6 +15,9 @@ export interface Vehicle {
   status: 'active' | 'inactive' | 'service_due'
   photoUrl?: string
   notes?: string
+  isConfirmed?: boolean
+  confirmedAt?: string
+  confirmedBy?: string
   createdAt: string
   updatedAt: string
 }
@@ -50,6 +53,9 @@ export interface Trip {
   driverBalance: number
   status: TripStatus
   notes?: string
+  isConfirmed?: boolean
+  confirmedAt?: string
+  confirmedBy?: string
   createdBy?: string
   createdAt: string
   updatedAt: string
@@ -67,6 +73,9 @@ export interface Payment {
   paymentDate: string
   paymentMode: PaymentMode
   notes?: string
+  isConfirmed?: boolean
+  confirmedAt?: string
+  confirmedBy?: string
   createdBy?: string
   createdAt: string
   updatedAt: string
@@ -96,6 +105,9 @@ export interface Expense {
   vehicleId?: string
   vehicleName?: string
   notes?: string
+  isConfirmed?: boolean
+  confirmedAt?: string
+  confirmedBy?: string
   createdBy?: string
   createdAt: string
   updatedAt: string
@@ -115,6 +127,9 @@ export interface Reminder {
   notes?: string
   status: ReminderStatus
   completedAt?: string
+  isConfirmed?: boolean
+  confirmedAt?: string
+  confirmedBy?: string
   createdBy?: string
   createdAt: string
   updatedAt: string

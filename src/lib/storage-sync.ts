@@ -117,6 +117,49 @@ export function isDeleted(entity: string, id: string): boolean {
   }
 }
 
+// Admin Confirmation / Locking records tracking
+export function markAsConfirmed(entity: string, id: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(`rk_confirmed_${entity}`)
+    const set = new Set<string>(raw ? JSON.parse(raw) : [])
+    set.add(id)
+    localStorage.setItem(`rk_confirmed_${entity}`, JSON.stringify(Array.from(set)))
+  } catch (err) {
+    console.warn(`[Sync] Error marking ${entity} as confirmed:`, err)
+  }
+}
+
+export function unmarkConfirmed(entity: string, id: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(`rk_confirmed_${entity}`)
+    if (!raw) return
+    const set = new Set<string>(JSON.parse(raw))
+    set.delete(id)
+    localStorage.setItem(`rk_confirmed_${entity}`, JSON.stringify(Array.from(set)))
+  } catch (err) {
+    console.warn(`[Sync] Error unmarking ${entity} as confirmed:`, err)
+  }
+}
+
+export function isRecordConfirmed(
+  entity: string,
+  id?: string,
+  record?: { isConfirmed?: boolean } | null
+): boolean {
+  if (record && record.isConfirmed === true) return true
+  if (!id || typeof window === 'undefined') return false
+  try {
+    const raw = localStorage.getItem(`rk_confirmed_${entity}`)
+    if (!raw) return false
+    const set = new Set<string>(JSON.parse(raw))
+    return set.has(id)
+  } catch {
+    return false
+  }
+}
+
 // Vehicle helpers
 export function getStoredVehicles(): Vehicle[] {
   const list = getLocalData<Vehicle[]>('vehicles', [])

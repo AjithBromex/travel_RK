@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
+  CheckCircle2,
 } from 'lucide-react';
 import type { FieldConfig } from '@/lib/admin/modules';
 import { inr } from '@/lib/admin/modules';
@@ -20,8 +21,15 @@ import {
   fetchAdminRows,
   saveAdminRow,
   deleteAdminRow,
+  toggleAdminConfirm,
 } from '@/lib/admin/admin-client-service';
-import { subscribeDataChanged, notifyDataChanged, unmarkDeleted, markAsDeleted } from '@/lib/storage-sync';
+import {
+  subscribeDataChanged,
+  notifyDataChanged,
+  unmarkDeleted,
+  markAsDeleted,
+  isRecordConfirmed,
+} from '@/lib/storage-sync';
 
 const BADGE_STYLES: Record<string, string> = {
   Active: 'bg-emerald-50 text-emerald-700 border border-emerald-200/90',
@@ -246,6 +254,31 @@ export default function Crud({
     }
   }
 
+  async function handleToggleConfirm(r: Record<string, unknown>) {
+    const targetId = String(r.id || (r as any).uid || '');
+    if (!targetId) return;
+
+    const currentConfirmed = Boolean(
+      r.isConfirmed || isRecordConfirmed(slug, targetId, r as any)
+    );
+    const newStatus = !currentConfirmed;
+
+    // Optimistically update table UI immediately
+    setRows((prev) =>
+      prev.map((row) =>
+        String(row.id || (row as any).uid) === targetId
+          ? { ...row, isConfirmed: newStatus }
+          : row
+      )
+    );
+
+    try {
+      await toggleAdminConfirm(slug, targetId, currentConfirmed);
+    } catch (err) {
+      console.warn(`[Crud] Failed to toggle confirmation for ${slug}/${targetId}:`, err);
+    }
+  }
+
   const handleExportCSV = () => {
     if (shown.length === 0) {
       alert('No records to export.');
@@ -431,7 +464,30 @@ export default function Crud({
                     </td>
                   ))}
                   <td className="py-3 px-3.5 sm:px-5 text-right whitespace-nowrap">
-                    <div className="inline-flex items-center gap-1">
+                    <div className="inline-flex items-center gap-1.5">
+                      {slug !== 'users' && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleConfirm(r)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                            r.isConfirmed
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300 shadow-xs'
+                              : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200'
+                          }`}
+                          title={
+                            r.isConfirmed
+                              ? 'Click to Unconfirm (Allow user edits)'
+                              : 'Click to Confirm (Locks record from user editing/deletion)'
+                          }
+                        >
+                          <CheckCircle2
+                            className={`w-3.5 h-3.5 ${
+                              r.isConfirmed ? 'text-emerald-700' : 'text-slate-400'
+                            }`}
+                          />
+                          <span>{r.isConfirmed ? 'Confirmed' : 'Confirm'}</span>
+                        </button>
+                      )}
                       {slug !== 'users' && (
                         <button
                           type="button"

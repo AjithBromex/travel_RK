@@ -28,6 +28,7 @@ import {
   UserCheck,
   ArrowLeftRight,
   FileText,
+  Lock,
 } from "lucide-react";
 import {
   exportToCSV,
@@ -49,6 +50,7 @@ import {
   getStoredVehicles,
   getStoredTrips,
   subscribeDataChanged,
+  isRecordConfirmed,
 } from "@/lib/storage-sync";
 
 interface TripsClientProps {
@@ -437,6 +439,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   };
 
   const handleEdit = (trip: Trip) => {
+    if (trip.isConfirmed || isRecordConfirmed('trips', trip.id, trip)) {
+      alert("This trip has been confirmed by Admin and cannot be edited.");
+      return;
+    }
     setEditingTripId(trip.id);
     setForm({
       receiptNumber: trip.receiptNumber || getTripReceiptDisplay(trip, trips),
@@ -473,6 +479,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   };
 
   const handleDelete = async (trip: Trip) => {
+    if (trip.isConfirmed || isRecordConfirmed('trips', trip.id, trip)) {
+      alert("This trip has been confirmed by Admin and cannot be deleted.");
+      return;
+    }
     const confirmMessage = `Are you sure you want to remove Trip #${trip.receiptNumber || trip.tripNumber || trip.id} (${trip.from} -> ${trip.to})? All associated payments, expenses, and records will also be completely deleted from the database.`;
     if (!window.confirm(confirmMessage)) return;
 
@@ -1682,21 +1692,35 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                       </div>
 
                       <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(trip)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={deletingId === trip.id}
-                          onClick={() => handleDelete(trip)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {trip.isConfirmed || isRecordConfirmed('trips', trip.id, trip) ? (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            title="Confirmed by Admin. Editing and deletion are locked."
+                          >
+                            <Lock className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>Confirmed</span>
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(trip)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                              title="Edit trip"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={deletingId === trip.id}
+                              onClick={() => handleDelete(trip)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                              title="Delete trip"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1785,21 +1809,35 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                       </div>
 
                       <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(trip)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={deletingId === trip.id}
-                          onClick={() => handleDelete(trip)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {trip.isConfirmed || isRecordConfirmed('trips', trip.id, trip) ? (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            title="Confirmed by Admin. Editing and deletion are locked."
+                          >
+                            <Lock className="w-3 h-3 text-emerald-600" />
+                            <span>Confirmed (Locked)</span>
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(trip)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                              title="Edit trip"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={deletingId === trip.id}
+                              onClick={() => handleDelete(trip)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Delete trip"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

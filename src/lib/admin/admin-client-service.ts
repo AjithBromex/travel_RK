@@ -51,6 +51,9 @@ import {
   unmarkDeleted,
   markAsDeleted,
   isDeleted,
+  markAsConfirmed,
+  unmarkConfirmed,
+  isRecordConfirmed,
 } from '@/lib/storage-sync';
 import type { Trip, Vehicle, Payment, Expense, Reminder, UserProfile } from '@/types';
 
@@ -63,6 +66,9 @@ export function normalizeTrip(t: Partial<Trip> & Record<string, any>): Record<st
       ? 'Ongoing'
       : statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1).replace('_', ' ');
 
+  const recId = String(t.id || t.tripNumber || '');
+  const isConfirmed = Boolean(t.isConfirmed || (recId && isRecordConfirmed('trips', recId)));
+
   return {
     id: t.id || t.tripNumber || `trip_${Math.random().toString(36).slice(2)}`,
     customer: t.customerName || t.customer || 'Customer',
@@ -74,6 +80,7 @@ export function normalizeTrip(t: Partial<Trip> & Record<string, any>): Record<st
     amount,
     status,
     note: t.notes || t.note || '',
+    isConfirmed,
     raw: t,
   };
 }
@@ -89,6 +96,9 @@ export function normalizeVehicle(v: Partial<Vehicle> & Record<string, any>): Rec
       ? 'On trip'
       : statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
 
+  const recId = String(v.id || v.registrationNumber || '');
+  const isConfirmed = Boolean(v.isConfirmed || (recId && isRecordConfirmed('vehicles', recId)));
+
   return {
     id: v.id || `veh_${Math.random().toString(36).slice(2)}`,
     number: v.registrationNumber || v.number || '',
@@ -99,6 +109,7 @@ export function normalizeVehicle(v: Partial<Vehicle> & Record<string, any>): Rec
     status,
     insuranceExpiry: v.insuranceExpiry || '',
     serviceDue: v.serviceDue || '',
+    isConfirmed,
     raw: v,
   };
 }
@@ -109,6 +120,9 @@ export function normalizePayment(p: Partial<Payment> & Record<string, any>): Rec
     p.status ||
     (p.type === 'customer_received' ? 'Paid' : p.type === 'driver_payment' ? 'Paid' : 'Pending');
 
+  const recId = String(p.id || '');
+  const isConfirmed = Boolean(p.isConfirmed || (recId && isRecordConfirmed('payments', recId)));
+
   return {
     id: p.id || `pay_${Math.random().toString(36).slice(2)}`,
     customer: p.customerName || p.customer || (p.tripId ? `Trip ${p.tripId}` : 'Customer Receipt'),
@@ -118,12 +132,16 @@ export function normalizePayment(p: Partial<Payment> & Record<string, any>): Rec
     method: mode.charAt(0).toUpperCase() + mode.slice(1),
     status,
     note: p.notes || p.note || '',
+    isConfirmed,
     raw: p,
   };
 }
 
 export function normalizeExpense(e: Partial<Expense> & Record<string, any>): Record<string, unknown> {
   const cat = String(e.category || 'other');
+  const recId = String(e.id || '');
+  const isConfirmed = Boolean(e.isConfirmed || (recId && isRecordConfirmed('expenses', recId)));
+
   return {
     id: e.id || `exp_${Math.random().toString(36).slice(2)}`,
     category: cat.charAt(0).toUpperCase() + cat.slice(1),
@@ -131,11 +149,15 @@ export function normalizeExpense(e: Partial<Expense> & Record<string, any>): Rec
     amount: Number(e.amount || 0),
     date: e.expenseDate || e.date || (typeof e.createdAt === 'string' ? e.createdAt.slice(0, 10) : ''),
     note: e.description || e.notes || e.note || '',
+    isConfirmed,
     raw: e,
   };
 }
 
 export function normalizeReminder(r: Partial<Reminder> & Record<string, any>): Record<string, unknown> {
+  const recId = String(r.id || '');
+  const isConfirmed = Boolean(r.isConfirmed || (recId && isRecordConfirmed('reminders', recId)));
+
   return {
     id: r.id || `rem_${Math.random().toString(36).slice(2)}`,
     title: r.title || '',
@@ -143,11 +165,15 @@ export function normalizeReminder(r: Partial<Reminder> & Record<string, any>): R
     dueDate: r.dueDate || r.date || '',
     status: r.status === 'completed' ? 'Done' : 'Pending',
     note: r.notes || r.note || '',
+    isConfirmed,
     raw: r,
   };
 }
 
 export function normalizeCashbook(c: Record<string, any>): Record<string, unknown> {
+  const recId = String(c.id || '');
+  const isConfirmed = Boolean(c.isConfirmed || (recId && isRecordConfirmed('cashbook', recId)));
+
   return {
     id: c.id || `cb_${Math.random().toString(36).slice(2)}`,
     date: c.date || (typeof c.createdAt === 'string' ? c.createdAt.slice(0, 10) : ''),
@@ -155,11 +181,15 @@ export function normalizeCashbook(c: Record<string, any>): Record<string, unknow
     description: c.description || '',
     amount: Number(c.cashIn > 0 ? c.cashIn : c.cashOut || c.amount || 0),
     mode: (c.paymentMode || c.mode || 'Cash').toUpperCase(),
+    isConfirmed,
     raw: c,
   };
 }
 
 export function normalizeUser(u: Partial<UserProfile> & Record<string, any>): Record<string, unknown> {
+  const recId = String(u.uid || u.id || '');
+  const isConfirmed = Boolean((u as any).isConfirmed || (recId && isRecordConfirmed('users', recId)));
+
   return {
     id: u.uid || u.id || `usr_${Math.random().toString(36).slice(2)}`,
     name: u.displayName || u.userId || u.name || 'Staff User',
@@ -167,6 +197,7 @@ export function normalizeUser(u: Partial<UserProfile> & Record<string, any>): Re
     email: u.email || '',
     role: u.role ? (u.role.charAt(0).toUpperCase() + u.role.slice(1)) : 'Staff',
     status: u.isActive === false ? 'Blocked' : 'Active',
+    isConfirmed,
     raw: u,
   };
 }
@@ -411,6 +442,51 @@ export async function saveAdminRow(
   return { id, ...form };
 }
 
+export async function toggleAdminConfirm(
+  slug: string,
+  id: string,
+  currentStatus?: boolean
+): Promise<boolean> {
+  const nextStatus = !currentStatus;
+  const now = new Date().toISOString();
+
+  // 1. Update localStorage confirmation tracking
+  if (nextStatus) {
+    markAsConfirmed(slug, id);
+  } else {
+    unmarkConfirmed(slug, id);
+  }
+
+  // 2. Persist to Firestore & memory cache for supported modules
+  const confirmPayload = {
+    isConfirmed: nextStatus,
+    confirmedAt: nextStatus ? now : undefined,
+    confirmedBy: nextStatus ? 'Admin' : undefined,
+  };
+
+  try {
+    if (slug === 'trips') {
+      await updateTrip(id, confirmPayload);
+    } else if (slug === 'vehicles') {
+      await updateVehicle(id, confirmPayload);
+    } else if (slug === 'payments') {
+      await updatePayment(id, confirmPayload);
+    } else if (slug === 'expenses') {
+      await updateExpense(id, confirmPayload);
+    } else if (slug === 'reminders') {
+      await updateReminder(id, confirmPayload);
+    }
+  } catch (err) {
+    console.warn(`[AdminClientService] Cloud update confirmation failed for ${slug}:${id}:`, err);
+  }
+
+  // 3. Notify all listeners and tabs
+  notifyDataChanged(slug as any);
+  notifyDataChanged('all');
+
+  return nextStatus;
+}
+
 export async function deleteAdminRow(slug: string, id: string): Promise<void> {
   if (slug === 'trips') {
     await deleteTrip(id);
@@ -429,3 +505,5 @@ export async function deleteAdminRow(slug: string, id: string): Promise<void> {
   notifyDataChanged(slug as any);
   notifyDataChanged('all');
 }
+
+
