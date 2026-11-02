@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Payment, Trip, Vehicle, PaymentType, PaymentMode } from "@/types";
-import { getPayments, createPayment, deletePayment } from "@/services/payments.service";
+import { getPayments, createPayment, deletePayment, sortPaymentsRecentFirst } from "@/services/payments.service";
 import { getTrips } from "@/services/trips.service";
 import { getVehicles } from "@/services/vehicles.service";
 import {
@@ -58,8 +58,8 @@ interface PaymentsClientProps {
 
 export default function PaymentsClient({ initialPayments, trips, vehicles }: PaymentsClientProps) {
   const [payments, setPayments] = useState<Payment[]>(() => {
-    if (initialPayments && initialPayments.length > 0) return initialPayments;
-    return getStoredPayments();
+    const list = initialPayments && initialPayments.length > 0 ? initialPayments : getStoredPayments();
+    return sortPaymentsRecentFirst(list);
   });
 
   const [tripList, setTripList] = useState<Trip[]>(() => {
@@ -89,7 +89,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
     getPayments(100)
       .then((data) => {
         if (Array.isArray(data)) {
-          setPayments(data);
+          setPayments(sortPaymentsRecentFirst(data));
         }
       })
       .catch((err) => {
@@ -261,7 +261,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
         updatedAt: new Date().toISOString(),
       };
 
-      setPayments((prev) => [newPayment, ...prev]);
+      setPayments((prev) => sortPaymentsRecentFirst([newPayment, ...prev]));
 
       // Update local trip dues immediately if linked to a trip
       let matchedTrip: Trip | undefined;
@@ -385,9 +385,9 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
     });
   };
 
-  // Filtered Payments
+  // Filtered Payments - always sorted so recently added payment is listed on top
   const filteredPayments = useMemo(() => {
-    return payments.filter((p) => {
+    const list = payments.filter((p) => {
       if (search.trim()) {
         const query = search.toLowerCase();
         const matches =
@@ -405,6 +405,8 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
 
       return true;
     });
+
+    return sortPaymentsRecentFirst(list);
   }, [payments, search, typeFilter]);
 
   const handleFocusNewPayment = () => {

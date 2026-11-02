@@ -179,11 +179,29 @@ export function removeStoredTrip(id: string): void {
 // Payment helpers
 export function getStoredPayments(): Payment[] {
   const list = getLocalData<Payment[]>('payments', [])
-  return list.filter(
-    p =>
-      !isDeleted('payments', p.id) &&
-      (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
-  )
+  return list
+    .filter(
+      p =>
+        !isDeleted('payments', p.id) &&
+        (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
+    )
+    .sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      if (timeA && timeB && timeA !== timeB) return timeB - timeA
+
+      if (a.id && b.id && a.id.startsWith('pay_') && b.id.startsWith('pay_')) {
+        const idA = parseInt(a.id.replace('pay_', ''), 10)
+        const idB = parseInt(b.id.replace('pay_', ''), 10)
+        if (!isNaN(idA) && !isNaN(idB) && idA !== idB) return idB - idA
+      }
+
+      const dateA = a.paymentDate ? new Date(a.paymentDate).getTime() : 0
+      const dateB = b.paymentDate ? new Date(b.paymentDate).getTime() : 0
+      if (dateA && dateB && dateA !== dateB) return dateB - dateA
+
+      return (b.id || '').localeCompare(a.id || '')
+    })
 }
 
 export function saveStoredPayments(payments: Payment[]): void {

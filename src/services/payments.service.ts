@@ -19,8 +19,28 @@ import {
 
 const COLLECTION = 'payments'
 
+export function sortPaymentsRecentFirst(list: Payment[]): Payment[] {
+  return [...list].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+    if (timeA && timeB && timeA !== timeB) return timeB - timeA
+
+    if (a.id && b.id && a.id.startsWith('pay_') && b.id.startsWith('pay_')) {
+      const idA = parseInt(a.id.replace('pay_', ''), 10)
+      const idB = parseInt(b.id.replace('pay_', ''), 10)
+      if (!isNaN(idA) && !isNaN(idB) && idA !== idB) return idB - idA
+    }
+
+    const dateA = a.paymentDate ? new Date(a.paymentDate).getTime() : 0
+    const dateB = b.paymentDate ? new Date(b.paymentDate).getTime() : 0
+    if (dateA && dateB && dateA !== dateB) return dateB - dateA
+
+    return (b.id || '').localeCompare(a.id || '')
+  })
+}
+
 export async function getPayments(limitCount = 100): Promise<Payment[]> {
-  const localFallback = getStoredPayments()
+  const localFallback = sortPaymentsRecentFirst(getStoredPayments())
 
   return withCache(
     `payments:list:${limitCount}`,
@@ -35,8 +55,9 @@ export async function getPayments(limitCount = 100): Promise<Payment[]> {
             !isDeleted('payments', p.id) &&
             (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
         )
-      saveStoredPayments(list)
-      return list.length > 0 ? list : getStoredPayments()
+      const sorted = sortPaymentsRecentFirst(list)
+      saveStoredPayments(sorted)
+      return sorted.length > 0 ? sorted : getStoredPayments()
     },
     { fallback: localFallback }
   )
