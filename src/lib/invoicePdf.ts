@@ -1,6 +1,8 @@
 import jsPDF from 'jspdf'
 import type { Payment, Trip, Vehicle } from '@/types'
 import { formatINR } from './utils'
+import { ensureFontsLoaded } from './pdfFonts'
+import { RK_LOGO_BASE64 } from './pdfLogo'
 
 export interface InvoiceData {
   receiptNo: string
@@ -203,6 +205,17 @@ export async function downloadInvoicePDF(
       format: 'a4',
     })
 
+    // Load Segoe UI with Unicode & Rupee symbol support
+    const fontName = await ensureFontsLoaded(doc)
+
+    const sanitize = (text: string | number): string => {
+      const str = String(text ?? '')
+      if (fontName === 'helvetica') {
+        return str.replace(/₹/g, 'Rs. ')
+      }
+      return str
+    }
+
     const pageWidth = 210
     const margin = 12
     const contentWidth = pageWidth - margin * 2 // 186mm
@@ -222,62 +235,48 @@ export async function downloadInvoicePDF(
 
     // Top-Right Navy Banner (Curved pill on top right corner)
     doc.setFillColor(...colorNavy)
-    // Draw polygon / rounded shape on top-right
     const bannerX = 145
     const bannerY = 0
     const bannerW = 65
     const bannerH = 34
-    // Banner background with curved bottom-left
     doc.roundedRect(bannerX, bannerY, bannerW, bannerH, 0, 0, 'F')
     doc.roundedRect(bannerX - 10, bannerY, 20, bannerH, 8, 8, 'F')
 
-    // Tour Types text in right banner
-    doc.setTextColor(255, 255, 255)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.text('•  Group Tours', 152, 9)
-    doc.text('•  Pilgrimage Trips', 152, 16)
-    doc.text('•  Family Trips', 152, 23)
-    doc.text('•  Corporate Trips', 152, 30)
+    // Tour Types text in right banner with vector bullets
+    doc.setFont(fontName, 'bold')
+    doc.setFontSize(7.5)
+    const tours = ['Group Tours', 'Pilgrimage Trips', 'Family Trips', 'Corporate Trips']
+    tours.forEach((tour, idx) => {
+      const ty = 8.5 + idx * 7
+      doc.setFillColor(56, 189, 248) // Sky blue bullet
+      doc.circle(150, ty - 0.8, 0.75, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.text(tour, 153, ty)
+    })
 
-    // Left Logo & Brand
-    // Geometric RK Monogram
-    doc.setFillColor(15, 23, 42) // Slate 900
-    doc.rect(margin, 10, 3, 20, 'F') // Vertical backbone
-    doc.rect(margin + 3, 10, 9, 3, 'F') // Top bar
-    doc.rect(margin + 3, 18, 9, 3, 'F') // Mid bar
-    doc.rect(margin + 9, 13, 3, 5, 'F') // R loop close
-    // Diagonal leg of R / K
-    doc.setDrawColor(15, 23, 42)
-    doc.setLineWidth(2.5)
-    doc.line(margin + 6, 20, margin + 12, 30)
-    // K arms
-    doc.line(margin + 16, 10, margin + 22, 20)
-    doc.line(margin + 16, 30, margin + 22, 20)
+    // Left Logo & Brand Identity
+    try {
+      doc.addImage(RK_LOGO_BASE64, 'PNG', margin, 6.5, 18, 18)
+    } catch {
+      doc.setFillColor(...colorNavy)
+      doc.roundedRect(margin, 6.5, 18, 18, 2, 2, 'F')
+    }
 
-    // Golden Arc above brand text
-    doc.setDrawColor(245, 158, 11) // Golden Orange (#F59E0B)
-    doc.setLineWidth(1.4)
-    // Arc using bezier curve
-    doc.lines([[14, -3], [30, 0]], 40, 14, [1, 1], 'S', true)
-
-    // Brand Name Typography
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(19)
+    const brandX = margin + 22
+    doc.setFont(fontName, 'bold')
+    doc.setFontSize(17)
     doc.setTextColor(...colorNavy)
-    doc.text('RK TRAVEL HUB', 37, 18)
+    doc.text('RK TRAVEL HUB', brandX, 13.5)
 
-    // Subtitle
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(7.5)
     doc.setTextColor(70, 80, 95)
-    doc.text('T R A V E L L E R \' S   H U B', 44, 22.5)
+    doc.text("TRAVELLER'S HUB", brandX, 18.5)
 
-    // Values Tagline
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(fontName, 'normal')
     doc.setFontSize(6.5)
     doc.setTextColor(100, 116, 139)
-    doc.text('COMFORT   |   SAFETY   |   RELIABILITY', 40, 27)
+    doc.text('COMFORT   |   SAFETY   |   RELIABILITY', brandX, 23)
 
     // ─────────────────────────────────────────────────────────────
     // 2. INVOICE TITLE & RECEIPT INFO BOX
@@ -285,12 +284,12 @@ export async function downloadInvoicePDF(
     const titleY = 44
 
     // Left Title
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(22)
     doc.setTextColor(...colorNavy)
     doc.text('INVOICE', margin, titleY)
 
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(8)
     doc.setTextColor(100, 116, 139)
     doc.text('CASH RECEIPT / PAYMENT VOUCHER', margin, titleY + 5)
@@ -307,7 +306,7 @@ export async function downloadInvoicePDF(
     doc.roundedRect(infoBoxX, infoBoxY, infoBoxW, infoBoxH, 2, 2, 'S')
 
     // Labels & Values inside info box
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(8)
     doc.setTextColor(...colorDarkText)
 
@@ -318,26 +317,26 @@ export async function downloadInvoicePDF(
     // Receipt Badge (light blue capsule)
     doc.setFillColor(210, 230, 252) // #D2E6FC
     doc.roundedRect(infoBoxX + 25, infoBoxY + 1.8, 22, 5.2, 1.5, 1.5, 'F')
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(8.5)
     doc.setTextColor(...colorNavy)
-    doc.text(data.receiptNo, infoBoxX + 36, infoBoxY + 5.5, { align: 'center' })
+    doc.text(String(data.receiptNo), infoBoxX + 36, infoBoxY + 5.5, { align: 'center' })
 
     // Book No. row
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(8)
     doc.setTextColor(...colorDarkText)
     doc.text('Book No.', infoBoxX + 3, infoBoxY + 11.5)
     doc.text(':', infoBoxX + 22, infoBoxY + 11.5)
-    doc.setFont('helvetica', 'normal')
-    doc.text(data.bookNo || '_________________', infoBoxX + 25, infoBoxY + 11.5)
+    doc.setFont(fontName, 'normal')
+    doc.text(String(data.bookNo || '_________________'), infoBoxX + 25, infoBoxY + 11.5)
 
     // Date row
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.text('Date', infoBoxX + 3, infoBoxY + 17)
     doc.text(':', infoBoxX + 22, infoBoxY + 17)
-    doc.setFont('helvetica', 'normal')
-    doc.text(data.date, infoBoxX + 25, infoBoxY + 17)
+    doc.setFont(fontName, 'normal')
+    doc.text(String(data.date), infoBoxX + 25, infoBoxY + 17)
 
     // ─────────────────────────────────────────────────────────────
     // 3. SECTION 1: CUSTOMER DETAILS & PAYMENT DETAILS (Two Cards)
@@ -353,7 +352,7 @@ export async function downloadInvoicePDF(
       doc.roundedRect(x, y, w, 7, 2, 2, 'F')
       // Fill bottom corners flat
       doc.rect(x, y + 3, w, 4, 'F')
-      doc.setFont('helvetica', 'bold')
+      doc.setFont(fontName, 'bold')
       doc.setFontSize(8.5)
       doc.setTextColor(...colorNavy)
       doc.text(title.toUpperCase(), x + 4, y + 5)
@@ -367,22 +366,22 @@ export async function downloadInvoicePDF(
     drawCardHeader(margin, sec1Y, cardW, 'CUSTOMER DETAILS')
 
     const custFields = [
-      { label: 'Customer Name', val: data.customerName },
-      { label: 'Mobile Number', val: data.customerMobile },
-      { label: 'Trip / Route', val: data.route },
-      { label: 'Journey Date', val: data.journeyDate },
-      { label: 'No. of Pax', val: data.pax || '-' },
+      { label: 'Customer Name', val: String(data.customerName || '') },
+      { label: 'Mobile Number', val: String(data.customerMobile || '') },
+      { label: 'Trip / Route', val: String(data.route || '') },
+      { label: 'Journey Date', val: String(data.journeyDate || '') },
+      { label: 'No. of Pax', val: String(data.pax || '-') },
     ]
 
     let rowY = sec1Y + 12
     custFields.forEach(f => {
-      doc.setFont('helvetica', 'normal')
+      doc.setFont(fontName, 'normal')
       doc.setFontSize(7.5)
       doc.setTextColor(...colorDarkText)
       doc.text(f.label, margin + 4, rowY)
       doc.text(':', margin + 28, rowY)
 
-      doc.setFont('helvetica', 'bold')
+      doc.setFont(fontName, 'bold')
       doc.text(f.val, margin + 31, rowY)
 
       // Dotted underline
@@ -401,20 +400,20 @@ export async function downloadInvoicePDF(
     drawCardHeader(rightCardX, sec1Y, cardW, 'PAYMENT DETAILS')
 
     const payFields = [
-      { label: 'Trip Amount', val: formatINR(data.tripAmount) },
-      { label: 'Advance Received', val: formatINR(data.advanceReceived) },
-      { label: 'Balance Amount', val: formatINR(data.balanceAmount) },
+      { label: 'Trip Amount', val: sanitize(formatINR(data.tripAmount)) },
+      { label: 'Advance Received', val: sanitize(formatINR(data.advanceReceived)) },
+      { label: 'Balance Amount', val: sanitize(formatINR(data.balanceAmount)) },
     ]
 
     rowY = sec1Y + 12
     payFields.forEach(f => {
-      doc.setFont('helvetica', 'normal')
+      doc.setFont(fontName, 'normal')
       doc.setFontSize(7.5)
       doc.setTextColor(...colorDarkText)
       doc.text(f.label, rightCardX + 4, rowY)
       doc.text(':', rightCardX + 32, rowY)
 
-      doc.setFont('helvetica', 'bold')
+      doc.setFont(fontName, 'bold')
       doc.text(f.val, rightCardX + 35, rowY)
 
       doc.setDrawColor(...colorLine)
@@ -432,12 +431,12 @@ export async function downloadInvoicePDF(
     doc.setLineWidth(0.2)
     doc.roundedRect(rightCardX + 3, subBoxY, cardW - 6, subBoxH, 1.5, 1.5, 'FD')
 
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(6.5)
     doc.setTextColor(...colorMutedText)
     doc.text('Amount Received (in Words)', rightCardX + 5, subBoxY + 3.8)
 
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(7)
     doc.setTextColor(...colorDarkText)
     const splitWords = doc.splitTextToSize(data.amountReceivedInWords || 'Zero Rupees Only', cardW - 12)
@@ -457,46 +456,50 @@ export async function downloadInvoicePDF(
 
     // Route / Places row
     const tripRow1Y = sec2Y + 11.5
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(fontName, 'normal')
     doc.setFontSize(7.5)
     doc.setTextColor(...colorDarkText)
     doc.text('Route / Places', margin + 4, tripRow1Y)
     doc.text(':', margin + 26, tripRow1Y)
-    doc.setFont('helvetica', 'bold')
-    doc.text(data.routePlaces, margin + 29, tripRow1Y)
+    doc.setFont(fontName, 'bold')
+    doc.text(String(data.routePlaces || ''), margin + 29, tripRow1Y)
     doc.setDrawColor(...colorLine)
     doc.setLineWidth(0.15)
     doc.line(margin + 29, tripRow1Y + 1, margin + contentWidth - 4, tripRow1Y + 1)
 
     // Total Distance & Trip Type row
     const tripRow2Y = sec2Y + 17.5
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(fontName, 'normal')
     doc.text('Total Distance', margin + 4, tripRow2Y)
     doc.text(':', margin + 26, tripRow2Y)
 
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.text(`${data.totalDistance} km`, margin + 29, tripRow2Y)
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(fontName, 'normal')
     doc.text(`(From : ${data.fromKm}   To : ${data.toKm})`, margin + 50, tripRow2Y)
 
-    // Trip Type Checkboxes
+    // Trip Type Checkboxes with vector checkmarks
     const tripTypes = ['Group Tour', 'Pilgrimage Trip', 'Family Trip', 'Corporate Trip', 'Other']
     let cbX = 110
+    doc.setFont(fontName, 'normal')
     doc.text('Trip Type :', 95, tripRow2Y)
 
     tripTypes.forEach(t => {
       const isChecked = data.tripType === t
       doc.setDrawColor(...colorNavy)
-      doc.setLineWidth(0.2)
+      doc.setLineWidth(0.25)
       doc.setFillColor(isChecked ? 218 : 255, isChecked ? 228 : 255, isChecked ? 239 : 255)
-      doc.rect(cbX, tripRow2Y - 2.5, 2.5, 2.5, 'FD')
+      doc.rect(cbX, tripRow2Y - 2.5, 2.8, 2.8, isChecked ? 'FD' : 'S')
       if (isChecked) {
-        doc.setFont('helvetica', 'bold')
-        doc.text('✓', cbX + 0.4, tripRow2Y - 0.6)
+        doc.setDrawColor(...colorNavy)
+        doc.setLineWidth(0.4)
+        doc.line(cbX + 0.6, tripRow2Y - 1.1, cbX + 1.1, tripRow2Y - 0.4)
+        doc.line(cbX + 1.1, tripRow2Y - 0.4, cbX + 2.3, tripRow2Y - 2.1)
       }
-      doc.setFont('helvetica', isChecked ? 'bold' : 'normal')
+      doc.setFont(fontName, isChecked ? 'bold' : 'normal')
       doc.setFontSize(6.5)
-      doc.text(t, cbX + 3.5, tripRow2Y - 0.6)
+      doc.setTextColor(...colorDarkText)
+      doc.text(t, cbX + 3.8, tripRow2Y - 0.6)
       cbX += doc.getTextWidth(t) + 6
     })
 
@@ -515,18 +518,18 @@ export async function downloadInvoicePDF(
 
     // Vehicle No.
     let vehRowY = sec3Y + 11
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(fontName, 'normal')
     doc.setFontSize(7.5)
     doc.setTextColor(...colorDarkText)
     doc.text('Vehicle No.', margin + 4, vehRowY)
     doc.text(':', margin + 26, vehRowY)
-    doc.setFont('helvetica', 'bold')
-    doc.text(data.vehicleNo, margin + 29, vehRowY)
+    doc.setFont(fontName, 'bold')
+    doc.text(String(data.vehicleNo || ''), margin + 29, vehRowY)
     doc.line(margin + 29, vehRowY + 1, margin + cardW - 3, vehRowY + 1)
 
     // Vehicle Type Checkboxes (9+1, 12+1, 17+1, Other)
     vehRowY += 5.5
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(fontName, 'normal')
     doc.text('Vehicle Type', margin + 4, vehRowY)
     doc.text(':', margin + 26, vehRowY)
 
@@ -535,24 +538,29 @@ export async function downloadInvoicePDF(
     vTypes.forEach(vt => {
       const isSel = data.vehicleType === vt
       doc.setDrawColor(...colorNavy)
-      doc.rect(vCbX, vehRowY - 2.5, 2.5, 2.5)
+      doc.setLineWidth(0.25)
+      doc.setFillColor(isSel ? 218 : 255, isSel ? 228 : 255, isSel ? 239 : 255)
+      doc.rect(vCbX, vehRowY - 2.5, 2.8, 2.8, isSel ? 'FD' : 'S')
       if (isSel) {
-        doc.setFont('helvetica', 'bold')
-        doc.text('✓', vCbX + 0.4, vehRowY - 0.6)
+        doc.setDrawColor(...colorNavy)
+        doc.setLineWidth(0.4)
+        doc.line(vCbX + 0.6, vehRowY - 1.1, vCbX + 1.1, vehRowY - 0.4)
+        doc.line(vCbX + 1.1, vehRowY - 0.4, vCbX + 2.3, vehRowY - 2.1)
       }
-      doc.setFont('helvetica', isSel ? 'bold' : 'normal')
+      doc.setFont(fontName, isSel ? 'bold' : 'normal')
       doc.setFontSize(6.5)
-      doc.text(vt, vCbX + 3.5, vehRowY - 0.6)
+      doc.setTextColor(...colorDarkText)
+      doc.text(vt, vCbX + 3.8, vehRowY - 0.6)
       vCbX += doc.getTextWidth(vt) + 6
     })
 
     // Total Distance
     vehRowY += 5.5
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(fontName, 'normal')
     doc.setFontSize(7.5)
     doc.text('Total Distance', margin + 4, vehRowY)
     doc.text(':', margin + 26, vehRowY)
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.text(`${data.vehicleDistance} km`, margin + 29, vehRowY)
     doc.line(margin + 29, vehRowY + 1, margin + cardW - 3, vehRowY + 1)
 
@@ -564,28 +572,29 @@ export async function downloadInvoicePDF(
     drawCardHeader(rightCardX, sec3Y, cardW, 'DRIVER DETAILS')
 
     const driverRows = [
-      { label: 'Driver Name', val: data.driverName },
-      { label: 'Mobile Number', val: data.driverMobile },
-      { label: 'Duty Start', val: data.dutyStart },
+      { label: 'Driver Name', val: String(data.driverName || '') },
+      { label: 'Mobile Number', val: String(data.driverMobile || '') },
+      { label: 'Duty Start', val: String(data.dutyStart || '') },
     ]
 
     let drvY = sec3Y + 11
     driverRows.forEach(dr => {
-      doc.setFont('helvetica', 'normal')
+      doc.setFont(fontName, 'normal')
       doc.setFontSize(7.5)
       doc.setTextColor(...colorDarkText)
       doc.text(dr.label, rightCardX + 4, drvY)
       doc.text(':', rightCardX + 28, drvY)
-      doc.setFont('helvetica', 'bold')
+      doc.setFont(fontName, 'bold')
       doc.text(dr.val, rightCardX + 31, drvY)
       doc.line(rightCardX + 31, drvY + 1, rightCardX + cardW - 3, drvY + 1)
       drvY += 5.2
     })
 
     // Duty End on same row
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(fontName, 'normal')
     doc.text('Duty End :', rightCardX + 50, sec3Y + 21.4)
-    doc.text(data.dutyEnd || '-', rightCardX + 66, sec3Y + 21.4)
+    doc.setFont(fontName, 'bold')
+    doc.text(String(data.dutyEnd || '-'), rightCardX + 66, sec3Y + 21.4)
 
     // ─────────────────────────────────────────────────────────────
     // 6. SECTION 4: REMARKS / TRIP DETAILS (Full width lines)
@@ -605,7 +614,7 @@ export async function downloadInvoicePDF(
     let remarkLineY = sec4Y + 12
 
     // Print remarks on first line if available
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(7.5)
     doc.setTextColor(...colorDarkText)
     if (data.remarks) {
@@ -632,7 +641,7 @@ export async function downloadInvoicePDF(
     doc.setDrawColor(...colorDarkText)
     doc.setLineWidth(0.3)
     doc.line(margin + 5, sigY, margin + 5 + sigLineW, sigY)
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(8)
     doc.setTextColor(...colorDarkText)
     doc.text('Received By', margin + 5 + sigLineW / 2, sigY + 4, { align: 'center' })
@@ -652,10 +661,18 @@ export async function downloadInvoicePDF(
     doc.setLineWidth(0.2)
     doc.roundedRect(termsX, sec5Y, termsW, termsH, 2, 2, 'FD')
 
-    doc.setFont('helvetica', 'bold')
+    // Vector Info Badge (Blue Circle with crisp white 'i')
+    doc.setFillColor(13, 98, 254) // #0D62FE
+    doc.circle(termsX + 5.5, sec5Y + 4.2, 1.8, 'F')
+    doc.setFont(fontName, 'bold')
+    doc.setFontSize(6)
+    doc.setTextColor(255, 255, 255)
+    doc.text('i', termsX + 5.5, sec5Y + 4.8, { align: 'center' })
+
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(7.5)
     doc.setTextColor(...colorNavy)
-    doc.text('ℹ   Terms & Conditions', termsX + 4, sec5Y + 5)
+    doc.text('Terms & Conditions', termsX + 9, sec5Y + 5)
 
     const terms = [
       'Passenger must carry a valid ID proof if required.',
@@ -665,18 +682,20 @@ export async function downloadInvoicePDF(
       'Payment once made is non-refundable.',
     ]
 
-    let termY = sec5Y + 9
-    doc.setFont('helvetica', 'normal')
+    let termY = sec5Y + 9.5
+    doc.setFont(fontName, 'normal')
     doc.setFontSize(5.8)
     doc.setTextColor(...colorMutedText)
 
     terms.forEach(t => {
-      doc.text(`•   ${t}`, termsX + 4, termY)
-      termY += 3.8
+      doc.setFillColor(...colorMutedText)
+      doc.circle(termsX + 5.5, termY - 0.7, 0.45, 'F')
+      doc.text(t, termsX + 7.5, termY)
+      termY += 3.7
     })
 
     // ─────────────────────────────────────────────────────────────
-    // 8. SECTION 6: BOTTOM FOOTER BANNER (Navy ribbon)
+    // 8. SECTION 6: BOTTOM FOOTER BANNER (Navy ribbon with vector icons)
     // ─────────────────────────────────────────────────────────────
     const footerY = 224
     const footerH = 20
@@ -685,23 +704,44 @@ export async function downloadInvoicePDF(
     doc.setFillColor(...colorNavy)
     doc.rect(0, footerY, pageWidth, footerH, 'F')
 
-    // Left Phone Contacts
-    doc.setTextColor(255, 255, 255)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.text('📞', margin + 2, footerY + 8)
+    // Left Vector Phone Handset Icon (Sky Blue #38BDF8)
+    const phoneX = margin + 3
+    const phoneY = footerY + 5.5
+    doc.setDrawColor(56, 189, 248)
+    doc.setFillColor(56, 189, 248)
+    doc.setLineWidth(0.3)
+    doc.roundedRect(phoneX, phoneY, 3.2, 6.2, 0.7, 0.7, 'S')
+    doc.line(phoneX + 1.0, phoneY + 0.9, phoneX + 2.2, phoneY + 0.9) // speaker
+    doc.circle(phoneX + 1.6, phoneY + 5.2, 0.35, 'F') // button
+    doc.roundedRect(phoneX + 0.5, phoneY + 1.4, 2.2, 3.2, 0.2, 0.2, 'S') // screen
 
+    // Phone Contacts
+    doc.setTextColor(255, 255, 255)
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(7.5)
-    doc.text('98 09 20 70 80   |   89 43 20 70 80', margin + 8, footerY + 8)
-    doc.text('98 95 20 70 85   |   85 89 87 26 89', margin + 8, footerY + 14)
+    doc.text('98 09 20 70 80   |   89 43 20 70 80', margin + 8.5, footerY + 8)
+    doc.text('98 95 20 70 85   |   85 89 87 26 89', margin + 8.5, footerY + 14)
+
+    // Right Vector Map Pin Icon (Sky Blue #38BDF8)
+    const pinX = pageWidth - margin - 35
+    const pinY = footerY + 5.8
+    doc.setFillColor(56, 189, 248)
+    doc.setDrawColor(56, 189, 248)
+    doc.circle(pinX, pinY + 1.5, 1.5, 'F')
+    doc.triangle(pinX - 1.3, pinY + 1.8, pinX + 1.3, pinY + 1.8, pinX, pinY + 4.2, 'F')
+    doc.setFillColor(...colorNavy)
+    doc.circle(pinX, pinY + 1.5, 0.6, 'F')
 
     // Right Location & Brand Name
+    doc.setTextColor(255, 255, 255)
+    doc.setFont(fontName, 'bold')
     doc.setFontSize(9)
-    doc.text('📍  RK TRAVEL HUB', pageWidth - margin - 4, footerY + 8, { align: 'right' })
-    doc.setFont('helvetica', 'normal')
+    doc.text('RK TRAVEL HUB', pinX + 3.5, footerY + 8.2)
+
+    doc.setFont(fontName, 'normal')
     doc.setFontSize(7.5)
     doc.setTextColor(200, 220, 245)
-    doc.text('Traveller\'s Hub', pageWidth - margin - 4, footerY + 14, { align: 'right' })
+    doc.text("Traveller's Hub", pinX + 3.5, footerY + 13.8)
 
     // Save PDF
     const saveName = filename || `RK_Travel_Hub_Invoice_${data.receiptNo}.pdf`
