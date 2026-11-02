@@ -798,15 +798,8 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
         {/* Left Side: Fleet Dispatch & Bookings Title */}
         <div className="relative z-10 max-w-2xl">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-6 h-6 rounded-lg bg-slate-900/80 backdrop-blur-md border border-white/20 p-0.5 relative shrink-0 shadow-sm">
-              <Image
-                src="/images/rk-logo.png"
-                alt="RK Logo"
-                fill
-                className="object-contain"
-              />
-            </div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-[#38BDF8] shadow-[0_0_8px_#38BDF8]" />
             <p className="text-[10px] sm:text-[11px] font-extrabold tracking-[0.2em] text-blue-200/95 uppercase drop-shadow">
               FLEET DISPATCH &amp; BOOKINGS
             </p>
