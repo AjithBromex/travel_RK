@@ -96,16 +96,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom Footer Actions */}
-      <div className="p-3 border-t border-slate-800/80 space-y-1.5 shrink-0 bg-[#0A0F1D]">
-        <Link
-          href="/travel"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors"
-          title="Return to standard user operations"
-        >
-          <ArrowLeft className="w-4 h-4 text-slate-400" />
-          <span>User Workspace</span>
-        </Link>
-
+      <div className="p-3 border-t border-slate-800/80 shrink-0 bg-[#0A0F1D]">
         <form action="/api/logout" method="post">
           <button
             type="submit"
