@@ -339,16 +339,15 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
   };
 
   const handleExportCSV = () => {
-    if (payments.length === 0) {
+    if (filteredPayments.length === 0) {
       alert("No payments recorded yet to export.");
       return;
     }
-    const data = payments.map((p) => ({
-      "Payment ID": p.id,
-      "Trip ID": p.tripId || "General",
-      Type: p.type === "customer_received" ? "Customer Inflow" : "Driver Payout",
-      Amount: p.amount,
+    const data = filteredPayments.map((p) => ({
       Date: p.paymentDate,
+      "Trip Reference": p.tripId && p.tripId !== "general" ? `Trip #${p.tripId}` : "General Payment",
+      Type: p.type === "customer_received" ? "Customer Inflow" : "Driver Payout",
+      "Amount (INR)": p.amount,
       Mode: p.paymentMode.toUpperCase(),
       Notes: p.notes || "-",
     }));
