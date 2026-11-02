@@ -266,11 +266,11 @@ export async function exportToPDF({
       body: data.map(row => row.map(val => (val === null || val === undefined ? '-' : sanitize(val)))),
       theme: 'grid',
       styles: {
-        fontSize: orientation === 'landscape' ? 8.5 : 9,
-        cellPadding: orientation === 'landscape' ? 3.0 : 3.6,
-        textColor: [15, 23, 42],
+        fontSize: orientation === 'landscape' ? 9 : 9.8,
+        cellPadding: orientation === 'landscape' ? 3.2 : 3.8,
+        textColor: [10, 25, 47],
         lineColor: [186, 218, 255], // Soft blue grid lines (#BADBFF)
-        lineWidth: 0.28,
+        lineWidth: 0.3,
         valign: 'middle',
         font: fontName,
       },
@@ -278,29 +278,32 @@ export async function exportToPDF({
         fillColor: [3, 30, 68], // Deep Executive Navy (#031E44)
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-        fontSize: orientation === 'landscape' ? 9 : 9.5,
+        fontSize: orientation === 'landscape' ? 9.5 : 10.2,
         halign: 'left',
-        cellPadding: 4.0,
+        cellPadding: 4.2,
       },
       alternateRowStyles: {
         fillColor: [248, 251, 255], // Very soft ice-blue tint
       },
       didParseCell: (hookData) => {
         if (hookData.section === 'body') {
-          // Column 0 (Metric / Name): Bold Slate text
+          // Column 0 (Metric / Indicator / Name): Bold Dark Charcoal (#0A192F)
           if (hookData.column.index === 0) {
             hookData.cell.styles.fontStyle = 'bold'
-            hookData.cell.styles.textColor = [15, 23, 42]
+            hookData.cell.styles.textColor = [10, 25, 47]
+            hookData.cell.styles.fontSize = orientation === 'landscape' ? 9.2 : 9.8
           }
-          // Column 1 (Amount / Ratio): Bold Deep Navy text
+          // Column 1 (Amount / Ratio): Bold Deep Navy (#031E44)
           else if (hookData.column.index === 1) {
             hookData.cell.styles.fontStyle = 'bold'
             hookData.cell.styles.textColor = [3, 30, 68]
+            hookData.cell.styles.fontSize = orientation === 'landscape' ? 9.8 : 10.5
           }
-          // Column 2 (Period Note / Description): Normal Slate text
+          // Column 2 (Period Note / Description): Strong bold text (#1E293B)
           else {
-            hookData.cell.styles.fontStyle = 'normal'
-            hookData.cell.styles.textColor = [71, 85, 105]
+            hookData.cell.styles.fontStyle = 'bold'
+            hookData.cell.styles.textColor = [30, 41, 59]
+            hookData.cell.styles.fontSize = orientation === 'landscape' ? 8.8 : 9.5
           }
         }
       },
