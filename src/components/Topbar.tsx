@@ -679,8 +679,8 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
           </div>
         </div>
 
-        {/* Mobile / Tablet Dedicated Pill-shaped Navbar Strip (< xl) */}
-        <div className="xl:hidden w-full overflow-x-auto no-scrollbar pt-1 pb-0.5 flex justify-start xl:justify-center px-1">
+        {/* Tablet Dedicated Pill-shaped Navbar Strip (Hidden on mobile < sm, visible on tablet sm to xl, desktop uses center navbar) */}
+        <div className="hidden sm:flex xl:hidden w-full overflow-x-auto no-scrollbar pt-1 pb-0.5 justify-start xl:justify-center px-1">
           <nav className="inline-flex items-center gap-1 p-1 rounded-full bg-white/95 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.06)] backdrop-blur-md whitespace-nowrap">
             {navLinks.map((link) => {
               const active = isLinkActive(link.href);
