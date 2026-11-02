@@ -114,40 +114,49 @@ export async function exportToPDF({
       hour12: true,
     })
 
-    const metaRightX = pageWidth - 14
-
-    // Top Line: Calendar icon + Generated Date
+    // Metadata Block (Calendar Date & Total Records) aligned in a unified column
     const genText = `Generated: ${formattedDate} ${formattedTime}`
+    const recText = `Total Records: ${data.length}`
+
+    doc.setFont(fontName, 'normal')
+    doc.setFontSize(8)
+    const genTextWidth = doc.getTextWidth(genText)
+
+    doc.setFont(fontName, 'bold')
+    doc.setFontSize(8)
+    const recTextWidth = doc.getTextWidth(recText)
+
+    const maxTextWidth = Math.max(genTextWidth, recTextWidth)
+    const iconWidth = 3.6
+    const iconGap = 2.4
+    const totalBlockWidth = iconWidth + iconGap + maxTextWidth
+    const blockStartX = pageWidth - 14 - totalBlockWidth
+    const textStartX = blockStartX + iconWidth + iconGap
+
+    // Row 1: Calendar Vector Icon + Generated Date
+    doc.setDrawColor(255, 255, 255)
+    doc.setLineWidth(0.3)
+    doc.roundedRect(blockStartX, 7.8, iconWidth, iconWidth, 0.5, 0.5, 'S')
+    doc.setFillColor(255, 255, 255)
+    doc.rect(blockStartX, 7.8, iconWidth, 1.1, 'F') // Top calendar header bar
+    doc.rect(blockStartX + 0.8, 7.1, 0.5, 1.1, 'F') // Left ring
+    doc.rect(blockStartX + 2.3, 7.1, 0.5, 1.1, 'F') // Right ring
+
     doc.setFont(fontName, 'normal')
     doc.setFontSize(8)
     doc.setTextColor(230, 240, 255)
-    const genTextWidth = doc.getTextWidth(genText)
-    const calIconX = metaRightX - genTextWidth - 5.5
+    doc.text(genText, textStartX, 10.8)
 
-    // Calendar vector icon
-    doc.setDrawColor(255, 255, 255)
-    doc.setLineWidth(0.3)
-    doc.roundedRect(calIconX, 7.8, 3.8, 3.8, 0.5, 0.5, 'S')
+    // Row 2: Database Stack Vector Icon + Total Records
     doc.setFillColor(255, 255, 255)
-    doc.rect(calIconX, 7.8, 3.8, 1.1, 'F') // Top calendar header bar
-    doc.rect(calIconX + 0.9, 7.2, 0.5, 1.0, 'F') // Left ring
-    doc.rect(calIconX + 2.4, 7.2, 0.5, 1.0, 'F') // Right ring
-    doc.text(genText, metaRightX, 10.8, { align: 'right' })
+    doc.roundedRect(blockStartX, 14.2, iconWidth, 0.9, 0.3, 0.3, 'F')
+    doc.roundedRect(blockStartX, 15.6, iconWidth, 0.9, 0.3, 0.3, 'F')
+    doc.roundedRect(blockStartX, 17.0, iconWidth, 0.9, 0.3, 0.3, 'F')
 
-    // Bottom Line: Database stack icon + Total Records
-    const recText = `Total Records: ${data.length}`
     doc.setFont(fontName, 'bold')
     doc.setFontSize(8)
     doc.setTextColor(255, 255, 255)
-    const recTextWidth = doc.getTextWidth(recText)
-    const dbIconX = metaRightX - recTextWidth - 5.5
-
-    // Database stack icon (3 pills)
-    doc.setFillColor(255, 255, 255)
-    doc.roundedRect(dbIconX, 14.2, 3.6, 0.9, 0.3, 0.3, 'F')
-    doc.roundedRect(dbIconX, 15.6, 3.6, 0.9, 0.3, 0.3, 'F')
-    doc.roundedRect(dbIconX, 17.0, 3.6, 0.9, 0.3, 0.3, 'F')
-    doc.text(recText, metaRightX, 17.6, { align: 'right' })
+    doc.text(recText, textStartX, 17.6)
 
     // ─────────────────────────────────────────────────────────────
     // 2. REPORT TITLE & SUBTITLE (CENTERED WITH BLUE ACCENT DIVIDER)
