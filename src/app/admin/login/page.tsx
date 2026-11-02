@@ -34,21 +34,6 @@ export default function AdminLogin() {
     if (typeof document !== 'undefined') {
       document.cookie = 'rk_admin=; path=/; max-age=0; SameSite=Lax';
     }
-    setUsername('');
-    setPassword('');
-    // Defeat aggressive password manager auto-population on mount
-    const t1 = setTimeout(() => {
-      setUsername('');
-      setPassword('');
-    }, 100);
-    const t2 = setTimeout(() => {
-      setUsername('');
-      setPassword('');
-    }, 300);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
   }, []);
 
   async function submit(e?: React.FormEvent) {
@@ -271,11 +256,7 @@ export default function AdminLogin() {
               )}
 
               {/* Sign In Form */}
-              <form onSubmit={submit} className="space-y-4" autoComplete="off">
-                {/* Hidden dummy fields to intercept browser/manager autofill heuristics */}
-                <input type="text" name="fake_admin_identity" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
-                <input type="password" name="fake_admin_secret" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
-
+              <form onSubmit={submit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Admin Email or Username
@@ -284,11 +265,9 @@ export default function AdminLogin() {
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none" />
                     <input
                       type="text"
-                      name="admin_login_id"
+                      name="username"
                       id="admin_login_id"
-                      autoComplete="off"
-                      data-lpignore="true"
-                      data-form-type="other"
+                      autoComplete="username"
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
@@ -307,11 +286,9 @@ export default function AdminLogin() {
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none" />
                     <input
                       type={showPassword ? 'text' : 'password'}
-                      name="admin_secret_key"
+                      name="password"
                       id="admin_secret_key"
-                      autoComplete="new-password"
-                      data-lpignore="true"
-                      data-form-type="other"
+                      autoComplete="current-password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}

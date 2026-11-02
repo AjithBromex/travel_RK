@@ -651,7 +651,7 @@ function LoginForm() {
                 {/* Admin Portal Link */}
                 <div className="mt-4 pt-4 border-t border-slate-200/80">
                   <Link
-                    href="/api/logout"
+                    href="/admin/login"
                     className="w-full h-11 flex items-center justify-between px-3.5 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs font-bold text-slate-800 hover:text-blue-600 transition-all cursor-pointer group shadow-2xs"
                     title="Switch to Admin Portal"
                   >
