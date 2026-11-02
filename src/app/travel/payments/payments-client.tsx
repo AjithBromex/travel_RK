@@ -43,6 +43,7 @@ import {
   subscribeDataChanged,
 } from "@/lib/storage-sync";
 import InvoiceModal from "@/components/InvoiceModal";
+import SearchableTripSelect from "@/components/SearchableTripSelect";
 import {
   buildInvoiceData,
   downloadInvoicePDF,
@@ -737,7 +738,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                 </button>
               </div>
 
-              {/* Linked Trip Booking Dropdown */}
+              {/* Linked Trip Booking Searchable Selector */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
@@ -752,22 +753,14 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                     <ChevronDown className="w-3 h-3 -rotate-90" />
                   </Link>
                 </div>
-                <div className="relative">
-                  <select
-                    value={form.tripId}
-                    onChange={(e) => handleTripSelect(e.target.value)}
-                    className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
-                  >
-                    <option value="">🔍 General / Unlinked Payment</option>
-                    {tripList.map((t) => (
-                      <option key={t.id} value={t.tripNumber || t.id}>
-                        Trip #{t.tripNumber || t.id.slice(0, 6)} • {t.customerName || "Customer"} ({t.from || "Start"} → {t.to || "End"})
-                        {Number(t.customerBalance) > 0 ? ` • Due: ₹${Number(t.customerBalance).toLocaleString("en-IN")}` : " • Fully Paid"}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+                <SearchableTripSelect
+                  trips={tripList}
+                  value={form.tripId}
+                  onChange={(selectedId) => handleTripSelect(selectedId)}
+                  placeholder="Search trip #, receipt, customer, route, vehicle, phone..."
+                  unlinkedLabel="🔍 General / Unlinked Payment"
+                  showDueBadge={true}
+                />
                 {tripList.length === 0 && (
                   <p className="text-[10px] text-amber-600 mt-1">
                     No trips found. <Link href="/travel/trips" className="font-bold underline text-blue-600">Create a trip here</Link>.

@@ -39,6 +39,7 @@ import { createExpense } from "@/services/expenses.service";
 import { getCashBookEntries } from "@/services/cashbook.service";
 import { getTrips } from "@/services/trips.service";
 import { getStoredTrips, subscribeDataChanged } from "@/lib/storage-sync";
+import SearchableTripSelect from "@/components/SearchableTripSelect";
 
 interface CashBookClientProps {
   initialEntries: CashBookEntry[];
@@ -827,24 +828,14 @@ export default function CashBookClient({
                     <span>Related Trip</span>
                     <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                      <Bus className="w-3.5 h-3.5" />
-                    </span>
-                    <select
-                      value={form.tripId}
-                      onChange={(e) => setForm({ ...form, tripId: e.target.value })}
-                      className="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="">Select trip (General Inflow/Outflow)</option>
-                      {tripList.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          Trip #{t.tripNumber || t.id.slice(0, 5)} • {t.from || "Start"} → {t.to || "End"} {t.vehicleName ? `(${t.vehicleName})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
+                  <SearchableTripSelect
+                    trips={tripList}
+                    value={form.tripId}
+                    onChange={(selectedId) => setForm({ ...form, tripId: selectedId })}
+                    placeholder="Search trip #, customer, route, vehicle..."
+                    unlinkedLabel="Select trip (General Inflow/Outflow)"
+                    showDueBadge={true}
+                  />
                 </div>
 
                 <div>
