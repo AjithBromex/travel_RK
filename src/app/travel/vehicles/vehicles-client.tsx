@@ -637,7 +637,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
       filename: `RK_Fleet_Vehicles_${new Date().toISOString().slice(0, 10)}.pdf`,
       headers,
       data,
-      orientation: "landscape",
+      orientation: "portrait",
       summary: [
         { label: "Total Fleet", value: String(vehicles.length) },
         { label: "Active Fleet", value: String(activeCount) },
