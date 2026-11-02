@@ -657,7 +657,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     const data = filteredTrips.map((t) => ({
       "Receipt #": getTripReceiptDisplay(t, trips),
       "Trip Number": t.tripNumber || t.id,
-      Date: t.tripDate,
+      "Trip Date": formatDate(t.tripDate),
       Customer: t.customerName,
       Phone: t.customerPhone,
       From: t.from,

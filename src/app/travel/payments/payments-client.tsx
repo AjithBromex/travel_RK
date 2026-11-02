@@ -344,11 +344,11 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       return;
     }
     const data = filteredPayments.map((p) => ({
-      Date: p.paymentDate,
+      "Payment Date": formatDate(p.paymentDate),
       "Trip Reference": p.tripId && p.tripId !== "general" ? `Trip #${p.tripId}` : "General Payment",
-      Type: p.type === "customer_received" ? "Customer Inflow" : "Driver Payout",
+      "Transaction Type": p.type === "customer_received" ? "Customer Inflow" : "Driver Payout",
       "Amount (INR)": p.amount,
-      Mode: p.paymentMode.toUpperCase(),
+      "Payment Mode": p.paymentMode.toUpperCase(),
       Notes: p.notes || "-",
     }));
     exportToCSV(data, `Payments_Ledger_${todayStr}.csv`);
