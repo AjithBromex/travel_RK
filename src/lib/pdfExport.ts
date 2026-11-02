@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { RK_LOGO_BASE64 } from './pdfLogo'
 
 export interface PDFExportOptions {
   title: string
@@ -14,11 +15,11 @@ export interface PDFExportOptions {
 /**
  * Modern Executive PDF exporter for RK Travel Hub.
  * Produces crisp, beautiful reports matching the executive financial statement design:
- * - Deep navy header banner (#031E44) with vector RK logo, vertical divider, brand metadata & total records
- * - Bottom wave accents in royal and sky blue
+ * - Deep navy header banner (#031E44) with 3D metallic chrome RK logo, vertical divider, brand metadata & total records
+ * - Bottom stepped accent tab in bright royal & sky blue
  * - Centered bold title & subtitle with royal blue pill divider
  * - 4-Column executive KPI summary cards with vibrant blue icon badges and bold metrics
- * - Crisp bordered table with royal blue header & clean typography
+ * - Crisp bordered table with royal blue header, bold amount column & clean typography
  * - Clean footer with confidentiality note, divider lines & page numbering
  * - Decorative corner geometric accents
  */
@@ -44,67 +45,47 @@ export async function exportToPDF({
     // ─────────────────────────────────────────────────────────────
     // 1. TOP NAVY EXECUTIVE HEADER BANNER
     // ─────────────────────────────────────────────────────────────
-    const bannerHeight = 26
+    const bannerHeight = 24
     doc.setFillColor(3, 30, 68) // Deep Executive Navy (#031E44)
     doc.rect(0, 0, pageWidth, bannerHeight, 'F')
 
-    // Bottom-right decorative wave / geometric accents in royal & sky blue
-    doc.setFillColor(13, 98, 254) // #0D62FE
+    // Bottom-right decorative stepped tab in bright blue / cyan
+    const tabStartX = pageWidth - (orientation === 'landscape' ? 95 : 68)
+    doc.setFillColor(56, 189, 248) // Sky blue (#38BDF8)
     doc.triangle(
-      pageWidth - 48, bannerHeight,
-      pageWidth, bannerHeight - 11,
-      pageWidth, bannerHeight,
+      tabStartX - 6, bannerHeight,
+      tabStartX, bannerHeight - 3.8,
+      tabStartX, bannerHeight,
       'F'
     )
-    doc.setFillColor(59, 130, 246) // #3B82F6
-    doc.triangle(
-      pageWidth - 32, bannerHeight,
-      pageWidth, bannerHeight - 7,
-      pageWidth, bannerHeight,
-      'F'
-    )
-    doc.setFillColor(96, 165, 250) // #60A5FA
-    doc.triangle(
-      pageWidth - 16, bannerHeight,
-      pageWidth, bannerHeight - 3.5,
-      pageWidth, bannerHeight,
-      'F'
-    )
+    doc.rect(tabStartX, bannerHeight - 3.8, pageWidth - tabStartX, 3.8, 'F')
 
-    // RK Monogram Logo (Custom Vector Drawing matching RK Travel Hub branding)
-    const logoX = 14
-    const logoY = 6.5
-    doc.setFillColor(255, 255, 255)
-    // Left stem of R
-    doc.roundedRect(logoX, logoY, 2.6, 13, 0.7, 0.7, 'F')
-    // Top bar of R
-    doc.roundedRect(logoX + 2.6, logoY, 6.8, 2.3, 0.7, 0.7, 'F')
-    // Outer loop of R
-    doc.roundedRect(logoX + 6.8, logoY + 1.2, 2.6, 4.2, 0.7, 0.7, 'F')
-    // Middle bar of R
-    doc.roundedRect(logoX + 2.6, logoY + 5.2, 6.8, 2.3, 0.7, 0.7, 'F')
-    // Diagonal leg of R / K
-    doc.roundedRect(logoX + 3.8, logoY + 7.4, 2.6, 5.6, 0.7, 0.7, 'F')
-    // Right K diagonal upper arm
-    doc.roundedRect(logoX + 7.5, logoY + 2.5, 2.4, 4.5, 0.7, 0.7, 'F')
-    // Right K diagonal lower leg
-    doc.roundedRect(logoX + 8.2, logoY + 7.2, 2.5, 5.8, 0.7, 0.7, 'F')
+    // RK Monogram Logo (3D Metallic Chrome Emblem)
+    const logoX = 12
+    const logoY = 4.2
+    try {
+      doc.addImage(RK_LOGO_BASE64, 'PNG', logoX, logoY, 15, 15)
+    } catch {
+      // Fallback vector drawing if image fails
+      doc.setFillColor(255, 255, 255)
+      doc.roundedRect(logoX, logoY + 1, 2.6, 13, 0.7, 0.7, 'F')
+    }
 
     // Vertical Divider Line between brand logo and brand name
     doc.setDrawColor(255, 255, 255)
     doc.setLineWidth(0.35)
-    doc.line(logoX + 13.5, logoY + 1, logoX + 13.5, logoY + 13)
+    doc.line(logoX + 17, 5, logoX + 17, bannerHeight - 5)
 
     // Brand Name & Subtext
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(255, 255, 255)
     doc.setFontSize(14.5)
-    doc.text('RK TRAVEL HUB', logoX + 16.5, 12)
+    doc.text('RK TRAVEL HUB', logoX + 20.5, 11)
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(190, 210, 245)
-    doc.text('Fleet & Travel Management System', logoX + 16.5, 18)
+    doc.text('Fleet & Travel Management System', logoX + 20.5, 16.5)
 
     // Right-aligned Metadata (Date, Time, Total Records) with icons
     const now = new Date()
@@ -122,24 +103,23 @@ export async function exportToPDF({
     const metaRightX = pageWidth - 14
 
     // Calendar icon badge on top right
-    doc.setFillColor(255, 255, 255)
-    doc.roundedRect(metaRightX - 63, 8.5, 3.6, 3.6, 0.6, 0.6, 'F')
-    doc.setFillColor(3, 30, 68)
-    doc.rect(metaRightX - 63, 8.5, 3.6, 1.1, 'F') // Top calendar header
+    doc.setDrawColor(255, 255, 255)
+    doc.setLineWidth(0.3)
+    doc.roundedRect(metaRightX - 60, 8, 3.8, 3.8, 0.5, 0.5, 'S')
+    doc.line(metaRightX - 60, 9.4, metaRightX - 56.2, 9.4)
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7.5)
-    doc.setTextColor(215, 230, 255)
-    doc.text(`Generated: ${formattedDate} ${formattedTime}`, metaRightX, 11.5, { align: 'right' })
+    doc.setTextColor(230, 240, 255)
+    doc.text(`Generated: ${formattedDate} ${formattedTime}`, metaRightX, 10.8, { align: 'right' })
 
     // Database / Records icon on top right
-    doc.setFillColor(255, 255, 255)
-    doc.roundedRect(metaRightX - 35, 15, 3.4, 1.1, 0.3, 0.3, 'F')
-    doc.roundedRect(metaRightX - 35, 16.5, 3.4, 1.1, 0.3, 0.3, 'F')
+    doc.roundedRect(metaRightX - 34, 14.5, 3.8, 1.2, 0.3, 0.3, 'S')
+    doc.roundedRect(metaRightX - 34, 16.2, 3.8, 1.2, 0.3, 0.3, 'S')
 
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(255, 255, 255)
-    doc.text(`Total Records: ${data.length}`, metaRightX, 18, { align: 'right' })
+    doc.text(`Total Records: ${data.length}`, metaRightX, 17.2, { align: 'right' })
 
     // ─────────────────────────────────────────────────────────────
     // 2. REPORT TITLE & SUBTITLE (CENTERED WITH BLUE ACCENT DIVIDER)
@@ -147,7 +127,7 @@ export async function exportToPDF({
     let currentY = bannerHeight + 9
 
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(15, 23, 42) // Slate 900
+    doc.setTextColor(3, 30, 68) // Deep Navy (#031E44)
     doc.setFontSize(15)
     doc.text(title.toUpperCase(), pageWidth / 2, currentY, { align: 'center' })
     currentY += 5.5
@@ -155,15 +135,15 @@ export async function exportToPDF({
     if (subtitle) {
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(8.5)
-      doc.setTextColor(100, 116, 139) // Slate 500
+      doc.setTextColor(71, 85, 105) // Slate 600 (#475569)
       doc.text(subtitle, pageWidth / 2, currentY, { align: 'center' })
       currentY += 4.5
     }
 
-    // Small blue pill accent under title
+    // Small royal blue pill divider underline
     doc.setFillColor(13, 98, 254) // #0D62FE
-    doc.roundedRect(pageWidth / 2 - 14, currentY, 28, 1.2, 0.6, 0.6, 'F')
-    currentY += 6
+    doc.roundedRect(pageWidth / 2 - 14, currentY, 28, 1.3, 0.65, 0.65, 'F')
+    currentY += 6.5
 
     // ─────────────────────────────────────────────────────────────
     // 3. EXECUTIVE KPI SUMMARY CARDS
@@ -205,26 +185,27 @@ export async function exportToPDF({
           doc.roundedRect(iconBoxX + 2.2, iconBoxY + 6.8, 5.6, 1.6, 0.4, 0.4, 'F')
         } else if (idx === 2) {
           // Trend upward chart graphic
-          doc.rect(iconBoxX + 2.2, iconBoxY + 6.2, 1.6, 1.6, 'F')
-          doc.rect(iconBoxX + 4.2, iconBoxY + 4.4, 1.6, 3.4, 'F')
-          doc.rect(iconBoxX + 6.2, iconBoxY + 2.4, 1.6, 5.4, 'F')
-          // Diagonal arrow point
-          doc.triangle(iconBoxX + 6, iconBoxY + 2.2, iconBoxX + 8, iconBoxY + 2.2, iconBoxX + 8, iconBoxY + 4.2, 'F')
+          doc.setDrawColor(255, 255, 255)
+          doc.setLineWidth(0.65)
+          doc.line(iconBoxX + 2.4, iconBoxY + 7.2, iconBoxX + 4.6, iconBoxY + 4.8)
+          doc.line(iconBoxX + 4.6, iconBoxY + 4.8, iconBoxX + 5.8, iconBoxY + 5.8)
+          doc.line(iconBoxX + 5.8, iconBoxY + 5.8, iconBoxX + 7.8, iconBoxY + 2.8)
+          doc.triangle(iconBoxX + 6.2, iconBoxY + 2.5, iconBoxX + 8.1, iconBoxY + 2.5, iconBoxX + 8.1, iconBoxY + 4.4, 'F')
         } else {
           // Percentage / Badge graphic
           doc.setFont('helvetica', 'bold')
-          doc.setFontSize(7)
+          doc.setFontSize(7.5)
           doc.setTextColor(255, 255, 255)
           doc.text('%', iconBoxX + 3, iconBoxY + 7.2)
         }
 
         const textLeft = iconBoxX + iconBoxSize + 3.2
-        const maxTextWidth = cardWidth - (iconBoxSize + 8)
+        const maxTextWidth = cardWidth - (iconBoxSize + 6)
 
         // Label Text
         doc.setFont('helvetica', 'bold')
         doc.setFontSize(6.8)
-        doc.setTextColor(15, 23, 42)
+        doc.setTextColor(51, 65, 85) // Slate 700
         doc.text(item.label.toUpperCase(), textLeft, currentY + 5.5, { maxWidth: maxTextWidth })
 
         // Value Text
@@ -234,7 +215,7 @@ export async function exportToPDF({
         doc.text(item.value, textLeft, currentY + 11.8, { maxWidth: maxTextWidth })
       })
 
-      currentY += cardHeight + 6
+      currentY += cardHeight + 6.5
     } else {
       currentY += 2
     }
@@ -248,8 +229,8 @@ export async function exportToPDF({
       body: data.map(row => row.map(val => (val === null || val === undefined ? '-' : String(val)))),
       theme: 'grid',
       styles: {
-        fontSize: orientation === 'landscape' ? 7.8 : 8.2,
-        cellPadding: orientation === 'landscape' ? 2.5 : 2.8,
+        fontSize: orientation === 'landscape' ? 8 : 8.5,
+        cellPadding: orientation === 'landscape' ? 2.8 : 3.2,
         textColor: [15, 23, 42],
         lineColor: [186, 218, 255], // Soft blue grid lines (#BADBFF)
         lineWidth: 0.25,
@@ -260,28 +241,35 @@ export async function exportToPDF({
         fillColor: [3, 30, 68], // Deep Executive Navy (#031E44)
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-        fontSize: orientation === 'landscape' ? 8.2 : 8.8,
+        fontSize: orientation === 'landscape' ? 8.4 : 9,
         halign: 'left',
-        cellPadding: 3.2,
+        cellPadding: 3.5,
       },
       alternateRowStyles: {
         fillColor: [248, 251, 255], // Very soft ice-blue tint
+      },
+      didParseCell: (hookData) => {
+        // If column 1 (e.g. Amount / Ratio in reports), make it bold navy text matching mockup
+        if (hookData.section === 'body' && hookData.column.index === 1) {
+          hookData.cell.styles.fontStyle = 'bold'
+          hookData.cell.styles.textColor = [10, 25, 47]
+        }
       },
       margin: { left: 12, right: 12, bottom: 16 },
       didDrawPage: tableData => {
         // Bottom right corner navy triangle with bright blue diagonal stripe
         doc.setFillColor(3, 30, 68) // Deep navy (#031E44)
-        doc.triangle(pageWidth - 42, pageHeight, pageWidth, pageHeight - 14, pageWidth, pageHeight, 'F')
+        doc.triangle(pageWidth - 44, pageHeight, pageWidth, pageHeight - 16, pageWidth, pageHeight, 'F')
         doc.setFillColor(26, 115, 232) // Bright royal blue stripe (#1A73E8)
-        doc.triangle(pageWidth - 28, pageHeight, pageWidth, pageHeight - 9, pageWidth, pageHeight, 'F')
+        doc.triangle(pageWidth - 30, pageHeight, pageWidth, pageHeight - 11, pageWidth, pageHeight, 'F')
 
         // Page number and confidentiality notice with left and right divider lines
         const pageCount = (doc.internal as unknown as { getNumberOfPages: () => number }).getNumberOfPages()
         const footerText = `Page ${tableData.pageNumber} of ${pageCount} — Confidential • RK Travel Hub Internal Report`
 
-        doc.setFont('helvetica', 'normal')
+        doc.setFont('helvetica', 'italic')
         doc.setFontSize(7.5)
-        doc.setTextColor(100, 116, 139)
+        doc.setTextColor(71, 85, 105) // Slate 600 (#475569)
         const textWidth = doc.getTextWidth(footerText)
         const textX = pageWidth / 2
         const lineY = pageHeight - 6.8
@@ -295,7 +283,7 @@ export async function exportToPDF({
         doc.text(footerText, textX, pageHeight - 5.8, { align: 'center' })
 
         // Right accent line
-        doc.line(textX + textWidth / 2 + 4, lineY, pageWidth - 46, lineY)
+        doc.line(textX + textWidth / 2 + 4, lineY, pageWidth - 48, lineY)
       },
     })
 
