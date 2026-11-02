@@ -12,7 +12,7 @@ import {
   limit,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
-import type { Trip, TripStatus } from '@/types'
+import type { Trip, TripStatus, Payment, Expense } from '@/types'
 import { generateTripNumber } from '@/lib/utils'
 import { withCache, invalidateCache } from '@/lib/cache'
 import {
@@ -184,35 +184,85 @@ export async function updateTrip(id: string, data: Partial<Trip>): Promise<void>
   notifyDataChanged('trips')
 }
 
-export async function deleteTrip(id: string): Promise<void> {
+export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
   await waitForAuthReady()
 
-  // 1. Resolve Trip details to get ID, tripNumber, and related aliases
+  const id = typeof tripOrId === 'string' ? tripOrId : tripOrId.id
+  const tripObj = typeof tripOrId === 'object' ? tripOrId : null
+
+  // 1. Resolve Trip details to get ID, tripNumber, receiptNumber, and related aliases
   const storedList = getStoredTrips()
-  const matchedStored = storedList.find(t => t.id === id || t.tripNumber === id)
+  const matchedStored = storedList.find(
+    t => t.id === id || t.tripNumber === id || (t.receiptNumber && t.receiptNumber === id)
+  )
 
-  let tripNumber = matchedStored?.tripNumber || ''
-  let tripDocId = matchedStored?.id || id
-
-  if (!tripNumber) {
-    try {
-      const snap = await getDoc(doc(db, COLLECTION, id))
-      if (snap.exists()) {
-        const data = snap.data() as Trip
-        tripNumber = data.tripNumber || ''
-        tripDocId = snap.id
-      }
-    } catch {}
-  }
+  const tripNumber = tripObj?.tripNumber || matchedStored?.tripNumber || ''
+  const receiptNumber = tripObj?.receiptNumber || matchedStored?.receiptNumber || ''
+  let tripDocId = tripObj?.id || matchedStored?.id || id
 
   // Collect all possible identifiers for this trip
   const tripIdentifiers = new Set<string>()
   if (id) tripIdentifiers.add(id)
   if (tripDocId) tripIdentifiers.add(tripDocId)
   if (tripNumber) tripIdentifiers.add(tripNumber)
+  if (receiptNumber) {
+    tripIdentifiers.add(receiptNumber)
+    tripIdentifiers.add(receiptNumber.replace(/^#/, ''))
+    tripIdentifiers.add(`#${receiptNumber.replace(/^#/, '')}`)
+  }
+
+  // Also query Firestore for any trip doc matching this ID, tripNumber, or receiptNumber
+  try {
+    const directDoc = await getDoc(doc(db, COLLECTION, id))
+    if (directDoc.exists()) {
+      tripDocId = directDoc.id
+      tripIdentifiers.add(directDoc.id)
+      const data = directDoc.data() as Trip
+      if (data.tripNumber) tripIdentifiers.add(data.tripNumber)
+      if (data.receiptNumber) {
+        tripIdentifiers.add(data.receiptNumber)
+        tripIdentifiers.add(data.receiptNumber.replace(/^#/, ''))
+        tripIdentifiers.add(`#${data.receiptNumber.replace(/^#/, '')}`)
+      }
+    }
+  } catch (err) {
+    console.warn('[TripsService] Direct doc fetch error:', err)
+  }
+
+  // Also query trips by tripNumber and receiptNumber
+  for (const ident of Array.from(tripIdentifiers)) {
+    try {
+      const qNum = query(collection(db, COLLECTION), where('tripNumber', '==', ident))
+      const snapNum = await getDocs(qNum)
+      snapNum.docs.forEach(d => {
+        tripIdentifiers.add(d.id)
+        const dt = d.data() as Trip
+        if (dt.tripNumber) tripIdentifiers.add(dt.tripNumber)
+        if (dt.receiptNumber) {
+          tripIdentifiers.add(dt.receiptNumber)
+          tripIdentifiers.add(dt.receiptNumber.replace(/^#/, ''))
+        }
+      })
+    } catch {}
+
+    try {
+      const qRec = query(collection(db, COLLECTION), where('receiptNumber', '==', ident))
+      const snapRec = await getDocs(qRec)
+      snapRec.docs.forEach(d => {
+        tripIdentifiers.add(d.id)
+        const dt = d.data() as Trip
+        if (dt.tripNumber) tripIdentifiers.add(dt.tripNumber)
+        if (dt.receiptNumber) {
+          tripIdentifiers.add(dt.receiptNumber)
+          tripIdentifiers.add(dt.receiptNumber.replace(/^#/, ''))
+        }
+      })
+    } catch {}
+  }
+
   const idArray = Array.from(tripIdentifiers)
 
-  // 2. Cascade delete PAYMENTS
+  // 2. Cascade delete PAYMENTS in Firestore & local
   try {
     for (const ident of idArray) {
       try {
@@ -220,7 +270,7 @@ export async function deleteTrip(id: string): Promise<void> {
         const snapTripId = await getDocs(qTripId)
         for (const d of snapTripId.docs) {
           markAsDeleted('payments', d.id)
-          await deleteDoc(d.ref).catch(() => {})
+          await deleteDoc(d.ref)
         }
       } catch (err) {
         console.warn('[TripsService] Error querying payments by tripId:', err)
@@ -231,7 +281,7 @@ export async function deleteTrip(id: string): Promise<void> {
         const snapTripNum = await getDocs(qTripNum)
         for (const d of snapTripNum.docs) {
           markAsDeleted('payments', d.id)
-          await deleteDoc(d.ref).catch(() => {})
+          await deleteDoc(d.ref)
         }
       } catch {}
 
@@ -240,9 +290,27 @@ export async function deleteTrip(id: string): Promise<void> {
         const snapTripRef = await getDocs(qTripRef)
         for (const d of snapTripRef.docs) {
           markAsDeleted('payments', d.id)
-          await deleteDoc(d.ref).catch(() => {})
+          await deleteDoc(d.ref)
         }
       } catch {}
+    }
+
+    // Comprehensive scan of all payments in Firestore to ensure no linked payment was missed
+    try {
+      const allPaymentsSnap = await getDocs(collection(db, 'payments'))
+      for (const d of allPaymentsSnap.docs) {
+        const p = d.data() as Payment
+        const isLinked =
+          (p.tripId && tripIdentifiers.has(p.tripId)) ||
+          ((p as any).tripNumber && tripIdentifiers.has((p as any).tripNumber)) ||
+          ((p as any).tripRef && tripIdentifiers.has((p as any).tripRef))
+        if (isLinked) {
+          markAsDeleted('payments', d.id)
+          await deleteDoc(d.ref)
+        }
+      }
+    } catch (err) {
+      console.warn('[TripsService] Error scanning all payments for trip deletion:', err)
     }
 
     // Cascade delete local payments
@@ -261,7 +329,7 @@ export async function deleteTrip(id: string): Promise<void> {
     console.warn('[TripsService] Cascade delete payments error:', err)
   }
 
-  // 3. Cascade delete EXPENSES
+  // 3. Cascade delete EXPENSES in Firestore & local
   try {
     for (const ident of idArray) {
       try {
@@ -269,7 +337,7 @@ export async function deleteTrip(id: string): Promise<void> {
         const snapExpId = await getDocs(qExpId)
         for (const d of snapExpId.docs) {
           markAsDeleted('expenses', d.id)
-          await deleteDoc(d.ref).catch(() => {})
+          await deleteDoc(d.ref)
         }
       } catch (err) {
         console.warn('[TripsService] Error querying expenses by tripId:', err)
@@ -280,9 +348,26 @@ export async function deleteTrip(id: string): Promise<void> {
         const snapExpNum = await getDocs(qExpNum)
         for (const d of snapExpNum.docs) {
           markAsDeleted('expenses', d.id)
-          await deleteDoc(d.ref).catch(() => {})
+          await deleteDoc(d.ref)
         }
       } catch {}
+    }
+
+    // Scan all expenses in Firestore
+    try {
+      const allExpSnap = await getDocs(collection(db, 'expenses'))
+      for (const d of allExpSnap.docs) {
+        const e = d.data() as Expense
+        const isLinked =
+          (e.tripId && tripIdentifiers.has(e.tripId)) ||
+          ((e as any).tripNumber && tripIdentifiers.has((e as any).tripNumber))
+        if (isLinked) {
+          markAsDeleted('expenses', d.id)
+          await deleteDoc(d.ref)
+        }
+      }
+    } catch (err) {
+      console.warn('[TripsService] Error scanning all expenses for trip deletion:', err)
     }
 
     // Cascade delete local expenses
@@ -308,7 +393,16 @@ export async function deleteTrip(id: string): Promise<void> {
         const snapRem = await getDocs(qRem)
         for (const d of snapRem.docs) {
           markAsDeleted('reminders', d.id)
-          await deleteDoc(d.ref).catch(() => {})
+          await deleteDoc(d.ref)
+        }
+      } catch {}
+
+      try {
+        const qRemTrip = query(collection(db, 'reminders'), where('tripId', '==', ident))
+        const snapRemTrip = await getDocs(qRemTrip)
+        for (const d of snapRemTrip.docs) {
+          markAsDeleted('reminders', d.id)
+          await deleteDoc(d.ref)
         }
       } catch {}
     }
@@ -316,7 +410,7 @@ export async function deleteTrip(id: string): Promise<void> {
     console.warn('[TripsService] Cascade delete reminders error:', err)
   }
 
-  // 5. Cascade delete CASHBOOK entries if any standalone exist
+  // 5. Cascade delete CASHBOOK entries if any standalone exist in Firestore
   try {
     for (const ident of idArray) {
       try {
@@ -324,7 +418,7 @@ export async function deleteTrip(id: string): Promise<void> {
         const snapCb = await getDocs(qCb)
         for (const d of snapCb.docs) {
           markAsDeleted('cashbook', d.id)
-          await deleteDoc(d.ref).catch(() => {})
+          await deleteDoc(d.ref)
         }
       } catch {}
     }
@@ -338,24 +432,26 @@ export async function deleteTrip(id: string): Promise<void> {
   } catch {}
 
   // 6. Delete TRIP itself from Firestore
-  try {
-    await deleteDoc(doc(db, COLLECTION, id))
-  } catch (err) {
-    console.warn('[TripsService] Firestore delete by ID fallback:', err)
-  }
-
-  if (tripDocId && tripDocId !== id) {
-    try {
-      await deleteDoc(doc(db, COLLECTION, tripDocId))
-    } catch {}
-  }
-
   for (const ident of idArray) {
     try {
-      const q = query(collection(db, COLLECTION), where('tripNumber', '==', ident))
-      const snap = await getDocs(q)
-      for (const d of snap.docs) {
-        await deleteDoc(d.ref).catch(() => {})
+      await deleteDoc(doc(db, COLLECTION, ident))
+    } catch (err) {
+      console.warn(`[TripsService] Firestore deleteDoc /trips/${ident}:`, err)
+    }
+
+    try {
+      const qNum = query(collection(db, COLLECTION), where('tripNumber', '==', ident))
+      const snapNum = await getDocs(qNum)
+      for (const d of snapNum.docs) {
+        await deleteDoc(d.ref)
+      }
+    } catch {}
+
+    try {
+      const qRec = query(collection(db, COLLECTION), where('receiptNumber', '==', ident))
+      const snapRec = await getDocs(qRec)
+      for (const d of snapRec.docs) {
+        await deleteDoc(d.ref)
       }
     } catch {}
   }
@@ -366,7 +462,10 @@ export async function deleteTrip(id: string): Promise<void> {
     markAsDeleted('trips', ident)
   }
 
-  // 7. Invalidate all associated caches
+  // 7. Run purge to clean any remaining orphan database records
+  await purgeOrphanedTripData().catch(() => {})
+
+  // 8. Invalidate all associated caches
   invalidateCache('trips')
   invalidateCache('payments')
   invalidateCache('expenses')
@@ -375,11 +474,110 @@ export async function deleteTrip(id: string): Promise<void> {
   invalidateCache('dashboard')
   invalidateCache('reminders')
 
-  // 8. Broadcast data change notifications across all pages & tabs
+  // 9. Broadcast data change notifications across all pages & tabs
   notifyDataChanged('trips')
   notifyDataChanged('payments')
   notifyDataChanged('expenses')
   notifyDataChanged('cashbook')
   notifyDataChanged('dashboard')
   notifyDataChanged('all')
+}
+
+/**
+ * Scans Firestore and purges any payments, expenses, or records
+ * whose associated parent trip was deleted or no longer exists.
+ */
+export async function purgeOrphanedTripData(): Promise<{ deletedPayments: number; deletedExpenses: number }> {
+  await waitForAuthReady()
+  let deletedPayments = 0
+  let deletedExpenses = 0
+
+  try {
+    // 1. Get all active trips from Firestore
+    const tripsSnap = await getDocs(collection(db, COLLECTION))
+    const validTripIdentifiers = new Set<string>()
+
+    tripsSnap.docs.forEach(d => {
+      validTripIdentifiers.add(d.id)
+      const data = d.data() as Trip
+      if (data.tripNumber) validTripIdentifiers.add(data.tripNumber)
+      if (data.receiptNumber) {
+        validTripIdentifiers.add(data.receiptNumber)
+        validTripIdentifiers.add(data.receiptNumber.replace(/^#/, ''))
+        validTripIdentifiers.add(`#${data.receiptNumber.replace(/^#/, '')}`)
+      }
+    })
+
+    // Also include stored trips from local storage
+    const stored = getStoredTrips()
+    stored.forEach(t => {
+      validTripIdentifiers.add(t.id)
+      if (t.tripNumber) validTripIdentifiers.add(t.tripNumber)
+      if (t.receiptNumber) {
+        validTripIdentifiers.add(t.receiptNumber)
+        validTripIdentifiers.add(t.receiptNumber.replace(/^#/, ''))
+      }
+    })
+
+    const deletedTripsRaw = typeof window !== 'undefined' ? localStorage.getItem('rk_deleted_trips') : null
+    const locallyDeletedTrips = new Set<string>(deletedTripsRaw ? JSON.parse(deletedTripsRaw) : [])
+
+    // 2. Scan and purge payments linked to non-existent or deleted trips
+    const paymentsSnap = await getDocs(collection(db, 'payments'))
+    for (const pDoc of paymentsSnap.docs) {
+      const p = pDoc.data() as Payment
+      const tripRef = p.tripId || (p as any).tripNumber || (p as any).tripRef
+
+      const isOrphan =
+        tripRef &&
+        tripRef !== 'general' &&
+        (locallyDeletedTrips.has(tripRef) || !validTripIdentifiers.has(tripRef))
+
+      if (isOrphan) {
+        try {
+          await deleteDoc(pDoc.ref)
+          deletedPayments++
+          markAsDeleted('payments', pDoc.id)
+          removeStoredPayment(pDoc.id)
+        } catch (err) {
+          console.warn('[TripsService] Error purging orphan payment:', pDoc.id, err)
+        }
+      }
+    }
+
+    // 3. Scan and purge expenses linked to non-existent or deleted trips
+    const expensesSnap = await getDocs(collection(db, 'expenses'))
+    for (const eDoc of expensesSnap.docs) {
+      const e = eDoc.data() as Expense
+      const tripRef = e.tripId || (e as any).tripNumber
+
+      const isOrphan =
+        tripRef &&
+        tripRef !== 'general' &&
+        (locallyDeletedTrips.has(tripRef) || !validTripIdentifiers.has(tripRef))
+
+      if (isOrphan) {
+        try {
+          await deleteDoc(eDoc.ref)
+          deletedExpenses++
+          markAsDeleted('expenses', eDoc.id)
+          removeStoredExpense(eDoc.id)
+        } catch (err) {
+          console.warn('[TripsService] Error purging orphan expense:', eDoc.id, err)
+        }
+      }
+    }
+
+    if (deletedPayments > 0 || deletedExpenses > 0) {
+      invalidateCache('payments')
+      invalidateCache('expenses')
+      invalidateCache('cashbook')
+      invalidateCache('dashboard')
+      notifyDataChanged('all')
+    }
+  } catch (err) {
+    console.warn('[TripsService] purgeOrphanedTripData error:', err)
+  }
+
+  return { deletedPayments, deletedExpenses }
 }

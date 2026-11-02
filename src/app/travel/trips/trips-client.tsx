@@ -42,6 +42,7 @@ import {
   createTrip,
   updateTrip,
   deleteTrip,
+  purgeOrphanedTripData,
 } from "@/services/trips.service";
 import { getVehicles, createVehicle } from "@/services/vehicles.service";
 import {
@@ -150,6 +151,8 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   useEffect(() => {
     fetchTripsData();
     fetchVehiclesData();
+    // Clean any orphaned database records in the background
+    purgeOrphanedTripData().catch(() => {});
 
     // Cross-page real-time sync listener
     const unsubscribe = subscribeDataChanged((entity) => {
@@ -470,19 +473,24 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   };
 
   const handleDelete = async (trip: Trip) => {
-    const confirmMessage = `Are you sure you want to remove Trip #${trip.tripNumber || trip.id} (${trip.from} -> ${trip.to})? All associated payments, expenses, and records will also be deleted.`;
+    const confirmMessage = `Are you sure you want to remove Trip #${trip.receiptNumber || trip.tripNumber || trip.id} (${trip.from} -> ${trip.to})? All associated payments, expenses, and records will also be completely deleted from the database.`;
     if (!window.confirm(confirmMessage)) return;
 
     setDeletingId(trip.id);
     try {
-      await deleteTrip(trip.id);
-      const remaining = trips.filter((t) => t.id !== trip.id && t.tripNumber !== trip.tripNumber);
+      await deleteTrip(trip);
+      const remaining = trips.filter(
+        (t) =>
+          t.id !== trip.id &&
+          t.tripNumber !== trip.tripNumber &&
+          (!trip.receiptNumber || t.receiptNumber !== trip.receiptNumber)
+      );
       setTrips(remaining);
       if (editingTripId === trip.id) {
         handleCancelEdit();
       }
       setFeedback({
-        message: `Trip #${trip.tripNumber || trip.id} and its associated payments and expenses were deleted successfully.`,
+        message: `Trip #${trip.receiptNumber || trip.tripNumber || trip.id} and all its database payments and expenses were completely removed.`,
         type: "success",
       });
     } catch (err) {

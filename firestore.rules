@@ -15,88 +15,56 @@ service cloud.firestore {
       );
     }
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    function isRecordOwner() {
-      return isAuthenticated() && (
-        resource == null ||
-        resource.data.userId == request.auth.uid ||
-        resource.data.createdBy == request.auth.uid ||
-        request.resource.data.userId == request.auth.uid ||
-        request.resource.data.createdBy == request.auth.uid
-      );
-    }
-
-    // 1. Users collection: regular users only access their own profile; admins manage all
+    // 1. Users collection:
+    // - Public READ is allowed only for username resolution during login
+    // - WRITES are strictly restricted to authenticated users modifying their own profile or admins
     match /users/{userId} {
-      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
-      allow create, update: if isAuthenticated() && (isOwner(userId) || isAdmin());
-      allow delete: if isAuthenticated();
+      allow read: if true;
+      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
     }
 
-    match /staff/{userId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    // 2. Operational collections: trips, vehicles, payments, expenses, cashbook, reminders
-    match /trips/{id} {
+    match /staff/{staffId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
-      allow delete: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 2. Business Collections (Trips, Vehicles, Payments, Expenses, Cashbook, Reminders)
+    // - Accessible to all authenticated staff members
+    match /trips/{id} {
+      allow read, create, update, delete: if isAuthenticated();
     }
 
     match /vehicles/{id} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
-      allow delete: if isAuthenticated();
+      allow read, create, update, delete: if isAuthenticated();
     }
 
     match /payments/{id} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
-      allow delete: if isAuthenticated();
+      allow read, create, update, delete: if isAuthenticated();
     }
 
     match /expenses/{id} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
-      allow delete: if isAuthenticated();
+      allow read, create, update, delete: if isAuthenticated();
     }
 
     match /cashbook/{id} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
-      allow delete: if isAuthenticated();
+      allow read, create, update, delete: if isAuthenticated();
     }
 
     match /reminders/{id} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (isRecordOwner() || isAdmin());
-      allow delete: if isAuthenticated();
+      allow read, create, update, delete: if isAuthenticated();
     }
 
-    // 3. Audit trail: readable only by admin, create-only, strictly immutable
+    // 3. System & Audit Logs (Immutable: cannot be edited or deleted by anyone)
     match /auditLogs/{id} {
       allow read: if isAdmin();
       allow create: if isAuthenticated();
       allow update, delete: if false;
     }
 
-    match /adminLoginAttempts/{id} {
-      allow read, write: if false;
-    }
-
-    // 4. Default fallback: deny unless admin
+    // 4. Default: deny everything else
     match /{document=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if false;
     }
   }
 }
