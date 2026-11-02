@@ -80,7 +80,6 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
   const [activeInvoiceData, setActiveInvoiceData] = useState<InvoiceData | null>(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [justAddedInvoice, setJustAddedInvoice] = useState<InvoiceData | null>(null);
-  const [autoDownloadInvoice, setAutoDownloadInvoice] = useState(true);
 
   const amountInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -291,13 +290,6 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
         : undefined;
       const invoiceData = buildInvoiceData(newPayment, linkedTrip, linkedVehicle);
       setJustAddedInvoice(invoiceData);
-
-      // Auto download invoice PDF if enabled
-      if (autoDownloadInvoice) {
-        downloadInvoicePDF(invoiceData).catch((err) => {
-          console.warn("[Payments] Auto download invoice PDF error:", err);
-        });
-      }
 
       setFeedback({
         message: form.type === "customer_received"
@@ -651,7 +643,6 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
               {justAddedInvoice && (
                 <p className="text-[11px] text-emerald-800 font-medium mt-0.5">
                   Receipt #{justAddedInvoice.receiptNo} &bull; {justAddedInvoice.customerName} &bull; {formatINR(justAddedInvoice.advanceReceived)}
-                  {autoDownloadInvoice ? " (Invoice downloaded automatically to your device)" : ""}
                 </p>
               )}
             </div>
@@ -903,17 +894,6 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                   />
                 </div>
               </div>
-
-              {/* Auto Download Invoice Checkbox */}
-              <label className="flex items-center gap-2 text-xs font-medium text-slate-600 cursor-pointer pt-1 px-1">
-                <input
-                  type="checkbox"
-                  checked={autoDownloadInvoice}
-                  onChange={(e) => setAutoDownloadInvoice(e.target.checked)}
-                  className="rounded text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
-                />
-                <span>Automatically download invoice PDF after recording</span>
-              </label>
 
               {/* Submit Button */}
               <button
