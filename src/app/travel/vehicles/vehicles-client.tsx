@@ -698,7 +698,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
             fill
             priority
             sizes="(max-width: 640px) 100vw, (max-width: 1200px) 100vw, 1500px"
-            className="object-cover object-[75%_65%]"
+            className="object-cover object-[70%_65%]"
           />
           {/* Subtle directional gradient restricted to the left for text legibility, leaving the 3 fleet vehicles bright */}
           <div className="absolute inset-0 max-w-xl sm:max-w-2xl bg-gradient-to-r from-slate-950/85 via-slate-950/40 to-transparent pointer-events-none" />
