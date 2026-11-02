@@ -735,18 +735,6 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
           <div className="absolute inset-0 max-w-xl sm:max-w-2xl bg-gradient-to-r from-slate-950/85 via-slate-950/40 to-transparent pointer-events-none" />
         </div>
 
-        {/* Cursive Art Overlay on Large Screens: "Safe Journeys Stronger Connections" */}
-        <div className="hidden lg:block absolute right-8 top-12 select-none pointer-events-none opacity-90 pr-4">
-          <div className="relative w-40 h-28">
-            <Image
-              src="/images/safe-journeys-script.png"
-              alt="Safe Journeys Stronger Connections"
-              fill
-              unoptimized
-              className="object-contain"
-            />
-          </div>
-        </div>
 
         {/* Top Floating Action Pill Buttons (Aligned to Right on Desktop) */}
         <div className="relative z-10 flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 flex-wrap w-full">
