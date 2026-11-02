@@ -241,13 +241,13 @@ export async function exportToPDF({
 
         // Label Text
         doc.setFont(fontName, 'bold')
-        doc.setFontSize(orientation === 'landscape' ? 7.2 : 6.8)
+        doc.setFontSize(7.2)
         doc.setTextColor(15, 23, 42) // Slate 900
         doc.text(sanitize(item.label).toUpperCase(), textLeft, currentY + 6.2, { maxWidth: maxTextWidth })
 
-        // Value Text (Bold, prominent size optimized for orientation)
+        // Value Text (Bold, prominent 13.5pt size)
         doc.setFont(fontName, 'bold')
-        doc.setFontSize(orientation === 'landscape' ? 13.5 : 11.5)
+        doc.setFontSize(13.5)
         doc.setTextColor(3, 30, 68) // Deep navy (#031E44)
         doc.text(sanitize(item.value), textLeft, currentY + 13.5, { maxWidth: maxTextWidth })
       })
@@ -266,8 +266,8 @@ export async function exportToPDF({
       body: data.map(row => row.map(val => (val === null || val === undefined ? '-' : sanitize(val)))),
       theme: 'grid',
       styles: {
-        fontSize: orientation === 'landscape' ? 9 : 8.5,
-        cellPadding: orientation === 'landscape' ? 3.2 : 2.8,
+        fontSize: orientation === 'landscape' ? 9 : 9.8,
+        cellPadding: orientation === 'landscape' ? 3.2 : 3.8,
         textColor: [10, 25, 47],
         lineColor: [186, 218, 255], // Soft blue grid lines (#BADBFF)
         lineWidth: 0.3,
@@ -278,9 +278,9 @@ export async function exportToPDF({
         fillColor: [3, 30, 68], // Deep Executive Navy (#031E44)
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-        fontSize: orientation === 'landscape' ? 9.5 : 8.8,
+        fontSize: orientation === 'landscape' ? 9.5 : 10.2,
         halign: 'left',
-        cellPadding: orientation === 'landscape' ? 4.2 : 3.2,
+        cellPadding: 4.2,
       },
       alternateRowStyles: {
         fillColor: [248, 251, 255], // Very soft ice-blue tint

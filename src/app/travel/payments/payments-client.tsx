@@ -381,7 +381,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       filename: `Payments_Ledger_${todayStr}.pdf`,
       headers,
       data,
-      orientation: "portrait",
+      orientation: "landscape",
       summary: [
         { label: "Total Transactions", value: String(filteredPayments.length) },
         { label: "Total Inflow", value: formatINR(totalInflow) },

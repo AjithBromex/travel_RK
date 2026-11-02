@@ -712,7 +712,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       filename: `Fleet_Trips_${todayStr}.pdf`,
       headers,
       data,
-      orientation: "portrait",
+      orientation: "landscape",
       summary: [
         { label: "Total Bookings", value: String(filteredTrips.length) },
         { label: "Completed Trips", value: String(completedTrips) },
