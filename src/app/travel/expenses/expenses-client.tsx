@@ -548,6 +548,12 @@ export default function ExpensesClient({
     ]);
 
     const totalExpense = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const fuelExpense = filteredExpenses
+      .filter((e) => e.category === "fuel")
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const avgExpense = filteredExpenses.length > 0 
+      ? Math.round(totalExpense / filteredExpenses.length) 
+      : 0;
 
     exportToPDF({
       title: "Operating Expenses Register",
@@ -558,6 +564,8 @@ export default function ExpensesClient({
       summary: [
         { label: "Total Entries", value: String(filteredExpenses.length) },
         { label: "Total Outlay", value: formatINR(totalExpense) },
+        { label: "Fuel Outlay", value: formatINR(fuelExpense) },
+        { label: "Avg per Entry", value: formatINR(avgExpense) },
       ],
     });
   };

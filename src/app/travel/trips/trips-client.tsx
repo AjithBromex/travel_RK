@@ -704,6 +704,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
     const totalRevenue = filteredTrips.reduce((sum, t) => sum + (Number(t.totalFare) || 0), 0);
     const totalPending = filteredTrips.reduce((sum, t) => sum + (Number(t.customerBalance) || 0), 0);
+    const completedTrips = filteredTrips.filter((t) => t.status === "completed").length;
 
     exportToPDF({
       title: "Trips & Bookings Register",
@@ -714,6 +715,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       orientation: "landscape",
       summary: [
         { label: "Total Bookings", value: String(filteredTrips.length) },
+        { label: "Completed Trips", value: String(completedTrips) },
         { label: "Total Fare Billed", value: formatINR(totalRevenue) },
         { label: "Pending Balance", value: formatINR(totalPending) },
       ],

@@ -627,6 +627,9 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
 
     const activeCount = vehicles.filter((v) => v.status === "active").length;
     const serviceDueCount = vehicles.filter((v) => v.status === "service_due").length;
+    const fleetReadiness = vehicles.length > 0 
+      ? `${Math.round((activeCount / vehicles.length) * 100)}%` 
+      : "100%";
 
     exportToPDF({
       title: "Fleet Inventory & Compliance Register",
@@ -637,8 +640,9 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
       orientation: "landscape",
       summary: [
         { label: "Total Fleet", value: String(vehicles.length) },
-        { label: "Active", value: String(activeCount) },
+        { label: "Active Fleet", value: String(activeCount) },
         { label: "Service Due", value: String(serviceDueCount) },
+        { label: "Fleet Readiness", value: fleetReadiness },
       ],
     });
   };
