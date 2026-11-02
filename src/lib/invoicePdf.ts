@@ -217,6 +217,7 @@ export async function downloadInvoicePDF(
     }
 
     const pageWidth = 210
+    const pageHeight = doc.internal.pageSize.getHeight() || 297
     const margin = 12
     const contentWidth = pageWidth - margin * 2 // 186mm
 
@@ -235,9 +236,9 @@ export async function downloadInvoicePDF(
 
     // Top-Right Navy Banner (Curved pill on top right corner)
     doc.setFillColor(...colorNavy)
-    const bannerX = 145
+    const bannerX = 142
     const bannerY = 0
-    const bannerW = 65
+    const bannerW = 68
     const bannerH = 34
     doc.roundedRect(bannerX, bannerY, bannerW, bannerH, 0, 0, 'F')
     doc.roundedRect(bannerX - 10, bannerY, 20, bannerH, 8, 8, 'F')
@@ -262,7 +263,17 @@ export async function downloadInvoicePDF(
       doc.roundedRect(margin, 6.5, 18, 18, 2, 2, 'F')
     }
 
-    const brandX = margin + 22
+    // Vertical Divider Line
+    doc.setDrawColor(...colorLine)
+    doc.setLineWidth(0.2)
+    doc.line(margin + 20.5, 7, margin + 20.5, 25)
+
+    // Golden Arc above brand text
+    doc.setDrawColor(245, 158, 11) // Golden Orange (#F59E0B)
+    doc.setLineWidth(1.2)
+    doc.lines([[14, -2.5], [30, 0]], margin + 24, 11, [1, 1], 'S', true)
+
+    const brandX = margin + 23
     doc.setFont(fontName, 'bold')
     doc.setFontSize(17)
     doc.setTextColor(...colorNavy)
@@ -292,13 +303,13 @@ export async function downloadInvoicePDF(
     doc.setFont(fontName, 'bold')
     doc.setFontSize(8)
     doc.setTextColor(100, 116, 139)
-    doc.text('CASH RECEIPT / PAYMENT VOUCHER', margin, titleY + 5)
+    doc.text('CASH RECEIPT / PAYMENT VOUCHER', margin, titleY + 5.5)
 
     // Right Info Box
     const infoBoxX = 118
     const infoBoxY = 35
     const infoBoxW = 80
-    const infoBoxH = 20
+    const infoBoxH = 21
 
     doc.setFillColor(255, 255, 255)
     doc.setDrawColor(...colorBorder)
@@ -311,51 +322,51 @@ export async function downloadInvoicePDF(
     doc.setTextColor(...colorDarkText)
 
     // Receipt No. row
-    doc.text('Receipt No.', infoBoxX + 3, infoBoxY + 5.5)
-    doc.text(':', infoBoxX + 22, infoBoxY + 5.5)
+    doc.text('Receipt No.', infoBoxX + 3, infoBoxY + 6)
+    doc.text(':', infoBoxX + 22, infoBoxY + 6)
 
     // Receipt Badge (light blue capsule)
     doc.setFillColor(210, 230, 252) // #D2E6FC
-    doc.roundedRect(infoBoxX + 25, infoBoxY + 1.8, 22, 5.2, 1.5, 1.5, 'F')
+    doc.roundedRect(infoBoxX + 25, infoBoxY + 2.2, 22, 5.2, 1.5, 1.5, 'F')
     doc.setFont(fontName, 'bold')
     doc.setFontSize(8.5)
     doc.setTextColor(...colorNavy)
-    doc.text(String(data.receiptNo), infoBoxX + 36, infoBoxY + 5.5, { align: 'center' })
+    doc.text(String(data.receiptNo), infoBoxX + 36, infoBoxY + 6, { align: 'center' })
 
     // Book No. row
     doc.setFont(fontName, 'bold')
     doc.setFontSize(8)
     doc.setTextColor(...colorDarkText)
-    doc.text('Book No.', infoBoxX + 3, infoBoxY + 11.5)
-    doc.text(':', infoBoxX + 22, infoBoxY + 11.5)
+    doc.text('Book No.', infoBoxX + 3, infoBoxY + 12)
+    doc.text(':', infoBoxX + 22, infoBoxY + 12)
     doc.setFont(fontName, 'normal')
-    doc.text(String(data.bookNo || '_________________'), infoBoxX + 25, infoBoxY + 11.5)
+    doc.text(String(data.bookNo || '_________________'), infoBoxX + 25, infoBoxY + 12)
 
     // Date row
     doc.setFont(fontName, 'bold')
-    doc.text('Date', infoBoxX + 3, infoBoxY + 17)
-    doc.text(':', infoBoxX + 22, infoBoxY + 17)
+    doc.text('Date', infoBoxX + 3, infoBoxY + 17.5)
+    doc.text(':', infoBoxX + 22, infoBoxY + 17.5)
     doc.setFont(fontName, 'normal')
-    doc.text(String(data.date), infoBoxX + 25, infoBoxY + 17)
+    doc.text(String(data.date), infoBoxX + 25, infoBoxY + 17.5)
 
     // ─────────────────────────────────────────────────────────────
     // 3. SECTION 1: CUSTOMER DETAILS & PAYMENT DETAILS (Two Cards)
     // ─────────────────────────────────────────────────────────────
-    const sec1Y = 58
+    const sec1Y = 63
     const cardW = 90
-    const cardH = 43
+    const cardH = 47
     const rightCardX = margin + cardW + 6 // 108
 
     // Helper to draw section header inside a card
     const drawCardHeader = (x: number, y: number, w: number, title: string) => {
       doc.setFillColor(...colorHeaderFill)
-      doc.roundedRect(x, y, w, 7, 2, 2, 'F')
+      doc.roundedRect(x, y, w, 7.5, 2, 2, 'F')
       // Fill bottom corners flat
-      doc.rect(x, y + 3, w, 4, 'F')
+      doc.rect(x, y + 3.5, w, 4, 'F')
       doc.setFont(fontName, 'bold')
       doc.setFontSize(8.5)
       doc.setTextColor(...colorNavy)
-      doc.text(title.toUpperCase(), x + 4, y + 5)
+      doc.text(title.toUpperCase(), x + 4, y + 5.2)
     }
 
     // ── LEFT CARD: CUSTOMER DETAILS ──
@@ -373,7 +384,7 @@ export async function downloadInvoicePDF(
       { label: 'No. of Pax', val: String(data.pax || '-') },
     ]
 
-    let rowY = sec1Y + 12
+    let rowY = sec1Y + 13.5
     custFields.forEach(f => {
       doc.setFont(fontName, 'normal')
       doc.setFontSize(7.5)
@@ -389,7 +400,7 @@ export async function downloadInvoicePDF(
       doc.setLineWidth(0.15)
       doc.line(margin + 31, rowY + 1, margin + cardW - 3, rowY + 1)
 
-      rowY += 6.2
+      rowY += 6.5
     })
 
     // ── RIGHT CARD: PAYMENT DETAILS ──
@@ -405,7 +416,7 @@ export async function downloadInvoicePDF(
       { label: 'Balance Amount', val: sanitize(formatINR(data.balanceAmount)) },
     ]
 
-    rowY = sec1Y + 12
+    rowY = sec1Y + 13.5
     payFields.forEach(f => {
       doc.setFont(fontName, 'normal')
       doc.setFontSize(7.5)
@@ -420,12 +431,12 @@ export async function downloadInvoicePDF(
       doc.setLineWidth(0.15)
       doc.line(rightCardX + 35, rowY + 1, rightCardX + cardW - 3, rowY + 1)
 
-      rowY += 6.2
+      rowY += 6.5
     })
 
     // Sub-box: Amount Received (in Words)
-    const subBoxY = sec1Y + 28
-    const subBoxH = 12
+    const subBoxY = sec1Y + 31.5
+    const subBoxH = 13.5
     doc.setFillColor(...colorSubBoxFill)
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.2)
@@ -434,19 +445,19 @@ export async function downloadInvoicePDF(
     doc.setFont(fontName, 'bold')
     doc.setFontSize(6.5)
     doc.setTextColor(...colorMutedText)
-    doc.text('Amount Received (in Words)', rightCardX + 5, subBoxY + 3.8)
+    doc.text('Amount Received (in Words)', rightCardX + 5, subBoxY + 4)
 
     doc.setFont(fontName, 'bold')
     doc.setFontSize(7)
     doc.setTextColor(...colorDarkText)
     const splitWords = doc.splitTextToSize(data.amountReceivedInWords || 'Zero Rupees Only', cardW - 12)
-    doc.text(splitWords, rightCardX + 5, subBoxY + 7.5)
+    doc.text(splitWords, rightCardX + 5, subBoxY + 8)
 
     // ─────────────────────────────────────────────────────────────
     // 4. SECTION 2: TRIP DETAILS (Full width card)
     // ─────────────────────────────────────────────────────────────
-    const sec2Y = 104
-    const sec2H = 22
+    const sec2Y = 116
+    const sec2H = 26
 
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.3)
@@ -455,7 +466,7 @@ export async function downloadInvoicePDF(
     drawCardHeader(margin, sec2Y, contentWidth, 'TRIP DETAILS')
 
     // Route / Places row
-    const tripRow1Y = sec2Y + 11.5
+    const tripRow1Y = sec2Y + 13
     doc.setFont(fontName, 'normal')
     doc.setFontSize(7.5)
     doc.setTextColor(...colorDarkText)
@@ -468,7 +479,7 @@ export async function downloadInvoicePDF(
     doc.line(margin + 29, tripRow1Y + 1, margin + contentWidth - 4, tripRow1Y + 1)
 
     // Total Distance & Trip Type row
-    const tripRow2Y = sec2Y + 17.5
+    const tripRow2Y = sec2Y + 20
     doc.setFont(fontName, 'normal')
     doc.text('Total Distance', margin + 4, tripRow2Y)
     doc.text(':', margin + 26, tripRow2Y)
@@ -506,8 +517,8 @@ export async function downloadInvoicePDF(
     // ─────────────────────────────────────────────────────────────
     // 5. SECTION 3: VEHICLE DETAILS & DRIVER DETAILS (Two Cards)
     // ─────────────────────────────────────────────────────────────
-    const sec3Y = 129
-    const sec3H = 26
+    const sec3Y = 148
+    const sec3H = 30
 
     // ── VEHICLE DETAILS ──
     doc.setDrawColor(...colorBorder)
@@ -517,7 +528,7 @@ export async function downloadInvoicePDF(
     drawCardHeader(margin, sec3Y, cardW, 'VEHICLE DETAILS')
 
     // Vehicle No.
-    let vehRowY = sec3Y + 11
+    let vehRowY = sec3Y + 13
     doc.setFont(fontName, 'normal')
     doc.setFontSize(7.5)
     doc.setTextColor(...colorDarkText)
@@ -528,7 +539,7 @@ export async function downloadInvoicePDF(
     doc.line(margin + 29, vehRowY + 1, margin + cardW - 3, vehRowY + 1)
 
     // Vehicle Type Checkboxes (9+1, 12+1, 17+1, Other)
-    vehRowY += 5.5
+    vehRowY += 6
     doc.setFont(fontName, 'normal')
     doc.text('Vehicle Type', margin + 4, vehRowY)
     doc.text(':', margin + 26, vehRowY)
@@ -555,7 +566,7 @@ export async function downloadInvoicePDF(
     })
 
     // Total Distance
-    vehRowY += 5.5
+    vehRowY += 6
     doc.setFont(fontName, 'normal')
     doc.setFontSize(7.5)
     doc.text('Total Distance', margin + 4, vehRowY)
@@ -577,7 +588,7 @@ export async function downloadInvoicePDF(
       { label: 'Duty Start', val: String(data.dutyStart || '') },
     ]
 
-    let drvY = sec3Y + 11
+    let drvY = sec3Y + 13
     driverRows.forEach(dr => {
       doc.setFont(fontName, 'normal')
       doc.setFontSize(7.5)
@@ -587,20 +598,20 @@ export async function downloadInvoicePDF(
       doc.setFont(fontName, 'bold')
       doc.text(dr.val, rightCardX + 31, drvY)
       doc.line(rightCardX + 31, drvY + 1, rightCardX + cardW - 3, drvY + 1)
-      drvY += 5.2
+      drvY += 6
     })
 
     // Duty End on same row
     doc.setFont(fontName, 'normal')
-    doc.text('Duty End :', rightCardX + 50, sec3Y + 21.4)
+    doc.text('Duty End :', rightCardX + 50, sec3Y + 25)
     doc.setFont(fontName, 'bold')
-    doc.text(String(data.dutyEnd || '-'), rightCardX + 66, sec3Y + 21.4)
+    doc.text(String(data.dutyEnd || '-'), rightCardX + 66, sec3Y + 25)
 
     // ─────────────────────────────────────────────────────────────
     // 6. SECTION 4: REMARKS / TRIP DETAILS (Full width lines)
     // ─────────────────────────────────────────────────────────────
-    const sec4Y = 158
-    const sec4H = 28
+    const sec4Y = 184
+    const sec4H = 36
 
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.3)
@@ -611,7 +622,7 @@ export async function downloadInvoicePDF(
     // 4 ruled lines
     const lineStartX = margin + 5
     const lineEndX = margin + contentWidth - 5
-    let remarkLineY = sec4Y + 12
+    let remarkLineY = sec4Y + 14
 
     // Print remarks on first line if available
     doc.setFont(fontName, 'bold')
@@ -625,17 +636,18 @@ export async function downloadInvoicePDF(
       doc.setDrawColor(...colorLine)
       doc.setLineWidth(0.15)
       doc.line(lineStartX, remarkLineY, lineEndX, remarkLineY)
-      remarkLineY += 4.2
+      remarkLineY += 5.5
     }
 
     // ─────────────────────────────────────────────────────────────
     // 7. SECTION 5: SIGNATURES & TERMS & CONDITIONS
     // ─────────────────────────────────────────────────────────────
-    const sec5Y = 190
+    const sec5Y = 226
+    const termsH = 40
 
     // Left Signatures
-    const sigLineW = 38
-    const sigY = sec5Y + 20
+    const sigLineW = 40
+    const sigY = sec5Y + 28
 
     // Received By line
     doc.setDrawColor(...colorDarkText)
@@ -644,17 +656,16 @@ export async function downloadInvoicePDF(
     doc.setFont(fontName, 'bold')
     doc.setFontSize(8)
     doc.setTextColor(...colorDarkText)
-    doc.text('Received By', margin + 5 + sigLineW / 2, sigY + 4, { align: 'center' })
+    doc.text('Received By', margin + 5 + sigLineW / 2, sigY + 5, { align: 'center' })
 
     // Authorised Signatory line
     const authSigX = margin + sigLineW + 14
     doc.line(authSigX, sigY, authSigX + sigLineW, sigY)
-    doc.text('Authorised Signatory', authSigX + sigLineW / 2, sigY + 4, { align: 'center' })
+    doc.text('Authorised Signatory', authSigX + sigLineW / 2, sigY + 5, { align: 'center' })
 
     // Right Terms & Conditions Card
     const termsX = 110
     const termsW = 88
-    const termsH = 28
 
     doc.setFillColor(...colorSubBoxFill)
     doc.setDrawColor(...colorBorder)
@@ -663,16 +674,16 @@ export async function downloadInvoicePDF(
 
     // Vector Info Badge (Blue Circle with crisp white 'i')
     doc.setFillColor(13, 98, 254) // #0D62FE
-    doc.circle(termsX + 5.5, sec5Y + 4.2, 1.8, 'F')
+    doc.circle(termsX + 6, sec5Y + 5.5, 2, 'F')
     doc.setFont(fontName, 'bold')
-    doc.setFontSize(6)
+    doc.setFontSize(6.5)
     doc.setTextColor(255, 255, 255)
-    doc.text('i', termsX + 5.5, sec5Y + 4.8, { align: 'center' })
+    doc.text('i', termsX + 6, sec5Y + 6.2, { align: 'center' })
 
     doc.setFont(fontName, 'bold')
-    doc.setFontSize(7.5)
+    doc.setFontSize(8)
     doc.setTextColor(...colorNavy)
-    doc.text('Terms & Conditions', termsX + 9, sec5Y + 5)
+    doc.text('Terms & Conditions', termsX + 10.5, sec5Y + 6.5)
 
     const terms = [
       'Passenger must carry a valid ID proof if required.',
@@ -682,27 +693,31 @@ export async function downloadInvoicePDF(
       'Payment once made is non-refundable.',
     ]
 
-    let termY = sec5Y + 9.5
+    let termY = sec5Y + 12
     doc.setFont(fontName, 'normal')
-    doc.setFontSize(5.8)
+    doc.setFontSize(6)
     doc.setTextColor(...colorMutedText)
 
     terms.forEach(t => {
       doc.setFillColor(...colorMutedText)
-      doc.circle(termsX + 5.5, termY - 0.7, 0.45, 'F')
-      doc.text(t, termsX + 7.5, termY)
-      termY += 3.7
+      doc.circle(termsX + 6, termY - 0.7, 0.45, 'F')
+      doc.text(t, termsX + 8.5, termY)
+      termY += 5.2
     })
 
     // ─────────────────────────────────────────────────────────────
-    // 8. SECTION 6: BOTTOM FOOTER BANNER (Navy ribbon with vector icons)
+    // 8. SECTION 6: BOTTOM FOOTER BANNER (Anchored to bottom of page)
     // ─────────────────────────────────────────────────────────────
-    const footerY = 224
     const footerH = 20
+    const footerY = pageHeight - footerH
 
-    // Solid dark navy footer polygon
+    // Solid dark navy footer polygon flush with page bottom
     doc.setFillColor(...colorNavy)
     doc.rect(0, footerY, pageWidth, footerH, 'F')
+
+    // Decorative corner accent triangle matching brand theme
+    doc.setFillColor(100, 116, 139)
+    doc.triangle(pageWidth - 18, pageHeight, pageWidth, footerY, pageWidth, pageHeight, 'F')
 
     // Left Vector Phone Handset Icon (Sky Blue #38BDF8)
     const phoneX = margin + 3
