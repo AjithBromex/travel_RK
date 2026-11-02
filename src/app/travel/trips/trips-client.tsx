@@ -757,42 +757,43 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
 
         {/* Top Floating Action Pill Buttons (Aligned to Right on Desktop) */}
-        <div className="relative z-10 flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 flex-wrap w-full">
+        {/* Top Floating Action Pill Buttons (Aligned to Right on Desktop, Balanced 2x2 Grid on Mobile) */}
+        <div className="relative z-10 grid grid-cols-2 sm:flex sm:items-center sm:justify-end gap-1.5 sm:gap-2.5 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={scrollToForm}
+            className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-5 py-2 rounded-full bg-[#0D62FE] hover:bg-[#0952DC] text-white font-bold text-[11px] sm:text-xs shadow-md shadow-blue-500/35 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer w-full sm:w-auto"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.75] shrink-0" />
+            <span className="truncate">New Trip</span>
+          </button>
+
           <Link
             href="/travel/payments"
-            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-[11px] sm:text-xs transition-all hover:scale-[1.02] active:scale-[0.98] w-full sm:w-auto"
           >
-            <CreditCard className="w-3.5 h-3.5 text-slate-600" />
-            <span>Record Payment</span>
+            <CreditCard className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+            <span className="truncate">Record Payment</span>
           </Link>
 
           <button
             type="button"
             onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-[11px] sm:text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer w-full sm:w-auto"
             title="Export Excel / CSV"
           >
-            <Download className="w-3.5 h-3.5 text-slate-600" />
-            <span>Excel</span>
+            <Download className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+            <span className="truncate">Excel</span>
           </button>
 
           <button
             type="button"
             onClick={handleExportPDF}
-            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-rose-700 backdrop-blur-md border border-rose-200/80 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-full bg-white/95 hover:bg-white text-rose-700 backdrop-blur-md border border-rose-200/80 shadow-sm font-bold text-[11px] sm:text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer w-full sm:w-auto"
             title="Download Official PDF Report"
           >
-            <FileText className="w-3.5 h-3.5 text-rose-600" />
-            <span>PDF</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={scrollToForm}
-            className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-[#0D62FE] hover:bg-[#0952DC] text-white font-bold text-xs shadow-md shadow-blue-500/35 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[2.75]" />
-            <span>New Trip</span>
+            <FileText className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+            <span className="truncate">PDF</span>
           </button>
         </div>
 
