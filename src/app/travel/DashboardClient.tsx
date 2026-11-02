@@ -163,15 +163,15 @@ export default function DashboardClient({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.08 }}
-        className="relative z-20 px-1 sm:px-2 -mt-10 sm:-mt-12 lg:-mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4"
+        className="relative z-20 px-1 sm:px-2 -mt-10 sm:-mt-12 lg:-mt-14 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4"
       >
         {/* CARD 1: TOTAL TRIPS */}
         <Link
           href="/travel/trips"
-          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto"
+          className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="waveBlueGrad" x1="0" y1="0" x2="0" y2="1">
@@ -184,28 +184,36 @@ export default function DashboardClient({
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#EAF2FD] text-[#1A68F8] flex items-center justify-center shrink-0">
-              <Bus className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#EAF2FD] text-[#1A68F8] flex items-center justify-center shrink-0">
+                <Bus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  TOTAL TRIPS
+                </span>
+                <span className="text-xl sm:text-2xl 2xl:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block">
+                  {metrics.totalTrips || 0}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  Booked Trips
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                TOTAL TRIPS
-              </span>
-              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
-                {metrics.totalTrips || 0}
-              </span>
-              <span className="text-[11px] font-medium text-slate-400 block truncate mt-1">
-                Booked Trips
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#EEF5FE] text-[#1A68F8] flex items-center justify-center">
+                <Car className="w-3 h-3" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end justify-between h-full shrink-0 relative z-10">
-            <div className="w-6 h-6 rounded-full bg-[#EEF5FE] text-[#1A68F8] flex items-center justify-center">
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#EEF5FE] text-[#1A68F8] items-center justify-center">
               <Car className="w-3.5 h-3.5" />
             </div>
-            <span className="text-[10px] font-extrabold text-[#1A68F8] bg-[#EEF5FE] px-3 py-0.5 rounded-full border border-blue-100/70">
+            <span className="text-[9px] sm:text-[10px] font-extrabold text-[#1A68F8] bg-[#EEF5FE] px-2 sm:px-3 py-0.5 rounded-full border border-blue-100/70 ml-auto sm:ml-0">
               {metrics.todayTrips || 0} today
             </span>
           </div>
@@ -214,10 +222,10 @@ export default function DashboardClient({
         {/* CARD 2: COLLECTION */}
         <Link
           href="/travel/payments"
-          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto"
+          className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="waveGreenGrad" x1="0" y1="0" x2="0" y2="1">
@@ -230,28 +238,36 @@ export default function DashboardClient({
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#E8F8F0] text-[#10B981] flex items-center justify-center shrink-0 font-black text-2xl">
-              ₹
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#E8F8F0] text-[#10B981] flex items-center justify-center shrink-0 font-black text-lg sm:text-2xl">
+                ₹
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  COLLECTION
+                </span>
+                <span className="text-lg sm:text-2xl 2xl:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block truncate">
+                  {formatINR(metrics.totalCollection || 0)}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  Receipts &amp; Adv.
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                COLLECTION
-              </span>
-              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
-                {formatINR(metrics.totalCollection || 0)}
-              </span>
-              <span className="text-[11px] font-medium text-slate-400 block truncate mt-1">
-                Receipts &amp; Adv.
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#E6F8EF] text-[#10B981] flex items-center justify-center">
+                <TrendingUp className="w-3 h-3 stroke-[2.5]" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end justify-between h-full shrink-0 relative z-10">
-            <div className="w-6 h-6 rounded-full bg-[#E6F8EF] text-[#10B981] flex items-center justify-center">
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#E6F8EF] text-[#10B981] items-center justify-center">
               <TrendingUp className="w-3.5 h-3.5 stroke-[2.5]" />
             </div>
-            <span className="text-[10px] font-extrabold text-[#10B981] bg-[#E6F8EF] px-3 py-0.5 rounded-full border border-emerald-100/70">
+            <span className="text-[9px] sm:text-[10px] font-extrabold text-[#10B981] bg-[#E6F8EF] px-2 sm:px-3 py-0.5 rounded-full border border-emerald-100/70 ml-auto sm:ml-0">
               Received
             </span>
           </div>
@@ -260,10 +276,10 @@ export default function DashboardClient({
         {/* CARD 3: EXPENSES */}
         <Link
           href="/travel/expenses"
-          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto"
+          className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="waveAmberGrad" x1="0" y1="0" x2="0" y2="1">
@@ -276,28 +292,36 @@ export default function DashboardClient({
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#FEF5E7] text-[#F59E0B] flex items-center justify-center shrink-0">
-              <Fuel className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#FEF5E7] text-[#F59E0B] flex items-center justify-center shrink-0">
+                <Fuel className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  EXPENSES
+                </span>
+                <span className="text-lg sm:text-2xl 2xl:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block truncate">
+                  {formatINR(metrics.totalExpenses || 0)}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  Fuel &amp; Outlays
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                EXPENSES
-              </span>
-              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
-                {formatINR(metrics.totalExpenses || 0)}
-              </span>
-              <span className="text-[11px] font-medium text-slate-400 block truncate mt-1">
-                Fuel &amp; Outlays
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#FEF3D6] text-[#D97706] flex items-center justify-center">
+                <Receipt className="w-3 h-3" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end justify-between h-full shrink-0 relative z-10">
-            <div className="w-6 h-6 rounded-full bg-[#FEF3D6] text-[#D97706] flex items-center justify-center">
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#FEF3D6] text-[#D97706] items-center justify-center">
               <Receipt className="w-3.5 h-3.5" />
             </div>
-            <span className="text-[10px] font-extrabold text-[#D97706] bg-[#FEF3D6] px-3 py-0.5 rounded-full border border-amber-200/70">
+            <span className="text-[9px] sm:text-[10px] font-extrabold text-[#D97706] bg-[#FEF3D6] px-2 sm:px-3 py-0.5 rounded-full border border-amber-200/70 ml-auto sm:ml-0">
               Operating
             </span>
           </div>
@@ -306,10 +330,10 @@ export default function DashboardClient({
         {/* CARD 4: NET PROFIT */}
         <Link
           href="/travel/reports"
-          className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-indigo-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto"
+          className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-indigo-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0"
         >
           {/* Subtle Wave Sparkline Curve at Bottom */}
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="wavePurpleGrad" x1="0" y1="0" x2="0" y2="1">
@@ -322,33 +346,41 @@ export default function DashboardClient({
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#EEF0FE] text-[#6366F1] flex items-center justify-center shrink-0">
-              <BarChart3 className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#EEF0FE] text-[#6366F1] flex items-center justify-center shrink-0">
+                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  NET PROFIT
+                </span>
+                <span
+                  className={`text-lg sm:text-2xl 2xl:text-[26px] font-black font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block truncate ${
+                    (metrics.profitLoss || 0) >= 0 ? "text-slate-900" : "text-rose-600"
+                  }`}
+                >
+                  {formatINR(metrics.profitLoss || 0)}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  Net Surplus
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                NET PROFIT
-              </span>
-              <span
-                className={`text-2xl sm:text-[26px] font-black font-mono tracking-tight leading-none mt-1 block ${
-                  (metrics.profitLoss || 0) >= 0 ? "text-slate-900" : "text-rose-600"
-                }`}
-              >
-                {formatINR(metrics.profitLoss || 0)}
-              </span>
-              <span className="text-[11px] font-medium text-slate-400 block truncate mt-1">
-                Net Surplus
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#EAEBFE] text-[#6366F1] flex items-center justify-center">
+                <Wallet className="w-3 h-3" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end justify-between h-full shrink-0 relative z-10">
-            <div className="w-6 h-6 rounded-full bg-[#EAEBFE] text-[#6366F1] flex items-center justify-center">
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#EAEBFE] text-[#6366F1] items-center justify-center">
               <Wallet className="w-3.5 h-3.5" />
             </div>
             <span
-              className={`text-[10px] font-extrabold px-3 py-0.5 rounded-full border inline-flex items-center gap-0.5 ${
+              className={`text-[9px] sm:text-[10px] font-extrabold px-2 sm:px-3 py-0.5 rounded-full border inline-flex items-center gap-0.5 ml-auto sm:ml-0 ${
                 (metrics.profitLoss || 0) >= 0
                   ? "bg-[#EAEBFE] text-[#4F46E5] border-indigo-100/70"
                   : "bg-rose-50 text-rose-700 border-rose-100"
@@ -356,7 +388,7 @@ export default function DashboardClient({
             >
               {(metrics.profitLoss || 0) >= 0 ? (
                 <>
-                  <ArrowUpRight className="w-3 h-3 stroke-[2.75]" />
+                  <ArrowUpRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 stroke-[2.75]" />
                   <span>Positive</span>
                 </>
               ) : (
