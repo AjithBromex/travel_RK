@@ -170,7 +170,10 @@ export default function Crud({
   );
 
   const statusField = useMemo(() => fields.find((f) => f.key === 'status'), [fields]);
-  const statusOptions = statusField?.options || [];
+  const statusOptions = useMemo(
+    () => (statusField?.options || []).filter((opt) => opt !== 'Blocked'),
+    [statusField]
+  );
 
   const shown = useMemo(() => {
     return rows.filter((r) => {
