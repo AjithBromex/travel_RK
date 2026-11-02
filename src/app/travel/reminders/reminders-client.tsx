@@ -31,13 +31,20 @@ import {
 import { capitalizeWords } from "@/lib/utils";
 import type { Reminder, ReminderCategory, ReminderStatus, Trip, Vehicle } from "@/types";
 import {
+  getReminders,
   createReminder,
   updateReminder,
   toggleReminderStatus,
   deleteReminder,
 } from "@/services/reminders.service";
 import { getVehicles } from "@/services/vehicles.service";
-import { getStoredVehicles, subscribeDataChanged } from "@/lib/storage-sync";
+import {
+  getStoredVehicles,
+  getStoredReminders,
+  upsertStoredReminder,
+  removeStoredReminder,
+  subscribeDataChanged,
+} from "@/lib/storage-sync";
 
 interface RemindersClientProps {
   initialReminders: Reminder[];
@@ -81,6 +88,68 @@ function getDefaultDueDate(daysFromNow = 7): string {
   return d.toISOString().split("T")[0];
 }
 
+export function mapReminderToItem(r: Reminder, currentVehicles: Vehicle[]): ReminderItem {
+  const matchedVeh = currentVehicles.find(
+    (v) => v.id === r.relatedEntityId || v.registrationNumber === r.relatedEntityId
+  );
+
+  let cat: ReminderItem["category"] = "Vehicle Service";
+  const explicitType = r.relatedEntityType as ReminderItem["category"] | undefined;
+  if (
+    explicitType &&
+    ["Insurance", "Vehicle Service", "Compliance", "Permit", "Driver Compliance", "Maintenance"].includes(explicitType)
+  ) {
+    cat = explicitType;
+  } else if (r.category === "documents") {
+    const titleLower = (r.title || "").toLowerCase();
+    if (titleLower.includes("fitness") || titleLower.includes("tax") || titleLower.includes("puc")) {
+      cat = "Compliance";
+    } else if (titleLower.includes("permit")) {
+      cat = "Permit";
+    } else {
+      cat = "Insurance";
+    }
+  } else if (r.category === "driver") {
+    cat = "Driver Compliance";
+  } else if (r.category === "vehicle_service") {
+    cat = (r.title || "").toLowerCase().includes("battery") ? "Maintenance" : "Vehicle Service";
+  }
+
+  const isDriver = cat === "Driver Compliance" || r.category === "driver";
+  const vehicleReg = matchedVeh
+    ? matchedVeh.registrationNumber
+    : isDriver
+    ? "Rajesh Kumar"
+    : "KL 07 CF 2211";
+  const vehicleModel = matchedVeh
+    ? matchedVeh.name
+    : isDriver
+    ? "Fleet Driver"
+    : "Commercial Fleet";
+  const vehicleImage =
+    matchedVeh?.photoUrl ||
+    (isDriver ? "/images/driver-rajesh.jpg" : "/images/fleet-crysta.jpg");
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const isOverdue = r.status === "overdue" || (r.status === "pending" && r.dueDate < todayStr);
+
+  return {
+    id: r.id,
+    dueDate: r.dueDate,
+    title: r.title,
+    subtitle: r.notes ? (r.notes.length > 32 ? `${r.notes.slice(0, 32)}...` : r.notes) : `${cat} reminder`,
+    category: cat,
+    vehicleReg,
+    vehicleModel,
+    vehicleImage,
+    isDriver,
+    status: r.status === "completed" ? "completed" : isOverdue ? "overdue" : "upcoming",
+    reminderType: "one_time",
+    notes: r.notes || "",
+    isCustom: true,
+  };
+}
+
 export default function RemindersClient({
   initialReminders,
   vehicles,
@@ -89,60 +158,63 @@ export default function RemindersClient({
     vehicles && vehicles.length > 0 ? vehicles : getStoredVehicles()
   );
 
+  // Convert initialReminders or local backup into display items
+  const [items, setItems] = useState<ReminderItem[]>(() => {
+    const rawList =
+      initialReminders && initialReminders.length > 0
+        ? initialReminders
+        : getStoredReminders();
+    const currentVehicles =
+      vehicles && vehicles.length > 0 ? vehicles : getStoredVehicles();
+    return rawList.map((r) => mapReminderToItem(r, currentVehicles));
+  });
+
   useEffect(() => {
     const fetchFreshVehicles = async () => {
       try {
         const fresh = await getVehicles();
-        if (Array.isArray(fresh)) setVehicleList(fresh);
+        if (Array.isArray(fresh) && fresh.length > 0) setVehicleList(fresh);
       } catch (err) {
         console.warn("[RemindersClient] Vehicle fetch error:", err);
       }
     };
+
+    const fetchFreshReminders = async () => {
+      try {
+        const fresh = await getReminders(100);
+        const currentVehs = getStoredVehicles();
+        if (Array.isArray(fresh) && fresh.length > 0) {
+          setItems(fresh.map((r) => mapReminderToItem(r, currentVehs)));
+        } else {
+          const stored = getStoredReminders();
+          if (stored.length > 0) {
+            setItems(stored.map((r) => mapReminderToItem(r, currentVehs)));
+          }
+        }
+      } catch (err) {
+        console.warn("[RemindersClient] Reminder fetch error:", err);
+        const stored = getStoredReminders();
+        if (stored.length > 0) {
+          const currentVehs = getStoredVehicles();
+          setItems(stored.map((r) => mapReminderToItem(r, currentVehs)));
+        }
+      }
+    };
+
     fetchFreshVehicles();
+    fetchFreshReminders();
 
     const unsubscribe = subscribeDataChanged((entity) => {
       if (entity === "vehicles" || entity === "all") {
         setVehicleList(getStoredVehicles());
       }
+      if (entity === "reminders" || entity === "all") {
+        fetchFreshReminders();
+      }
     });
 
     return () => unsubscribe();
   }, []);
-
-  // Convert initialReminders from Firestore into ReminderItem format (strictly real data)
-  const [items, setItems] = useState<ReminderItem[]>(() => {
-    if (!initialReminders || initialReminders.length === 0) {
-      return [];
-    }
-
-    const currentVehicles = vehicles && vehicles.length > 0 ? vehicles : getStoredVehicles();
-
-    return initialReminders.map((r) => {
-      const matchedVeh = currentVehicles.find((v) => v.id === r.relatedEntityId);
-      let cat: ReminderItem["category"] = "Vehicle Service";
-      if (r.category === "documents") cat = "Insurance";
-      else if (r.category === "driver") cat = "Driver Compliance";
-      else if (r.category === "vehicle_service") cat = "Vehicle Service";
-
-      const todayStr = new Date().toISOString().split("T")[0];
-      const isOverdue = r.status === "overdue" || (r.status === "pending" && r.dueDate < todayStr);
-
-      return {
-        id: r.id,
-        dueDate: r.dueDate,
-        title: r.title,
-        subtitle: r.notes?.slice(0, 30) || `${cat} reminder`,
-        category: cat,
-        vehicleReg: matchedVeh ? matchedVeh.registrationNumber : "Fleet Asset",
-        vehicleModel: matchedVeh ? matchedVeh.name : "Commercial Vehicle",
-        vehicleImage: matchedVeh?.photoUrl || "/images/fleet-volvo.jpg",
-        status: r.status === "completed" ? "completed" : isOverdue ? "overdue" : "upcoming",
-        reminderType: "one_time",
-        notes: r.notes || "",
-        isCustom: true,
-      };
-    });
-  });
 
   // Filters & Search
   const [search, setSearch] = useState("");
@@ -293,14 +365,14 @@ export default function RemindersClient({
       } else {
         // Create new reminder
         let firestoreId = `custom-${Date.now()}`;
-        try {
-          let fsCat: ReminderCategory = "vehicle_service";
-          if (form.category === "Insurance" || form.category === "Compliance" || form.category === "Permit") {
-            fsCat = "documents";
-          } else if (form.category === "Driver Compliance") {
-            fsCat = "driver";
-          }
+        let fsCat: ReminderCategory = "vehicle_service";
+        if (form.category === "Insurance" || form.category === "Compliance" || form.category === "Permit") {
+          fsCat = "documents";
+        } else if (form.category === "Driver Compliance") {
+          fsCat = "driver";
+        }
 
+        try {
           firestoreId = await createReminder({
             title: form.title.trim(),
             dueDate: form.dueDate,
@@ -312,6 +384,18 @@ export default function RemindersClient({
           });
         } catch {
           // Local fallback
+          upsertStoredReminder({
+            id: firestoreId,
+            title: form.title.trim(),
+            dueDate: form.dueDate,
+            category: fsCat,
+            relatedEntityType: form.category,
+            relatedEntityId: form.relatedVehicleId || undefined,
+            notes: form.notes.trim(),
+            status: itemStatus === "overdue" ? "overdue" : "pending",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
         }
 
         const newItem: ReminderItem = {
@@ -379,6 +463,7 @@ export default function RemindersClient({
     setActiveMenuId(null);
     if (!confirm("Are you sure you want to delete this reminder?")) return;
     setItems((prev) => prev.filter((i) => i.id !== id));
+    removeStoredReminder(id);
     try {
       await deleteReminder(id);
     } catch {

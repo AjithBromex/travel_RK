@@ -13,55 +13,105 @@ import {
 import { db } from '@/lib/firebase/config'
 import type { Reminder, ReminderStatus } from '@/types'
 import { withCache, invalidateCache } from '@/lib/cache'
-import { notifyDataChanged } from '@/lib/storage-sync'
+import {
+  waitForAuthReady,
+  getStoredReminders,
+  saveStoredReminders,
+  upsertStoredReminder,
+  removeStoredReminder,
+  notifyDataChanged,
+  isDeleted,
+} from '@/lib/storage-sync'
 
 const COLLECTION = 'reminders'
 
 export async function getReminders(limitCount = 100): Promise<Reminder[]> {
+  const localFallback = getStoredReminders()
+
   return withCache(
     `reminders:list:${limitCount}`,
     async () => {
+      await waitForAuthReady()
       const q = query(collection(db, COLLECTION), orderBy('dueDate', 'asc'), limit(limitCount))
       const snap = await getDocs(q)
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Reminder))
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Reminder))
+        .filter(r => !isDeleted('reminders', r.id))
+
+      if (list.length > 0) {
+        saveStoredReminders(list)
+        return list
+      }
+      return getStoredReminders()
     },
-    { fallback: [] }
+    { fallback: localFallback }
   )
 }
 
 export async function getActiveReminders(): Promise<Reminder[]> {
+  const localFallback = getStoredReminders().filter(r => r.status !== 'completed')
+
   return withCache(
     'reminders:active',
     async () => {
+      await waitForAuthReady()
       const q = query(
         collection(db, COLLECTION),
         where('status', 'in', ['pending', 'upcoming', 'overdue']),
         orderBy('dueDate', 'asc')
       )
       const snap = await getDocs(q)
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Reminder))
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Reminder))
+        .filter(r => !isDeleted('reminders', r.id))
+
+      return list.length > 0 ? list : localFallback
     },
-    { fallback: [] }
+    { fallback: localFallback }
   )
 }
 
 export async function createReminder(data: Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   const now = new Date().toISOString()
-  const docRef = await addDoc(collection(db, COLLECTION), {
+  let docId = `rem-${Date.now()}`
+  try {
+    await waitForAuthReady()
+    const docRef = await addDoc(collection(db, COLLECTION), {
+      ...data,
+      createdAt: now,
+      updatedAt: now,
+    })
+    docId = docRef.id
+  } catch (err) {
+    console.warn('[RemindersService] Firestore addDoc failed, saved locally:', err)
+  }
+
+  const created: Reminder = {
+    id: docId,
     ...data,
     createdAt: now,
     updatedAt: now,
-  })
+  }
+  upsertStoredReminder(created)
   invalidateCache('reminders')
   notifyDataChanged('all')
-  return docRef.id
+  return docId
 }
 
 export async function updateReminder(id: string, data: Partial<Reminder>): Promise<void> {
-  await updateDoc(doc(db, COLLECTION, id), {
-    ...data,
-    updatedAt: new Date().toISOString(),
-  })
+  const stored = getStoredReminders().find(r => r.id === id)
+  if (stored) {
+    upsertStoredReminder({ ...stored, ...data, updatedAt: new Date().toISOString() })
+  }
+  try {
+    await waitForAuthReady()
+    await updateDoc(doc(db, COLLECTION, id), {
+      ...data,
+      updatedAt: new Date().toISOString(),
+    })
+  } catch (err) {
+    console.warn('[RemindersService] Firestore updateDoc failed, updated locally:', err)
+  }
   invalidateCache('reminders')
   notifyDataChanged('all')
 }
@@ -74,13 +124,28 @@ export async function toggleReminderStatus(id: string, currentStatus: ReminderSt
     completedAt: isCompleted ? undefined : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
-  await updateDoc(doc(db, COLLECTION, id), updateData)
+  const stored = getStoredReminders().find(r => r.id === id)
+  if (stored) {
+    upsertStoredReminder({ ...stored, ...updateData })
+  }
+  try {
+    await waitForAuthReady()
+    await updateDoc(doc(db, COLLECTION, id), updateData)
+  } catch (err) {
+    console.warn('[RemindersService] Firestore toggleReminderStatus failed, updated locally:', err)
+  }
   invalidateCache('reminders')
   notifyDataChanged('all')
 }
 
 export async function deleteReminder(id: string): Promise<void> {
-  await deleteDoc(doc(db, COLLECTION, id))
+  removeStoredReminder(id)
+  try {
+    await waitForAuthReady()
+    await deleteDoc(doc(db, COLLECTION, id))
+  } catch (err) {
+    console.warn('[RemindersService] Firestore deleteDoc failed, removed locally:', err)
+  }
   invalidateCache('reminders')
   notifyDataChanged('all')
 }
