@@ -326,22 +326,22 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                   : "bg-white/95 border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)]"
               }`}
             >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#0F172A] p-0.5 flex items-center justify-center relative shrink-0 shadow-xs">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 relative shrink-0">
                 <Image
                   src="/images/rk-logo.png"
                   alt="RK Travel Hub"
                   fill
                   priority
                   unoptimized
-                  className="object-contain p-0.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+                  className="object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
                 />
               </div>
 
               <div className="flex flex-col justify-center leading-none text-left">
-                <span className="text-[11.5px] sm:text-[13px] font-black tracking-tight text-[#0F172A] uppercase leading-none">
+                <span className="text-[12px] sm:text-[13px] font-black tracking-tight text-[#0F172A] uppercase leading-none">
                   RK TRAVEL <span className="text-[#0284C7]">HUB</span>
                 </span>
-                <span className="text-[7px] sm:text-[8px] font-extrabold tracking-[0.14em] text-slate-400 uppercase mt-0.5 leading-none">
+                <span className="text-[7.5px] sm:text-[8px] font-extrabold tracking-[0.14em] text-slate-400 uppercase mt-0.5 leading-none">
                   TRAVEL BEYOND BORDERS
                 </span>
               </div>
