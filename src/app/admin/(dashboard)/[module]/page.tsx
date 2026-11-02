@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Crud from '@/components/admin/Crud';
 import { MODULES } from '@/lib/admin/modules';
 import { listRows } from '@/lib/admin/store';
@@ -11,6 +11,9 @@ interface PageProps {
 
 export default async function ModulePage({ params }: PageProps) {
   const { module: slug } = await params;
+  if (slug === 'settings') {
+    redirect('/admin/settings');
+  }
   const m = MODULES[slug];
   if (!m) notFound();
 

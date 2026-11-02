@@ -13,6 +13,7 @@ import {
   BookOpen,
   Bell,
   Users,
+  Settings,
   LogOut,
   ArrowLeft,
   Search,
@@ -172,6 +173,17 @@ export default function AdminTopbar() {
                     <div className="px-3 py-2 border-b border-slate-100">
                       <p className="text-xs font-bold text-slate-900">Signed in as Admin</p>
                       <p className="text-[11px] text-slate-500 truncate">admin@gmail.com</p>
+                    </div>
+
+                    <div className="py-1 border-b border-slate-100">
+                      <Link
+                        href="/admin/settings"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Settings</span>
+                      </Link>
                     </div>
 
                     <div className="pt-1">
