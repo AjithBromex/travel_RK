@@ -28,23 +28,34 @@ import {
   LayoutGrid,
   List,
   FileText,
+  Printer,
+  Eye,
 } from "lucide-react";
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
-import type { Payment, Trip, PaymentType, PaymentMode } from "@/types";
+import type { Payment, Trip, Vehicle, PaymentType, PaymentMode } from "@/types";
 import { getPayments, createPayment, deletePayment } from "@/services/payments.service";
 import { getTrips } from "@/services/trips.service";
+import { getVehicles } from "@/services/vehicles.service";
 import {
   getStoredPayments,
   getStoredTrips,
+  getStoredVehicles,
   subscribeDataChanged,
 } from "@/lib/storage-sync";
+import InvoiceModal from "@/components/InvoiceModal";
+import {
+  buildInvoiceData,
+  downloadInvoicePDF,
+  type InvoiceData,
+} from "@/lib/invoicePdf";
 
 interface PaymentsClientProps {
   initialPayments: Payment[];
   trips: Trip[];
+  vehicles?: Vehicle[];
 }
 
-export default function PaymentsClient({ initialPayments, trips }: PaymentsClientProps) {
+export default function PaymentsClient({ initialPayments, trips, vehicles }: PaymentsClientProps) {
   const [payments, setPayments] = useState<Payment[]>(() => {
     if (initialPayments && initialPayments.length > 0) return initialPayments;
     return getStoredPayments();
@@ -55,12 +66,21 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
     return getStoredTrips();
   });
 
+  const [vehicleList, setVehicleList] = useState<Vehicle[]>(() => {
+    if (vehicles && vehicles.length > 0) return vehicles;
+    return getStoredVehicles();
+  });
+
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [activeInvoiceData, setActiveInvoiceData] = useState<InvoiceData | null>(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [justAddedInvoice, setJustAddedInvoice] = useState<InvoiceData | null>(null);
+  const [autoDownloadInvoice, setAutoDownloadInvoice] = useState(true);
 
   const amountInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -89,9 +109,22 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
       });
   };
 
+  const fetchVehiclesData = () => {
+    getVehicles(100)
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setVehicleList(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("[Payments] Client vehicles hydration error:", err);
+      });
+  };
+
   useEffect(() => {
     fetchPaymentsData();
     fetchTripsData();
+    fetchVehiclesData();
 
     // Check URL parameters for preset trip selection from Trips page
     if (typeof window !== "undefined") {
@@ -116,6 +149,9 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
       }
       if (entity === "trips" || entity === "all") {
         fetchTripsData();
+      }
+      if (entity === "vehicles" || entity === "all") {
+        fetchVehiclesData();
       }
     });
 
@@ -150,6 +186,26 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
       tripId: selectedId,
       amount: autoAmount || prev.amount,
     }));
+  };
+
+  const handleOpenInvoice = (payment: Payment) => {
+    const linkedTrip = tripList.find((t) => t.id === payment.tripId || t.tripNumber === payment.tripId);
+    const linkedVehicle = linkedTrip
+      ? vehicleList.find((v) => v.id === linkedTrip.vehicleId || v.registrationNumber === linkedTrip.vehicleName)
+      : undefined;
+    const invData = buildInvoiceData(payment, linkedTrip, linkedVehicle);
+    setActiveInvoiceData(invData);
+    setIsInvoiceModalOpen(true);
+  };
+
+  const handleDownloadInvoiceDirect = async (payment: Payment, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const linkedTrip = tripList.find((t) => t.id === payment.tripId || t.tripNumber === payment.tripId);
+    const linkedVehicle = linkedTrip
+      ? vehicleList.find((v) => v.id === linkedTrip.vehicleId || v.registrationNumber === linkedTrip.vehicleName)
+      : undefined;
+    const invData = buildInvoiceData(payment, linkedTrip, linkedVehicle);
+    await downloadInvoicePDF(invData);
   };
 
   // Dynamic Real KPIs strictly from actual payments & trips data
@@ -208,10 +264,12 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
       setPayments((prev) => [newPayment, ...prev]);
 
       // Update local trip dues immediately if linked to a trip
+      let matchedTrip: Trip | undefined;
       if (form.tripId && form.tripId !== "general") {
         setTripList((prev) =>
           prev.map((t) => {
             if (t.id === form.tripId || t.tripNumber === form.tripId) {
+              matchedTrip = t;
               if (form.type === "customer_received") {
                 const newPaid = (Number(t.customerPaid) || 0) + amountNum;
                 const newBal = Math.max(0, (Number(t.totalFare) || 0) - newPaid);
@@ -227,10 +285,24 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
         );
       }
 
+      const linkedTrip = matchedTrip || tripList.find((t) => t.id === form.tripId || t.tripNumber === form.tripId);
+      const linkedVehicle = linkedTrip
+        ? vehicleList.find((v) => v.id === linkedTrip.vehicleId || v.registrationNumber === linkedTrip.vehicleName)
+        : undefined;
+      const invoiceData = buildInvoiceData(newPayment, linkedTrip, linkedVehicle);
+      setJustAddedInvoice(invoiceData);
+
+      // Auto download invoice PDF if enabled
+      if (autoDownloadInvoice) {
+        downloadInvoicePDF(invoiceData).catch((err) => {
+          console.warn("[Payments] Auto download invoice PDF error:", err);
+        });
+      }
+
       setFeedback({
         message: form.type === "customer_received"
-          ? "Customer receipt recorded successfully! Trip balance updated."
-          : "Driver payout voucher recorded successfully! Driver balance updated.",
+          ? "Customer receipt recorded successfully! Invoice generated."
+          : "Driver payout voucher recorded successfully! Voucher generated.",
         type: "success",
       });
       setForm(emptyForm);
@@ -242,7 +314,9 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
       });
     } finally {
       setLoading(false);
-      setTimeout(() => setFeedback(null), 4000);
+      setTimeout(() => {
+        // Keep invoice accessible longer
+      }, 4000);
     }
   };
 
@@ -561,26 +635,63 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
         </div>
       </div>
 
-      {/* Feedback Toast */}
+      {/* Feedback Toast & Instant Invoice Download Card */}
       {feedback && (
         <div
-          className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-xs ${
+          className={`p-4 rounded-2xl text-xs font-semibold shadow-sm transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
             feedback.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+              ? "bg-emerald-50 text-emerald-950 border border-emerald-300"
               : "bg-rose-50 text-rose-800 border border-rose-200"
           }`}
         >
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{feedback.message}</span>
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div>
+              <p className="font-bold text-sm text-emerald-950">{feedback.message}</p>
+              {justAddedInvoice && (
+                <p className="text-[11px] text-emerald-800 font-medium mt-0.5">
+                  Receipt #{justAddedInvoice.receiptNo} &bull; {justAddedInvoice.customerName} &bull; {formatINR(justAddedInvoice.advanceReceived)}
+                  {autoDownloadInvoice ? " (Invoice downloaded automatically to your device)" : ""}
+                </p>
+              )}
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            className="text-slate-400 hover:text-slate-600 text-xs font-bold px-2 py-0.5 cursor-pointer"
-          >
-            ✕
-          </button>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {justAddedInvoice && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => downloadInvoicePDF(justAddedInvoice)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Invoice PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveInvoiceData(justAddedInvoice);
+                    setIsInvoiceModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs transition-all cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Preview Voucher</span>
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setFeedback(null);
+                setJustAddedInvoice(null);
+              }}
+              className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-200/50 cursor-pointer ml-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -792,6 +903,17 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
                   />
                 </div>
               </div>
+
+              {/* Auto Download Invoice Checkbox */}
+              <label className="flex items-center gap-2 text-xs font-medium text-slate-600 cursor-pointer pt-1 px-1">
+                <input
+                  type="checkbox"
+                  checked={autoDownloadInvoice}
+                  onChange={(e) => setAutoDownloadInvoice(e.target.checked)}
+                  className="rounded text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
+                />
+                <span>Automatically download invoice PDF after recording</span>
+              </label>
 
               {/* Submit Button */}
               <button
@@ -1071,15 +1193,34 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
                           </span>
                         </td>
                         <td className="py-3 px-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(p)}
-                            disabled={deletingId === p.id}
-                            className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                            title="Delete Payment Record"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenInvoice(p)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0D62FE] font-bold text-[11px] transition-all cursor-pointer"
+                              title="View & Download Invoice"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>Invoice</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDownloadInvoiceDirect(p, e)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                              title="Download Invoice PDF"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(p)}
+                              disabled={deletingId === p.id}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Delete Payment Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1143,15 +1284,34 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
                       <span className="text-[11px] text-slate-400">
                         {formatDate(p.paymentDate)}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(p)}
-                        disabled={deletingId === p.id}
-                        className="text-slate-400 hover:text-rose-600 text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenInvoice(p)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0D62FE] font-bold text-[11px] transition-all cursor-pointer"
+                          title="View & Download Invoice"
+                        >
+                          <FileText className="w-3 h-3" />
+                          <span>Invoice</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDownloadInvoiceDirect(p, e)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                          title="Download Invoice PDF"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(p)}
+                          disabled={deletingId === p.id}
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1160,6 +1320,19 @@ export default function PaymentsClient({ initialPayments, trips }: PaymentsClien
           </div>
         </div>
       </div>
+
+      {/* Invoice Voucher Modal Preview & Download */}
+      {activeInvoiceData && (
+        <InvoiceModal
+          isOpen={isInvoiceModalOpen}
+          onClose={() => {
+            setIsInvoiceModalOpen(false);
+            setActiveInvoiceData(null);
+          }}
+          data={activeInvoiceData}
+        />
+      )}
     </div>
   );
 }
+
