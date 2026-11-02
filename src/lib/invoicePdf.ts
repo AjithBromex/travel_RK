@@ -218,530 +218,601 @@ export async function downloadInvoicePDF(
 
     const pageWidth = 210
     const pageHeight = doc.internal.pageSize.getHeight() || 297
-    const margin = 12
-    const contentWidth = pageWidth - margin * 2 // 186mm
 
-    // Color definitions matching the original template
+    // Outer card container dimensions matching website preview modal
+    const outerX = 10
+    const outerY = 10
+    const outerW = 190
+    const outerH = pageHeight - outerY * 2 // 277mm
+
+    // Color definitions exactly matching InvoiceModal.tsx
     const colorNavy: [number, number, number] = [13, 35, 58] // #0D233A
-    const colorHeaderFill: [number, number, number] = [218, 228, 239] // #DAE4EF
-    const colorSubBoxFill: [number, number, number] = [238, 243, 248] // #EEF3F8
-    const colorBorder: [number, number, number] = [175, 192, 210] // #AFC0D2
-    const colorLine: [number, number, number] = [200, 210, 222]
-    const colorDarkText: [number, number, number] = [15, 23, 42]
-    const colorMutedText: [number, number, number] = [71, 85, 105]
+    const colorCardHeader: [number, number, number] = [221, 231, 242] // #DDE7F2
+    const colorBlueIcon: [number, number, number] = [29, 78, 216] // #1D4ED8
+    const colorBorder: [number, number, number] = [203, 213, 225] // #CBD5E1 (slate-300)
+    const colorOuterBorder: [number, number, number] = [226, 232, 240] // #E2E8F0 (slate-200)
+    const colorLightDivider: [number, number, number] = [241, 245, 249] // #F1F5F9 (slate-100)
+    const colorLabel: [number, number, number] = [100, 116, 139] // #64748B (slate-500)
+    const colorValue: [number, number, number] = [15, 23, 42] // #0F172A (slate-900)
+    const colorEmerald: [number, number, number] = [5, 150, 105] // #059669 (emerald-600)
+    const colorRose: [number, number, number] = [225, 29, 72] // #E11D48 (rose-600)
+    const colorSky: [number, number, number] = [56, 189, 248] // #38BDF8 (sky-400)
+    const colorSubBox: [number, number, number] = [248, 250, 252] // #F8FAFC (slate-50)
+
+    // Outer Card Frame
+    doc.setFillColor(255, 255, 255)
+    doc.setDrawColor(...colorOuterBorder)
+    doc.setLineWidth(0.4)
+    doc.roundedRect(outerX, outerY, outerW, outerH, 3.5, 3.5, 'FD')
 
     // ─────────────────────────────────────────────────────────────
-    // 1. TOP HEADER (Logo on left, Dark banner with tours on right)
+    // 1. HEADER (Logo & Brand on Left, Tour Categories Pill on Right)
     // ─────────────────────────────────────────────────────────────
+    const headerY = outerY + 4
 
-    // Top-Right Navy Banner (Curved pill on top right corner)
-    doc.setFillColor(...colorNavy)
-    const bannerX = 142
-    const bannerY = 0
-    const bannerW = 68
-    const bannerH = 34
-    doc.roundedRect(bannerX, bannerY, bannerW, bannerH, 0, 0, 'F')
-    doc.roundedRect(bannerX - 10, bannerY, 20, bannerH, 8, 8, 'F')
-
-    // Tour Types text in right banner with vector bullets
-    doc.setFont(fontName, 'bold')
-    doc.setFontSize(7.5)
-    const tours = ['Group Tours', 'Pilgrimage Trips', 'Family Trips', 'Corporate Trips']
-    tours.forEach((tour, idx) => {
-      const ty = 8.5 + idx * 7
-      doc.setFillColor(56, 189, 248) // Sky blue bullet
-      doc.circle(150, ty - 0.8, 0.75, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.text(tour, 153, ty)
-    })
-
-    // Left Logo & Brand Identity
+    // Left: Official 3D Metallic Emblem
     try {
-      doc.addImage(RK_LOGO_BASE64, 'PNG', margin, 6.5, 18, 18)
+      doc.addImage(RK_LOGO_BASE64, 'PNG', outerX + 6, headerY + 1.5, 16, 16)
     } catch {
       doc.setFillColor(...colorNavy)
-      doc.roundedRect(margin, 6.5, 18, 18, 2, 2, 'F')
+      doc.roundedRect(outerX + 6, headerY + 1.5, 16, 16, 2, 2, 'F')
     }
 
-    // Vertical Divider Line
-    doc.setDrawColor(...colorLine)
-    doc.setLineWidth(0.2)
-    doc.line(margin + 20.5, 7, margin + 20.5, 25)
-
-    // Golden Arc above brand text
-    doc.setDrawColor(245, 158, 11) // Golden Orange (#F59E0B)
-    doc.setLineWidth(1.2)
-    doc.lines([[14, -2.5], [30, 0]], margin + 24, 11, [1, 1], 'S', true)
-
-    const brandX = margin + 23
+    // Left: Brand Typography
+    const brandX = outerX + 25
     doc.setFont(fontName, 'bold')
-    doc.setFontSize(17)
+    doc.setFontSize(18)
     doc.setTextColor(...colorNavy)
-    doc.text('RK TRAVEL HUB', brandX, 13.5)
+    doc.text('RK TRAVEL HUB', brandX, headerY + 6.5)
 
     doc.setFont(fontName, 'bold')
     doc.setFontSize(7.5)
-    doc.setTextColor(70, 80, 95)
-    doc.text("TRAVELLER'S HUB", brandX, 18.5)
+    doc.setTextColor(71, 85, 105)
+    doc.text("TRAVELLER'S HUB", brandX, headerY + 11.5)
 
     doc.setFont(fontName, 'normal')
-    doc.setFontSize(6.5)
-    doc.setTextColor(100, 116, 139)
-    doc.text('COMFORT   |   SAFETY   |   RELIABILITY', brandX, 23)
+    doc.setFontSize(6.8)
+    doc.setTextColor(148, 163, 184)
+    doc.text('COMFORT   •   SAFETY   •   RELIABILITY', brandX, headerY + 16)
+
+    // Right: Tour Categories Navy Pill Container
+    const pillW = 60
+    const pillH = 24
+    const pillX = outerX + outerW - pillW - 6
+    const pillY = headerY
+    doc.setFillColor(...colorNavy)
+    doc.roundedRect(pillX, pillY, pillW, pillH, 3, 3, 'F')
+
+    const tourItems = [
+      { name: 'Group Tours', type: 'car' },
+      { name: 'Pilgrimage Trips', type: 'pin' },
+      { name: 'Family Trips', type: 'user' },
+      { name: 'Corporate Trips', type: 'card' },
+    ]
+
+    tourItems.forEach((t, idx) => {
+      const ty = pillY + 5.0 + idx * 4.8
+      doc.setFont(fontName, 'bold')
+      doc.setFontSize(7)
+      doc.setTextColor(226, 232, 240)
+      doc.text(t.name, pillX + 6, ty)
+
+      // Vector Icon in sky-400
+      doc.setFillColor(...colorSky)
+      doc.setDrawColor(...colorSky)
+      const ix = pillX + pillW - 7
+      if (t.type === 'car') {
+        doc.roundedRect(ix - 2.2, ty - 2.5, 3.2, 1.8, 0.4, 0.4, 'F')
+      } else if (t.type === 'pin') {
+        doc.circle(ix - 0.6, ty - 1.8, 1.0, 'F')
+      } else if (t.type === 'user') {
+        doc.circle(ix - 0.6, ty - 2.4, 0.7, 'F')
+        doc.roundedRect(ix - 1.6, ty - 1.5, 2.0, 1.2, 0.4, 0.4, 'F')
+      } else if (t.type === 'card') {
+        doc.setLineWidth(0.3)
+        doc.roundedRect(ix - 2.2, ty - 2.5, 3.2, 2.0, 0.3, 0.3, 'S')
+      }
+    })
+
+    // Header bottom border
+    doc.setDrawColor(...colorLightDivider)
+    doc.setLineWidth(0.35)
+    doc.line(outerX, headerY + 25, outerX + outerW, headerY + 25)
 
     // ─────────────────────────────────────────────────────────────
-    // 2. INVOICE TITLE & RECEIPT INFO BOX
+    // 2. INVOICE TITLE & META CARD
     // ─────────────────────────────────────────────────────────────
-    const titleY = 44
+    const secTitleY = headerY + 29
 
     // Left Title
     doc.setFont(fontName, 'bold')
     doc.setFontSize(22)
     doc.setTextColor(...colorNavy)
-    doc.text('INVOICE', margin, titleY)
+    doc.text('INVOICE', outerX + 6, secTitleY + 6.5)
 
     doc.setFont(fontName, 'bold')
-    doc.setFontSize(8)
-    doc.setTextColor(100, 116, 139)
-    doc.text('CASH RECEIPT / PAYMENT VOUCHER', margin, titleY + 5.5)
+    doc.setFontSize(7.5)
+    doc.setTextColor(...colorLabel)
+    doc.text('CASH RECEIPT / PAYMENT VOUCHER', outerX + 6, secTitleY + 12)
 
-    // Right Info Box
-    const infoBoxX = 118
-    const infoBoxY = 35
-    const infoBoxW = 80
-    const infoBoxH = 21
-
-    doc.setFillColor(255, 255, 255)
+    // Right Meta Card (Receipt No., Book No., Date)
+    const metaW = 76
+    const metaH = 20
+    const metaX = outerX + outerW - metaW - 6
+    const metaY = secTitleY
+    doc.setFillColor(...colorSubBox)
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.3)
-    doc.roundedRect(infoBoxX, infoBoxY, infoBoxW, infoBoxH, 2, 2, 'S')
+    doc.roundedRect(metaX, metaY, metaW, metaH, 2.5, 2.5, 'FD')
 
-    // Labels & Values inside info box
+    // Receipt No. Row
+    doc.setFont(fontName, 'bold')
+    doc.setFontSize(7.5)
+    doc.setTextColor(51, 65, 85)
+    doc.text('Receipt No. :', metaX + 4, metaY + 5.5)
+
+    // Receipt Badge (Light Blue Capsule)
+    doc.setFillColor(219, 234, 254) // #DBEAFE
+    doc.roundedRect(metaX + metaW - 22, metaY + 2.0, 18, 4.8, 1.2, 1.2, 'F')
     doc.setFont(fontName, 'bold')
     doc.setFontSize(8)
-    doc.setTextColor(...colorDarkText)
-
-    // Receipt No. row
-    doc.text('Receipt No.', infoBoxX + 3, infoBoxY + 6)
-    doc.text(':', infoBoxX + 22, infoBoxY + 6)
-
-    // Receipt Badge (light blue capsule)
-    doc.setFillColor(210, 230, 252) // #D2E6FC
-    doc.roundedRect(infoBoxX + 25, infoBoxY + 2.2, 22, 5.2, 1.5, 1.5, 'F')
-    doc.setFont(fontName, 'bold')
-    doc.setFontSize(8.5)
     doc.setTextColor(...colorNavy)
-    doc.text(String(data.receiptNo), infoBoxX + 36, infoBoxY + 6, { align: 'center' })
+    doc.text(String(data.receiptNo), metaX + metaW - 13, metaY + 5.4, { align: 'center' })
 
-    // Book No. row
+    // Book No. Row
     doc.setFont(fontName, 'bold')
-    doc.setFontSize(8)
-    doc.setTextColor(...colorDarkText)
-    doc.text('Book No.', infoBoxX + 3, infoBoxY + 12)
-    doc.text(':', infoBoxX + 22, infoBoxY + 12)
-    doc.setFont(fontName, 'normal')
-    doc.text(String(data.bookNo || '_________________'), infoBoxX + 25, infoBoxY + 12)
+    doc.setFontSize(7.5)
+    doc.setTextColor(51, 65, 85)
+    doc.text('Book No. :', metaX + 4, metaY + 11.5)
+    doc.setFont(fontName, 'bold')
+    doc.setTextColor(...colorValue)
+    doc.text(String(data.bookNo || 'BK-001'), metaX + metaW - 4, metaY + 11.5, { align: 'right' })
 
-    // Date row
+    // Date Row
     doc.setFont(fontName, 'bold')
-    doc.text('Date', infoBoxX + 3, infoBoxY + 17.5)
-    doc.text(':', infoBoxX + 22, infoBoxY + 17.5)
-    doc.setFont(fontName, 'normal')
-    doc.text(String(data.date), infoBoxX + 25, infoBoxY + 17.5)
+    doc.setTextColor(51, 65, 85)
+    doc.text('Date :', metaX + 4, metaY + 17)
+    doc.setFont(fontName, 'bold')
+    doc.setTextColor(...colorValue)
+    doc.text(String(data.date), metaX + metaW - 4, metaY + 17, { align: 'right' })
+
+    // ─────────────────────────────────────────────────────────────
+    // HELPER: Section Card Header with Matching Vector Blue Icon
+    // ─────────────────────────────────────────────────────────────
+    const drawCardHeader = (
+      x: number,
+      y: number,
+      w: number,
+      title: string,
+      iconType: 'user' | 'card' | 'pin' | 'car' | 'file'
+    ) => {
+      doc.setFillColor(...colorCardHeader) // #DDE7F2
+      doc.roundedRect(x, y, w, 7.5, 2.5, 2.5, 'F')
+      doc.rect(x, y + 4, w, 3.5, 'F') // flat bottom corners
+
+      // Crisp vector icon in blue-700
+      doc.setFillColor(...colorBlueIcon)
+      doc.setDrawColor(...colorBlueIcon)
+      const ix = x + 4
+      const iy = y + 2.2
+      if (iconType === 'user') {
+        doc.circle(ix + 1.5, iy + 1.1, 0.9, 'F')
+        doc.roundedRect(ix + 0.3, iy + 2.3, 2.4, 1.4, 0.6, 0.6, 'F')
+      } else if (iconType === 'card') {
+        doc.setLineWidth(0.3)
+        doc.roundedRect(ix, iy + 0.6, 3.4, 2.6, 0.3, 0.3, 'S')
+        doc.line(ix, iy + 1.4, ix + 3.4, iy + 1.4)
+      } else if (iconType === 'pin') {
+        doc.circle(ix + 1.5, iy + 1.2, 1.1, 'F')
+        doc.triangle(ix + 0.6, iy + 1.5, ix + 2.4, iy + 1.5, ix + 1.5, iy + 3.4, 'F')
+        doc.setFillColor(...colorCardHeader)
+        doc.circle(ix + 1.5, iy + 1.2, 0.45, 'F')
+      } else if (iconType === 'car') {
+        doc.setLineWidth(0.3)
+        doc.roundedRect(ix, iy + 1.2, 3.4, 1.8, 0.4, 0.4, 'F')
+        doc.roundedRect(ix + 0.6, iy + 0.4, 2.2, 1.2, 0.2, 0.2, 'F')
+      } else if (iconType === 'file') {
+        doc.setLineWidth(0.3)
+        doc.roundedRect(ix + 0.3, iy + 0.4, 2.6, 3.2, 0.3, 0.3, 'S')
+        doc.line(ix + 0.8, iy + 1.4, ix + 2.4, iy + 1.4)
+        doc.line(ix + 0.8, iy + 2.2, ix + 2.4, iy + 2.2)
+      }
+
+      doc.setFont(fontName, 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(...colorNavy)
+      doc.text(title.toUpperCase(), x + 9, y + 5.1)
+    }
 
     // ─────────────────────────────────────────────────────────────
     // 3. SECTION 1: CUSTOMER DETAILS & PAYMENT DETAILS (Two Cards)
     // ─────────────────────────────────────────────────────────────
-    const sec1Y = 63
-    const cardW = 90
-    const cardH = 47
-    const rightCardX = margin + cardW + 6 // 108
-
-    // Helper to draw section header inside a card
-    const drawCardHeader = (x: number, y: number, w: number, title: string) => {
-      doc.setFillColor(...colorHeaderFill)
-      doc.roundedRect(x, y, w, 7.5, 2, 2, 'F')
-      // Fill bottom corners flat
-      doc.rect(x, y + 3.5, w, 4, 'F')
-      doc.setFont(fontName, 'bold')
-      doc.setFontSize(8.5)
-      doc.setTextColor(...colorNavy)
-      doc.text(title.toUpperCase(), x + 4, y + 5.2)
-    }
+    const sec1Y = secTitleY + 24
+    const cardW = 86
+    const cardH = 49
+    const c1X = outerX + 6
+    const c2X = outerX + outerW - cardW - 6
 
     // ── LEFT CARD: CUSTOMER DETAILS ──
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.3)
     doc.setFillColor(255, 255, 255)
-    doc.roundedRect(margin, sec1Y, cardW, cardH, 2, 2, 'FD')
-    drawCardHeader(margin, sec1Y, cardW, 'CUSTOMER DETAILS')
+    doc.roundedRect(c1X, sec1Y, cardW, cardH, 2.5, 2.5, 'FD')
+    drawCardHeader(c1X, sec1Y, cardW, 'CUSTOMER DETAILS', 'user')
 
     const custFields = [
-      { label: 'Customer Name', val: String(data.customerName || '') },
-      { label: 'Mobile Number', val: String(data.customerMobile || '') },
-      { label: 'Trip / Route', val: String(data.route || '') },
-      { label: 'Journey Date', val: String(data.journeyDate || '') },
-      { label: 'No. of Pax', val: String(data.pax || '-') },
+      { label: 'Customer Name :', val: String(data.customerName || '') },
+      { label: 'Mobile Number :', val: String(data.customerMobile || '') },
+      { label: 'Trip / Route :', val: String(data.route || '') },
+      { label: 'Journey Date :', val: String(data.journeyDate || '') },
+      { label: 'No. of Pax :', val: String(data.pax || '-') },
     ]
 
     let rowY = sec1Y + 13.5
     custFields.forEach(f => {
       doc.setFont(fontName, 'normal')
       doc.setFontSize(7.5)
-      doc.setTextColor(...colorDarkText)
-      doc.text(f.label, margin + 4, rowY)
-      doc.text(':', margin + 28, rowY)
+      doc.setTextColor(...colorLabel)
+      doc.text(f.label, c1X + 4, rowY)
 
       doc.setFont(fontName, 'bold')
-      doc.text(f.val, margin + 31, rowY)
+      doc.setTextColor(...colorValue)
+      doc.text(f.val, c1X + cardW - 4, rowY, { align: 'right' })
 
-      // Dotted underline
-      doc.setDrawColor(...colorLine)
-      doc.setLineWidth(0.15)
-      doc.line(margin + 31, rowY + 1, margin + cardW - 3, rowY + 1)
+      // Subtle border-b divider
+      doc.setDrawColor(...colorLightDivider)
+      doc.setLineWidth(0.2)
+      doc.line(c1X + 4, rowY + 1.8, c1X + cardW - 4, rowY + 1.8)
 
-      rowY += 6.5
+      rowY += 6.8
     })
 
     // ── RIGHT CARD: PAYMENT DETAILS ──
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.3)
     doc.setFillColor(255, 255, 255)
-    doc.roundedRect(rightCardX, sec1Y, cardW, cardH, 2, 2, 'FD')
-    drawCardHeader(rightCardX, sec1Y, cardW, 'PAYMENT DETAILS')
+    doc.roundedRect(c2X, sec1Y, cardW, cardH, 2.5, 2.5, 'FD')
+    drawCardHeader(c2X, sec1Y, cardW, 'PAYMENT DETAILS', 'card')
 
     const payFields = [
-      { label: 'Trip Amount', val: sanitize(formatINR(data.tripAmount)) },
-      { label: 'Advance Received', val: sanitize(formatINR(data.advanceReceived)) },
-      { label: 'Balance Amount', val: sanitize(formatINR(data.balanceAmount)) },
+      { label: 'Trip Amount :', val: sanitize(formatINR(data.tripAmount)), color: colorValue },
+      { label: 'Advance Received :', val: sanitize(formatINR(data.advanceReceived)), color: colorEmerald },
+      { label: 'Balance Amount :', val: sanitize(formatINR(data.balanceAmount)), color: colorRose },
     ]
 
     rowY = sec1Y + 13.5
     payFields.forEach(f => {
       doc.setFont(fontName, 'normal')
       doc.setFontSize(7.5)
-      doc.setTextColor(...colorDarkText)
-      doc.text(f.label, rightCardX + 4, rowY)
-      doc.text(':', rightCardX + 32, rowY)
+      doc.setTextColor(...colorLabel)
+      doc.text(f.label, c2X + 4, rowY)
 
       doc.setFont(fontName, 'bold')
-      doc.text(f.val, rightCardX + 35, rowY)
+      doc.setTextColor(...f.color)
+      doc.text(f.val, c2X + cardW - 4, rowY, { align: 'right' })
 
-      doc.setDrawColor(...colorLine)
-      doc.setLineWidth(0.15)
-      doc.line(rightCardX + 35, rowY + 1, rightCardX + cardW - 3, rowY + 1)
+      doc.setDrawColor(...colorLightDivider)
+      doc.setLineWidth(0.2)
+      doc.line(c2X + 4, rowY + 1.8, c2X + cardW - 4, rowY + 1.8)
 
-      rowY += 6.5
+      rowY += 6.8
     })
 
-    // Sub-box: Amount Received (in Words)
-    const subBoxY = sec1Y + 31.5
+    // Sub-box: Amount Received (in Words) with quotes
+    const subBoxY = sec1Y + 33
     const subBoxH = 13.5
-    doc.setFillColor(...colorSubBoxFill)
+    doc.setFillColor(...colorSubBox)
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.2)
-    doc.roundedRect(rightCardX + 3, subBoxY, cardW - 6, subBoxH, 1.5, 1.5, 'FD')
+    doc.roundedRect(c2X + 3, subBoxY, cardW - 6, subBoxH, 1.8, 1.8, 'FD')
 
     doc.setFont(fontName, 'bold')
     doc.setFontSize(6.5)
-    doc.setTextColor(...colorMutedText)
-    doc.text('Amount Received (in Words)', rightCardX + 5, subBoxY + 4)
+    doc.setTextColor(...colorLabel)
+    doc.text('AMOUNT RECEIVED (IN WORDS)', c2X + 5, subBoxY + 4)
 
     doc.setFont(fontName, 'bold')
-    doc.setFontSize(7)
-    doc.setTextColor(...colorDarkText)
-    const splitWords = doc.splitTextToSize(data.amountReceivedInWords || 'Zero Rupees Only', cardW - 12)
-    doc.text(splitWords, rightCardX + 5, subBoxY + 8)
+    doc.setFontSize(7.5)
+    doc.setTextColor(...colorNavy)
+    const quoteWords = `“${data.amountReceivedInWords || 'Zero Rupees Only'}”`
+    const splitWords = doc.splitTextToSize(quoteWords, cardW - 12)
+    doc.text(splitWords, c2X + 5, subBoxY + 8.5)
 
     // ─────────────────────────────────────────────────────────────
     // 4. SECTION 2: TRIP DETAILS (Full width card)
     // ─────────────────────────────────────────────────────────────
-    const sec2Y = 116
+    const sec2Y = sec1Y + 52
+    const fullW = outerW - 12
     const sec2H = 26
 
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.3)
     doc.setFillColor(255, 255, 255)
-    doc.roundedRect(margin, sec2Y, contentWidth, sec2H, 2, 2, 'FD')
-    drawCardHeader(margin, sec2Y, contentWidth, 'TRIP DETAILS')
+    doc.roundedRect(c1X, sec2Y, fullW, sec2H, 2.5, 2.5, 'FD')
+    drawCardHeader(c1X, sec2Y, fullW, 'TRIP DETAILS', 'pin')
 
-    // Route / Places row
-    const tripRow1Y = sec2Y + 13
+    // Route / Places & Total Distance
+    const tripRow1Y = sec2Y + 13.5
     doc.setFont(fontName, 'normal')
     doc.setFontSize(7.5)
-    doc.setTextColor(...colorDarkText)
-    doc.text('Route / Places', margin + 4, tripRow1Y)
-    doc.text(':', margin + 26, tripRow1Y)
-    doc.setFont(fontName, 'bold')
-    doc.text(String(data.routePlaces || ''), margin + 29, tripRow1Y)
-    doc.setDrawColor(...colorLine)
-    doc.setLineWidth(0.15)
-    doc.line(margin + 29, tripRow1Y + 1, margin + contentWidth - 4, tripRow1Y + 1)
-
-    // Total Distance & Trip Type row
-    const tripRow2Y = sec2Y + 20
-    doc.setFont(fontName, 'normal')
-    doc.text('Total Distance', margin + 4, tripRow2Y)
-    doc.text(':', margin + 26, tripRow2Y)
+    doc.setTextColor(...colorLabel)
+    doc.text('Route / Places :', c1X + 4, tripRow1Y)
 
     doc.setFont(fontName, 'bold')
-    doc.text(`${data.totalDistance} km`, margin + 29, tripRow2Y)
-    doc.setFont(fontName, 'normal')
-    doc.text(`(From : ${data.fromKm}   To : ${data.toKm})`, margin + 50, tripRow2Y)
+    doc.setTextColor(...colorValue)
+    doc.text(String(data.routePlaces || ''), c1X + 27, tripRow1Y)
 
-    // Trip Type Checkboxes with vector checkmarks
+    // Total distance on right side of Row 1
+    doc.setFont(fontName, 'normal')
+    doc.setTextColor(...colorLabel)
+    doc.text('Total Distance :', c1X + 105, tripRow1Y)
+
+    doc.setFont(fontName, 'bold')
+    doc.setTextColor(...colorValue)
+    doc.text(`${data.totalDistance} km`, c1X + 128, tripRow1Y)
+
+    doc.setFont(fontName, 'normal')
+    doc.setFontSize(6.8)
+    doc.setTextColor(148, 163, 184)
+    doc.text(`(From: ${data.fromKm} • To: ${data.toKm})`, c1X + 143, tripRow1Y)
+
+    // Subtle divider line
+    doc.setDrawColor(...colorLightDivider)
+    doc.setLineWidth(0.2)
+    doc.line(c1X + 4, tripRow1Y + 2, c1X + fullW - 4, tripRow1Y + 2)
+
+    // Trip Type Radio Options
+    const tripRow2Y = sec2Y + 20.5
+    doc.setFont(fontName, 'normal')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...colorLabel)
+    doc.text('Trip Type :', c1X + 4, tripRow2Y)
+
     const tripTypes = ['Group Tour', 'Pilgrimage Trip', 'Family Trip', 'Corporate Trip', 'Other']
-    let cbX = 110
-    doc.setFont(fontName, 'normal')
-    doc.text('Trip Type :', 95, tripRow2Y)
-
+    let cbX = c1X + 26
     tripTypes.forEach(t => {
       const isChecked = data.tripType === t
-      doc.setDrawColor(...colorNavy)
-      doc.setLineWidth(0.25)
-      doc.setFillColor(isChecked ? 218 : 255, isChecked ? 228 : 255, isChecked ? 239 : 255)
-      doc.rect(cbX, tripRow2Y - 2.5, 2.8, 2.8, isChecked ? 'FD' : 'S')
+      doc.setDrawColor(isChecked ? 37 : 148, isChecked ? 99 : 163, isChecked ? 235 : 184)
+      doc.setLineWidth(0.3)
+      doc.setFillColor(255, 255, 255)
+      doc.circle(cbX + 1.2, tripRow2Y - 0.8, 1.4, 'FD')
       if (isChecked) {
-        doc.setDrawColor(...colorNavy)
-        doc.setLineWidth(0.4)
-        doc.line(cbX + 0.6, tripRow2Y - 1.1, cbX + 1.1, tripRow2Y - 0.4)
-        doc.line(cbX + 1.1, tripRow2Y - 0.4, cbX + 2.3, tripRow2Y - 2.1)
+        doc.setFillColor(37, 99, 235) // Blue-600 radio center
+        doc.circle(cbX + 1.2, tripRow2Y - 0.8, 0.7, 'F')
       }
       doc.setFont(fontName, isChecked ? 'bold' : 'normal')
-      doc.setFontSize(6.5)
-      doc.setTextColor(...colorDarkText)
-      doc.text(t, cbX + 3.8, tripRow2Y - 0.6)
-      cbX += doc.getTextWidth(t) + 6
+      doc.setFontSize(6.8)
+      doc.setTextColor(isChecked ? colorValue[0] : colorLabel[0], isChecked ? colorValue[1] : colorLabel[1], isChecked ? colorValue[2] : colorLabel[2])
+      doc.text(t, cbX + 3.8, tripRow2Y - 0.3)
+      cbX += doc.getTextWidth(t) + 7
     })
 
     // ─────────────────────────────────────────────────────────────
     // 5. SECTION 3: VEHICLE DETAILS & DRIVER DETAILS (Two Cards)
     // ─────────────────────────────────────────────────────────────
-    const sec3Y = 148
-    const sec3H = 30
+    const sec3Y = sec2Y + 29
+    const sec3H = 31
 
-    // ── VEHICLE DETAILS ──
+    // ── LEFT: VEHICLE DETAILS ──
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.3)
     doc.setFillColor(255, 255, 255)
-    doc.roundedRect(margin, sec3Y, cardW, sec3H, 2, 2, 'FD')
-    drawCardHeader(margin, sec3Y, cardW, 'VEHICLE DETAILS')
+    doc.roundedRect(c1X, sec3Y, cardW, sec3H, 2.5, 2.5, 'FD')
+    drawCardHeader(c1X, sec3Y, cardW, 'VEHICLE DETAILS', 'car')
 
     // Vehicle No.
-    let vehRowY = sec3Y + 13
+    let vehRowY = sec3Y + 13.5
     doc.setFont(fontName, 'normal')
     doc.setFontSize(7.5)
-    doc.setTextColor(...colorDarkText)
-    doc.text('Vehicle No.', margin + 4, vehRowY)
-    doc.text(':', margin + 26, vehRowY)
+    doc.setTextColor(...colorLabel)
+    doc.text('Vehicle No. :', c1X + 4, vehRowY)
     doc.setFont(fontName, 'bold')
-    doc.text(String(data.vehicleNo || ''), margin + 29, vehRowY)
-    doc.line(margin + 29, vehRowY + 1, margin + cardW - 3, vehRowY + 1)
+    doc.setTextColor(...colorValue)
+    doc.text(String(data.vehicleNo || ''), c1X + cardW - 4, vehRowY, { align: 'right' })
+    doc.setDrawColor(...colorLightDivider)
+    doc.line(c1X + 4, vehRowY + 1.8, c1X + cardW - 4, vehRowY + 1.8)
 
-    // Vehicle Type Checkboxes (9+1, 12+1, 17+1, Other)
-    vehRowY += 6
+    // Vehicle Type (Pill Badges matching website preview)
+    vehRowY += 6.5
     doc.setFont(fontName, 'normal')
-    doc.text('Vehicle Type', margin + 4, vehRowY)
-    doc.text(':', margin + 26, vehRowY)
+    doc.setTextColor(...colorLabel)
+    doc.text('Vehicle Type :', c1X + 4, vehRowY)
 
     const vTypes = ['9+1', '12+1', '17+1', 'Other']
-    let vCbX = margin + 29
+    let vCbX = c1X + 27
     vTypes.forEach(vt => {
       const isSel = data.vehicleType === vt
-      doc.setDrawColor(...colorNavy)
-      doc.setLineWidth(0.25)
-      doc.setFillColor(isSel ? 218 : 255, isSel ? 228 : 255, isSel ? 239 : 255)
-      doc.rect(vCbX, vehRowY - 2.5, 2.8, 2.8, isSel ? 'FD' : 'S')
+      const pillWidth = doc.getTextWidth(vt) + 3.5
       if (isSel) {
-        doc.setDrawColor(...colorNavy)
-        doc.setLineWidth(0.4)
-        doc.line(vCbX + 0.6, vehRowY - 1.1, vCbX + 1.1, vehRowY - 0.4)
-        doc.line(vCbX + 1.1, vehRowY - 0.4, vCbX + 2.3, vehRowY - 2.1)
+        doc.setFillColor(219, 234, 254) // bg-blue-100
+        doc.roundedRect(vCbX - 0.5, vehRowY - 2.8, pillWidth, 4.0, 1.0, 1.0, 'F')
+        doc.setFont(fontName, 'bold')
+        doc.setFontSize(6.8)
+        doc.setTextColor(30, 64, 175) // text-blue-800
+      } else {
+        doc.setFont(fontName, 'normal')
+        doc.setFontSize(6.8)
+        doc.setTextColor(...colorLabel)
       }
-      doc.setFont(fontName, isSel ? 'bold' : 'normal')
-      doc.setFontSize(6.5)
-      doc.setTextColor(...colorDarkText)
-      doc.text(vt, vCbX + 3.8, vehRowY - 0.6)
-      vCbX += doc.getTextWidth(vt) + 6
+      doc.text(vt, vCbX + 1.2, vehRowY - 0.2)
+      vCbX += pillWidth + 3.5
     })
+    doc.setDrawColor(...colorLightDivider)
+    doc.line(c1X + 4, vehRowY + 1.8, c1X + cardW - 4, vehRowY + 1.8)
 
     // Total Distance
-    vehRowY += 6
+    vehRowY += 6.5
     doc.setFont(fontName, 'normal')
     doc.setFontSize(7.5)
-    doc.text('Total Distance', margin + 4, vehRowY)
-    doc.text(':', margin + 26, vehRowY)
+    doc.setTextColor(...colorLabel)
+    doc.text('Total Distance :', c1X + 4, vehRowY)
     doc.setFont(fontName, 'bold')
-    doc.text(`${data.vehicleDistance} km`, margin + 29, vehRowY)
-    doc.line(margin + 29, vehRowY + 1, margin + cardW - 3, vehRowY + 1)
+    doc.setTextColor(...colorValue)
+    doc.text(`${data.vehicleDistance} km`, c1X + cardW - 4, vehRowY, { align: 'right' })
 
-    // ── DRIVER DETAILS ──
+    // ── RIGHT: DRIVER DETAILS ──
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.3)
     doc.setFillColor(255, 255, 255)
-    doc.roundedRect(rightCardX, sec3Y, cardW, sec3H, 2, 2, 'FD')
-    drawCardHeader(rightCardX, sec3Y, cardW, 'DRIVER DETAILS')
+    doc.roundedRect(c2X, sec3Y, cardW, sec3H, 2.5, 2.5, 'FD')
+    drawCardHeader(c2X, sec3Y, cardW, 'DRIVER DETAILS', 'user')
 
-    const driverRows = [
-      { label: 'Driver Name', val: String(data.driverName || '') },
-      { label: 'Mobile Number', val: String(data.driverMobile || '') },
-      { label: 'Duty Start', val: String(data.dutyStart || '') },
-    ]
-
-    let drvY = sec3Y + 13
-    driverRows.forEach(dr => {
-      doc.setFont(fontName, 'normal')
-      doc.setFontSize(7.5)
-      doc.setTextColor(...colorDarkText)
-      doc.text(dr.label, rightCardX + 4, drvY)
-      doc.text(':', rightCardX + 28, drvY)
-      doc.setFont(fontName, 'bold')
-      doc.text(dr.val, rightCardX + 31, drvY)
-      doc.line(rightCardX + 31, drvY + 1, rightCardX + cardW - 3, drvY + 1)
-      drvY += 6
-    })
-
-    // Duty End on same row
+    let drvY = sec3Y + 13.5
     doc.setFont(fontName, 'normal')
-    doc.text('Duty End :', rightCardX + 50, sec3Y + 25)
+    doc.setFontSize(7.5)
+    doc.setTextColor(...colorLabel)
+    doc.text('Driver Name :', c2X + 4, drvY)
     doc.setFont(fontName, 'bold')
-    doc.text(String(data.dutyEnd || '-'), rightCardX + 66, sec3Y + 25)
+    doc.setTextColor(...colorValue)
+    doc.text(String(data.driverName || ''), c2X + cardW - 4, drvY, { align: 'right' })
+    doc.setDrawColor(...colorLightDivider)
+    doc.line(c2X + 4, drvY + 1.8, c2X + cardW - 4, drvY + 1.8)
+
+    drvY += 6.5
+    doc.setFont(fontName, 'normal')
+    doc.setTextColor(...colorLabel)
+    doc.text('Mobile Number :', c2X + 4, drvY)
+    doc.setFont(fontName, 'bold')
+    doc.setTextColor(...colorValue)
+    doc.text(String(data.driverMobile || ''), c2X + cardW - 4, drvY, { align: 'right' })
+    doc.setDrawColor(...colorLightDivider)
+    doc.line(c2X + 4, drvY + 1.8, c2X + cardW - 4, drvY + 1.8)
+
+    drvY += 6.5
+    doc.setFont(fontName, 'normal')
+    doc.setTextColor(...colorLabel)
+    doc.text('Duty Start :', c2X + 4, drvY)
+    doc.setFont(fontName, 'bold')
+    doc.setTextColor(...colorValue)
+    doc.text(String(data.dutyStart || ''), c2X + 23, drvY)
+
+    doc.setFont(fontName, 'normal')
+    doc.setTextColor(...colorLabel)
+    doc.text('Duty End :', c2X + 48, drvY)
+    doc.setFont(fontName, 'bold')
+    doc.setTextColor(...colorValue)
+    doc.text(String(data.dutyEnd || '-'), c2X + cardW - 4, drvY, { align: 'right' })
 
     // ─────────────────────────────────────────────────────────────
-    // 6. SECTION 4: REMARKS / TRIP DETAILS (Full width lines)
+    // 6. SECTION 4: REMARKS / TRIP DETAILS (Full width card)
     // ─────────────────────────────────────────────────────────────
-    const sec4Y = 184
-    const sec4H = 36
+    const sec4Y = sec3Y + 34
+    const sec4H = 26
 
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.3)
     doc.setFillColor(255, 255, 255)
-    doc.roundedRect(margin, sec4Y, contentWidth, sec4H, 2, 2, 'FD')
-    drawCardHeader(margin, sec4Y, contentWidth, 'REMARKS / TRIP DETAILS')
+    doc.roundedRect(c1X, sec4Y, fullW, sec4H, 2.5, 2.5, 'FD')
+    drawCardHeader(c1X, sec4Y, fullW, 'REMARKS / TRIP DETAILS', 'file')
 
-    // 4 ruled lines
-    const lineStartX = margin + 5
-    const lineEndX = margin + contentWidth - 5
-    let remarkLineY = sec4Y + 14
-
-    // Print remarks on first line if available
+    const remarkText = data.remarks || 'Payment recorded with thanks.'
     doc.setFont(fontName, 'bold')
     doc.setFontSize(7.5)
-    doc.setTextColor(...colorDarkText)
-    if (data.remarks) {
-      doc.text(data.remarks, lineStartX, remarkLineY - 0.8)
-    }
+    doc.setTextColor(30, 41, 59)
+    doc.text(remarkText, c1X + 5, sec4Y + 13.5)
 
-    for (let i = 0; i < 4; i++) {
-      doc.setDrawColor(...colorLine)
-      doc.setLineWidth(0.15)
-      doc.line(lineStartX, remarkLineY, lineEndX, remarkLineY)
-      remarkLineY += 5.5
-    }
+    doc.setDrawColor(...colorLightDivider)
+    doc.setLineWidth(0.25)
+    doc.line(c1X + 5, sec4Y + 15.5, c1X + fullW - 5, sec4Y + 15.5)
+    doc.line(c1X + 5, sec4Y + 20.5, c1X + fullW - 5, sec4Y + 20.5)
 
     // ─────────────────────────────────────────────────────────────
     // 7. SECTION 5: SIGNATURES & TERMS & CONDITIONS
     // ─────────────────────────────────────────────────────────────
-    const sec5Y = 226
-    const termsH = 40
+    const sec5Y = sec4Y + 29
+    const termsH = 38
 
     // Left Signatures
-    const sigLineW = 40
-    const sigY = sec5Y + 28
+    const sigLineW = 34
+    const sigY = sec5Y + 26
 
     // Received By line
-    doc.setDrawColor(...colorDarkText)
-    doc.setLineWidth(0.3)
-    doc.line(margin + 5, sigY, margin + 5 + sigLineW, sigY)
+    doc.setDrawColor(...colorValue)
+    doc.setLineWidth(0.35)
+    doc.line(c1X + 4, sigY, c1X + 4 + sigLineW, sigY)
     doc.setFont(fontName, 'bold')
     doc.setFontSize(8)
-    doc.setTextColor(...colorDarkText)
-    doc.text('Received By', margin + 5 + sigLineW / 2, sigY + 5, { align: 'center' })
+    doc.setTextColor(...colorValue)
+    doc.text('Received By', c1X + 4 + sigLineW / 2, sigY + 5, { align: 'center' })
 
     // Authorised Signatory line
-    const authSigX = margin + sigLineW + 14
+    const authSigX = c1X + cardW - sigLineW - 4
     doc.line(authSigX, sigY, authSigX + sigLineW, sigY)
     doc.text('Authorised Signatory', authSigX + sigLineW / 2, sigY + 5, { align: 'center' })
 
     // Right Terms & Conditions Card
-    const termsX = 110
-    const termsW = 88
-
-    doc.setFillColor(...colorSubBoxFill)
+    doc.setFillColor(...colorSubBox)
     doc.setDrawColor(...colorBorder)
     doc.setLineWidth(0.2)
-    doc.roundedRect(termsX, sec5Y, termsW, termsH, 2, 2, 'FD')
+    doc.roundedRect(c2X, sec5Y, cardW, termsH, 2.5, 2.5, 'FD')
 
-    // Vector Info Badge (Blue Circle with crisp white 'i')
-    doc.setFillColor(13, 98, 254) // #0D62FE
-    doc.circle(termsX + 6, sec5Y + 5.5, 2, 'F')
+    // AlertCircle Vector Icon (Blue circle with white exclamation)
+    doc.setFillColor(37, 99, 235) // blue-600
+    doc.circle(c2X + 5.5, sec5Y + 4.6, 1.8, 'F')
     doc.setFont(fontName, 'bold')
     doc.setFontSize(6.5)
     doc.setTextColor(255, 255, 255)
-    doc.text('i', termsX + 6, sec5Y + 6.2, { align: 'center' })
+    doc.text('!', c2X + 5.5, sec5Y + 5.2, { align: 'center' })
 
     doc.setFont(fontName, 'bold')
-    doc.setFontSize(8)
+    doc.setFontSize(7.5)
     doc.setTextColor(...colorNavy)
-    doc.text('Terms & Conditions', termsX + 10.5, sec5Y + 6.5)
+    doc.text('Terms & Conditions', c2X + 9.5, sec5Y + 5.2)
 
     const terms = [
       'Passenger must carry a valid ID proof if required.',
       'RK Travel Hub is not responsible for loss of personal belongings.',
-      'Trip timings may vary due to traffic, weather or unavoidable conditions.',
+      'Trip timings may vary due to traffic or weather conditions.',
       'Any damages caused to the vehicle will be charged to the customer.',
       'Payment once made is non-refundable.',
     ]
 
-    let termY = sec5Y + 12
+    let termY = sec5Y + 10.5
     doc.setFont(fontName, 'normal')
-    doc.setFontSize(6)
-    doc.setTextColor(...colorMutedText)
+    doc.setFontSize(5.8)
+    doc.setTextColor(71, 85, 105)
 
     terms.forEach(t => {
-      doc.setFillColor(...colorMutedText)
-      doc.circle(termsX + 6, termY - 0.7, 0.45, 'F')
-      doc.text(t, termsX + 8.5, termY)
-      termY += 5.2
+      doc.setFillColor(71, 85, 105)
+      doc.circle(c2X + 5.5, termY - 0.7, 0.45, 'F')
+      doc.text(t, c2X + 8, termY)
+      termY += 4.8
     })
 
     // ─────────────────────────────────────────────────────────────
-    // 8. SECTION 6: BOTTOM FOOTER BANNER (Anchored to bottom of page)
+    // 8. SECTION 6: BOTTOM NAVY FOOTER BANNER
     // ─────────────────────────────────────────────────────────────
-    const footerH = 20
-    const footerY = pageHeight - footerH
+    const footerH = 18
+    const footerY = outerY + outerH - footerH
 
-    // Solid dark navy footer polygon flush with page bottom
+    // Rounded bottom container matching outer card
     doc.setFillColor(...colorNavy)
-    doc.rect(0, footerY, pageWidth, footerH, 'F')
-
-    // Decorative corner accent triangle matching brand theme
-    doc.setFillColor(100, 116, 139)
-    doc.triangle(pageWidth - 18, pageHeight, pageWidth, footerY, pageWidth, pageHeight, 'F')
+    doc.roundedRect(outerX, footerY, outerW, footerH, 3.5, 3.5, 'F')
+    doc.rect(outerX, footerY, outerW, 4, 'F') // flat top corners
 
     // Left Vector Phone Handset Icon (Sky Blue #38BDF8)
-    const phoneX = margin + 3
-    const phoneY = footerY + 5.5
-    doc.setDrawColor(56, 189, 248)
-    doc.setFillColor(56, 189, 248)
+    const phoneX = outerX + 7
+    const phoneY = footerY + 4.5
+    doc.setDrawColor(...colorSky)
+    doc.setFillColor(...colorSky)
     doc.setLineWidth(0.3)
     doc.roundedRect(phoneX, phoneY, 3.2, 6.2, 0.7, 0.7, 'S')
-    doc.line(phoneX + 1.0, phoneY + 0.9, phoneX + 2.2, phoneY + 0.9) // speaker
-    doc.circle(phoneX + 1.6, phoneY + 5.2, 0.35, 'F') // button
-    doc.roundedRect(phoneX + 0.5, phoneY + 1.4, 2.2, 3.2, 0.2, 0.2, 'S') // screen
+    doc.line(phoneX + 1.0, phoneY + 0.9, phoneX + 2.2, phoneY + 0.9)
+    doc.circle(phoneX + 1.6, phoneY + 5.2, 0.35, 'F')
+    doc.roundedRect(phoneX + 0.5, phoneY + 1.4, 2.2, 3.2, 0.2, 0.2, 'S')
 
     // Phone Contacts
-    doc.setTextColor(255, 255, 255)
+    doc.setTextColor(226, 232, 240)
     doc.setFont(fontName, 'bold')
     doc.setFontSize(7.5)
-    doc.text('98 09 20 70 80   |   89 43 20 70 80', margin + 8.5, footerY + 8)
-    doc.text('98 95 20 70 85   |   85 89 87 26 89', margin + 8.5, footerY + 14)
+    doc.text('98 09 20 70 80   •   89 43 20 70 80', outerX + 13, footerY + 7.5)
+    doc.text('98 95 20 70 85   •   85 89 87 26 89', outerX + 13, footerY + 13)
 
     // Right Vector Map Pin Icon (Sky Blue #38BDF8)
-    const pinX = pageWidth - margin - 35
-    const pinY = footerY + 5.8
-    doc.setFillColor(56, 189, 248)
-    doc.setDrawColor(56, 189, 248)
+    const pinX = outerX + outerW - 38
+    const pinY = footerY + 4.8
+    doc.setFillColor(...colorSky)
+    doc.setDrawColor(...colorSky)
     doc.circle(pinX, pinY + 1.5, 1.5, 'F')
     doc.triangle(pinX - 1.3, pinY + 1.8, pinX + 1.3, pinY + 1.8, pinX, pinY + 4.2, 'F')
     doc.setFillColor(...colorNavy)
@@ -750,13 +821,13 @@ export async function downloadInvoicePDF(
     // Right Location & Brand Name
     doc.setTextColor(255, 255, 255)
     doc.setFont(fontName, 'bold')
-    doc.setFontSize(9)
-    doc.text('RK TRAVEL HUB', pinX + 3.5, footerY + 8.2)
+    doc.setFontSize(8.5)
+    doc.text('RK TRAVEL HUB', pinX + 3.8, footerY + 7.2)
 
     doc.setFont(fontName, 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(200, 220, 245)
-    doc.text("Traveller's Hub", pinX + 3.5, footerY + 13.8)
+    doc.setFontSize(7)
+    doc.setTextColor(203, 213, 225)
+    doc.text("Traveller's Hub", pinX + 3.8, footerY + 12.5)
 
     // Save PDF
     const saveName = filename || `RK_Travel_Hub_Invoice_${data.receiptNo}.pdf`
