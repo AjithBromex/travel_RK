@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search,
   Plus,
@@ -9,12 +9,10 @@ import {
   X,
   Loader2,
   AlertCircle,
-  FileText,
   Download,
   ShieldCheck,
-  CheckCircle2,
+  ChevronLeft,
   ChevronRight,
-  Filter,
 } from 'lucide-react';
 import type { FieldConfig } from '@/lib/admin/modules';
 import { inr } from '@/lib/admin/modules';
@@ -51,7 +49,7 @@ function Cell({ f, v }: { f: FieldConfig; v: unknown }) {
     const badgeClass =
       BADGE_STYLES[v] || 'bg-slate-100 text-slate-700 border border-slate-200';
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeClass}`}>
+      <span className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-bold ${badgeClass}`}>
         {v}
       </span>
     );
@@ -72,6 +70,8 @@ interface CrudProps {
   initial: Record<string, unknown>[];
 }
 
+const PAGE_SIZE = 25;
+
 export default function Crud({
   slug,
   title,
@@ -83,13 +83,15 @@ export default function Crud({
   const [rows, setRows] = useState<Record<string, unknown>[]>(initial);
   const [q, setQ] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
+  const [page, setPage] = useState(1);
   const [form, setForm] = useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [err, setErr] = useState('');
+  const isFetchingRef = useRef(false);
 
   const loadLiveRows = useCallback(async () => {
-    setSyncing(true);
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     try {
       const live = await fetchAdminRows(slug);
       if (live && live.length > 0) {
@@ -98,40 +100,52 @@ export default function Crud({
         setRows(initial);
       }
     } catch (e) {
-      console.warn(`[Crud] Error loading live ${slug}:`, e);
+      console.warn(`[Crud] Live row fetch notice for ${slug}:`, e);
     } finally {
-      setSyncing(false);
+      isFetchingRef.current = false;
     }
   }, [slug, initial, rows.length]);
 
   useEffect(() => {
-    loadLiveRows();
+    // Only load if initial was empty
+    if (!initial || initial.length === 0) {
+      loadLiveRows();
+    }
 
+    let debounceTimer: NodeJS.Timeout;
     const unsub = subscribeDataChanged((entity) => {
       if (entity === slug || entity === 'all') {
-        loadLiveRows();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          loadLiveRows();
+        }, 300);
       }
     });
 
-    return () => unsub();
-  }, [slug, loadLiveRows]);
+    return () => {
+      clearTimeout(debounceTimer);
+      unsub();
+    };
+  }, [slug, initial, loadLiveRows]);
 
-  const cols = columns.map((k) => fields.find((f) => f.key === k)!).filter(Boolean);
+  const cols = useMemo(
+    () => columns.map((k) => fields.find((f) => f.key === k)!).filter(Boolean),
+    [columns, fields]
+  );
 
-  // Status options for filter pills if available
-  const statusField = fields.find((f) => f.key === 'status');
+  const statusField = useMemo(() => fields.find((f) => f.key === 'status'), [fields]);
   const statusOptions = statusField?.options || [];
 
   const shown = useMemo(() => {
     return rows.filter((r) => {
-      // 1. Text search
       if (q.trim()) {
         const query = q.toLowerCase();
-        const matches = JSON.stringify(r).toLowerCase().includes(query);
+        const matches = Object.values(r).some((val) =>
+          String(val ?? '').toLowerCase().includes(query)
+        );
         if (!matches) return false;
       }
 
-      // 2. Status tab filter
       if (activeTab !== 'all' && statusField) {
         if (String(r.status || '').toLowerCase() !== activeTab.toLowerCase()) {
           return false;
@@ -141,6 +155,18 @@ export default function Crud({
       return true;
     });
   }, [rows, q, activeTab, statusField]);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [q, activeTab]);
+
+  // Pagination slicing for high-performance DOM
+  const totalPages = Math.ceil(shown.length / PAGE_SIZE) || 1;
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return shown.slice(start, start + PAGE_SIZE);
+  }, [shown, page]);
 
   const blank = () =>
     Object.fromEntries(
@@ -204,7 +230,6 @@ export default function Crud({
     const targetId = String(r.id || (r as any).uid || '');
     if (!targetId) return;
 
-    // Optimistically remove from state and mark as deleted locally
     markAsDeleted(slug, targetId);
     setRows((prev) => prev.filter((x) => String(x.id) !== targetId && String((x as any).uid) !== targetId));
     notifyDataChanged(slug as any);
@@ -248,17 +273,18 @@ export default function Crud({
   };
 
   const moneyCol = fields.find((f) => f.type === 'money');
-  const total = moneyCol
-    ? shown.reduce((s, r) => s + Number(r[moneyCol.key] || 0), 0)
-    : null;
+  const total = useMemo(() => {
+    return moneyCol
+      ? shown.reduce((s, r) => s + Number(r[moneyCol.key] || 0), 0)
+      : null;
+  }, [shown, moneyCol]);
 
   return (
-    <div className="font-sans max-w-[1520px] mx-auto pb-12 space-y-6">
+    <div className="font-sans w-full max-w-[1520px] mx-auto pb-8 sm:pb-12 space-y-4 sm:space-y-6">
       {/* ─────────────────────────────────────────────────────────────
-          1. SCENIC GRADIENT HERO BANNER (PURE CSS, NO IMAGES)
+          1. SCENIC GRADIENT HERO BANNER (RESPONSIVE)
           ───────────────────────────────────────────────────────────── */}
-      <div className="relative w-full rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-lg p-5 sm:p-7 lg:p-8 bg-gradient-to-br from-[#070D1E] via-[#0E1A38] to-[#122856] text-white flex flex-col justify-between gap-6">
-        {/* Subtle Ambient Mesh Pattern */}
+      <div className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-md p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-[#070D1E] via-[#0E1A38] to-[#122856] text-white flex flex-col justify-between gap-4 sm:gap-6">
         <div
           className="absolute inset-0 pointer-events-none opacity-20"
           style={{
@@ -268,30 +294,30 @@ export default function Crud({
         />
 
         {/* Top Header Actions */}
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-400/30 text-blue-300 text-[11px] font-bold tracking-wide uppercase mb-2 backdrop-blur-md">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+            <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-[10px] sm:text-[11px] font-bold tracking-wide uppercase mb-1.5 sm:mb-2">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
               <span>Admin Control Master</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
-              {title}{' '}Directory &amp; Ledger
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">
+              {title} Directory &amp; Ledger
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 font-medium max-w-xl">
-              Inspect, manage, filter, and adjust real-time {singular} records across the agency.
+              Inspect, manage, filter, and adjust real-time {singular.toLowerCase()} records.
             </p>
           </div>
 
-          {/* Action Buttons Matching User Portal UI */}
-          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 hover:bg-white text-slate-800 backdrop-blur-md border border-white/70 shadow-sm font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-white/95 hover:bg-white text-slate-800 border border-white/70 shadow-2xs font-bold text-xs transition-colors shrink-0"
               title="Export CSV"
             >
               <Download className="w-3.5 h-3.5 text-slate-600" />
-              <span>Excel</span>
+              <span>Export CSV</span>
             </button>
 
             <button
@@ -300,7 +326,7 @@ export default function Crud({
                 setErr('');
                 setForm(blank());
               }}
-              className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-[#0D62FE] hover:bg-[#0952DC] text-white font-bold text-xs shadow-md shadow-blue-500/35 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full bg-[#0D62FE] hover:bg-[#0952DC] text-white font-bold text-xs shadow-xs transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.75]" />
               <span>Add {singular}</span>
@@ -312,21 +338,21 @@ export default function Crud({
       {/* ─────────────────────────────────────────────────────────────
           2. SEARCH & STATUS FILTER TABS CARD
           ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-white border border-slate-200/90 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Search input with rounded pill styling */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 max-w-md w-full">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder={`Search ${title.toLowerCase()} by customer, route, vehicle…`}
+            placeholder={`Search ${title.toLowerCase()}…`}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="w-full h-10 pl-10 pr-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+            className="w-full h-9 sm:h-10 pl-9 sm:pl-10 pr-8 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-colors"
           />
           {q && (
             <button
               onClick={() => setQ('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -334,14 +360,14 @@ export default function Crud({
         </div>
 
         {/* Status Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 w-full md:w-auto -mx-1 px-1 sm:mx-0 sm:px-0">
           <button
             type="button"
             onClick={() => setActiveTab('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 cursor-pointer ${
               activeTab === 'all'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80'
+                ? 'bg-slate-900 text-white shadow-2xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             All ({rows.length})
@@ -355,10 +381,10 @@ export default function Crud({
                 key={opt}
                 type="button"
                 onClick={() => setActiveTab(opt)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 cursor-pointer ${
                   active
-                    ? 'bg-[#0D62FE] text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80'
+                    ? 'bg-[#0D62FE] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
                 {opt} ({count})
@@ -369,43 +395,43 @@ export default function Crud({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          3. MAIN DATA TABLE CARD
+          3. MAIN DATA TABLE CARD WITH RESPONSIVE OVERFLOW & PAGINATION
           ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-[24px] shadow-[0_4px_20px_rgba(15,23,42,0.04)] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left border-collapse">
+      <div className="bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl shadow-sm overflow-hidden flex flex-col">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[600px] text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200/80">
+              <tr className="bg-slate-50/90 border-b border-slate-200/80">
                 {cols.map((f) => (
                   <th
                     key={f.key}
-                    className={`py-3.5 px-4 sm:px-5 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 ${
+                    className={`py-3 px-3.5 sm:px-5 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-500 ${
                       f.type === 'money' ? 'text-right' : ''
                     }`}
                   >
                     {f.label}
                   </th>
                 ))}
-                <th className="py-3.5 px-4 sm:px-5 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 text-right">
+                <th className="py-3 px-3.5 sm:px-5 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-500 text-right">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
-              {shown.map((r) => (
-                <tr key={String(r.id)} className="hover:bg-blue-50/40 transition-colors">
+              {paginatedRows.map((r) => (
+                <tr key={String(r.id)} className="hover:bg-blue-50/30 transition-colors">
                   {cols.map((f) => (
                     <td
                       key={f.key}
-                      className={`py-3.5 px-4 sm:px-5 whitespace-nowrap ${
+                      className={`py-3 px-3.5 sm:px-5 whitespace-nowrap ${
                         f.type === 'money' ? 'text-right' : ''
                       }`}
                     >
                       <Cell f={f} v={r[f.key]} />
                     </td>
                   ))}
-                  <td className="py-3.5 px-4 sm:px-5 text-right whitespace-nowrap">
-                    <div className="inline-flex items-center gap-1.5">
+                  <td className="py-3 px-3.5 sm:px-5 text-right whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1">
                       {slug !== 'users' && (
                         <button
                           type="button"
@@ -413,21 +439,21 @@ export default function Crud({
                             setErr('');
                             setForm({ ...r });
                           }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                           title="Edit record"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
-                          <span>Edit</span>
+                          <span className="hidden sm:inline">Edit</span>
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => remove(r)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                         title="Delete record"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete</span>
+                        <span className="hidden sm:inline">Delete</span>
                       </button>
                     </div>
                   </td>
@@ -438,7 +464,7 @@ export default function Crud({
                 <tr>
                   <td
                     colSpan={cols.length + 1}
-                    className="py-16 text-center text-slate-400 text-xs sm:text-sm font-medium"
+                    className="py-12 sm:py-16 text-center text-slate-400 text-xs sm:text-sm font-medium"
                   >
                     No {title.toLowerCase()} found matching your filters.
                   </td>
@@ -448,11 +474,11 @@ export default function Crud({
 
             {total !== null && shown.length > 0 && (
               <tfoot>
-                <tr className="bg-slate-50/80 border-t border-slate-200/80 font-extrabold text-slate-900 text-xs sm:text-sm">
-                  <td colSpan={cols.length - 1} className="py-3.5 px-4 sm:px-5 text-right text-slate-600">
+                <tr className="bg-slate-50/90 border-t border-slate-200/80 font-extrabold text-slate-900 text-xs sm:text-sm">
+                  <td colSpan={cols.length - 1} className="py-3 px-3.5 sm:px-5 text-right text-slate-600">
                     Total:
                   </td>
-                  <td className="py-3.5 px-4 sm:px-5 text-right font-black text-slate-900">
+                  <td className="py-3 px-3.5 sm:px-5 text-right font-black text-slate-900">
                     {inr(total)}
                   </td>
                   <td />
@@ -461,48 +487,85 @@ export default function Crud({
             )}
           </table>
         </div>
+
+        {/* Pagination & Row count footer */}
+        {shown.length > 0 && (
+          <div className="p-3 sm:p-4 bg-slate-50/60 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-slate-600">
+            <div>
+              Showing <span className="font-bold text-slate-900">{(page - 1) * PAGE_SIZE + 1}</span> to{' '}
+              <span className="font-bold text-slate-900">
+                {Math.min(page * PAGE_SIZE, shown.length)}
+              </span>{' '}
+              of <span className="font-bold text-slate-900">{shown.length}</span> records
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  disabled={page === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="px-2 font-bold text-slate-800">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={page === totalPages}
+                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          4. CREATE / EDIT MODAL DIALOG
+          4. CREATE / EDIT MODAL DIALOG (RESPONSIVE TOUCH-FRIENDLY)
           ───────────────────────────────────────────────────────────── */}
       {form && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-7 relative max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-                  <ShieldCheck className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/50 backdrop-blur-xs">
+          <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-4 sm:p-6 relative max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900">
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
                     {form.id ? `Edit ${singular}` : `New ${singular}`}
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    {form.id ? 'Modify operational details' : `Create a new verified ${singular} record`}
+                  <p className="text-[11px] sm:text-xs text-slate-500">
+                    {form.id ? 'Modify details' : `Create a verified ${singular} record`}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setForm(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {err && (
-              <div className="mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-rose-800">
+              <div className="mt-3 p-2.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-xs font-semibold text-rose-800">
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <p>{err}</p>
               </div>
             )}
 
-            <form onSubmit={save} className="mt-5 space-y-4">
+            <form onSubmit={save} className="mt-4 space-y-3 sm:space-y-4">
               {fields.map((f) => (
                 <div key={f.key}>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     {f.label} {f.required && <span className="text-rose-500">*</span>}
                   </label>
 
@@ -510,7 +573,7 @@ export default function Crud({
                     <select
                       value={String(form[f.key] ?? f.options[0])}
                       onChange={(e) => set(f.key, e.target.value)}
-                      className="w-full h-11 px-3.5 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all cursor-pointer"
+                      className="w-full h-10 px-3 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-colors"
                     >
                       {f.options.map((opt) => (
                         <option key={opt} value={opt}>
@@ -524,7 +587,7 @@ export default function Crud({
                       value={String(form[f.key] ?? '')}
                       onChange={(e) => set(f.key, e.target.value)}
                       placeholder={`Enter ${f.label.toLowerCase()}…`}
-                      className="w-full p-3.5 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                      className="w-full p-3 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-colors"
                     />
                   ) : (
                     <input
@@ -533,17 +596,17 @@ export default function Crud({
                       onChange={(e) => set(f.key, e.target.value)}
                       required={f.required}
                       placeholder={`Enter ${f.label.toLowerCase()}…`}
-                      className="w-full h-11 px-3.5 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                      className="w-full h-10 px-3 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-colors"
                     />
                   )}
                 </div>
               ))}
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setForm(null)}
-                  className="px-4 py-2.5 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="px-3.5 py-2 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -551,11 +614,11 @@ export default function Crud({
                 <button
                   type="submit"
                   disabled={busy}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-[#0D62FE] hover:bg-[#0952DC] text-white text-xs font-bold shadow-md shadow-blue-500/35 transition-all cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full bg-[#0D62FE] hover:bg-[#0952DC] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {busy ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       <span>Saving…</span>
                     </>
                   ) : (

@@ -41,8 +41,15 @@ export default function AdminTopbar() {
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 10);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -71,15 +78,16 @@ export default function AdminTopbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 pt-3 sm:pt-4 pb-2 px-3 sm:px-6 lg:px-8 bg-transparent">
+      <header className="sticky top-0 z-40 pt-2 sm:pt-3.5 pb-2 px-2.5 sm:px-4 md:px-6 lg:px-8 bg-transparent">
         <div className="max-w-[1520px] mx-auto flex flex-col gap-2">
           {/* Main Floating Row */}
-          <div className="flex items-center justify-between gap-3 w-full">
+          <div className="flex items-center justify-between gap-2 sm:gap-3 w-full">
             {/* 1. LEFT: PILL BRAND CAPSULE (NO IMAGES, PURE SVG) */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
+                type="button"
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="xl:hidden p-2 rounded-full bg-white/95 border border-slate-200/90 hover:bg-slate-100 text-slate-700 cursor-pointer shadow-xs transition-colors"
+                className="xl:hidden p-2 rounded-full bg-white/95 border border-slate-200/90 hover:bg-slate-100 text-slate-700 cursor-pointer shadow-xs transition-colors shrink-0"
                 aria-label="Toggle navigation"
               >
                 {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -87,20 +95,20 @@ export default function AdminTopbar() {
 
               <Link
                 href="/admin"
-                className={`inline-flex items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border transition-all hover:scale-[1.01] active:scale-[0.99] select-none shrink-0 backdrop-blur-md ${
+                className={`inline-flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full border transition-all hover:scale-[1.01] active:scale-[0.99] select-none shrink-0 ${
                   scrolled
-                    ? 'bg-white/95 border-slate-300/90 shadow-[0_6px_20px_rgba(15,23,42,0.08)]'
-                    : 'bg-white/95 border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)]'
+                    ? 'bg-white/95 border-slate-300/90 shadow-[0_4px_16px_rgba(15,23,42,0.08)]'
+                    : 'bg-white/95 border-slate-200/90 shadow-[0_2px_10px_rgba(15,23,42,0.04)]'
                 }`}
               >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-sm shadow-blue-500/20">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-xs">
                   <ShieldCheck className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.3]" />
                 </div>
                 <div className="flex flex-col text-left leading-tight">
                   <span className="text-[11px] sm:text-xs font-black tracking-wider text-slate-900 uppercase">
                     RK TRAVEL HUB
                   </span>
-                  <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest">
+                  <span className="text-[8.5px] sm:text-[9px] font-bold text-blue-600 uppercase tracking-widest hidden xs:inline">
                     ADMIN GOVERNANCE
                   </span>
                 </div>
@@ -109,10 +117,10 @@ export default function AdminTopbar() {
 
             {/* 2. CENTER: PILL NAVIGATION BAR (DESKTOP) */}
             <nav
-              className={`hidden xl:inline-flex items-center p-1 2xl:p-1.5 rounded-full border backdrop-blur-md transition-all ${
+              className={`hidden xl:inline-flex items-center p-1 rounded-full border transition-all ${
                 scrolled
-                  ? 'bg-white/95 border-slate-300/90 shadow-[0_6px_20px_rgba(15,23,42,0.08)]'
-                  : 'bg-white/95 border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)]'
+                  ? 'bg-white/95 border-slate-300/90 shadow-[0_4px_16px_rgba(15,23,42,0.08)]'
+                  : 'bg-white/95 border-slate-200/90 shadow-[0_2px_10px_rgba(15,23,42,0.04)]'
               }`}
             >
               {navItems.map((item) => {
@@ -124,7 +132,7 @@ export default function AdminTopbar() {
                     href={item.href}
                     className={`inline-flex items-center gap-1.5 px-2.5 2xl:px-3.5 py-1 2xl:py-1.5 rounded-full text-[11px] 2xl:text-xs font-bold transition-all whitespace-nowrap ${
                       active
-                        ? 'bg-[#0D62FE] text-white shadow-sm shadow-blue-500/25'
+                        ? 'bg-[#0D62FE] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                     }`}
                   >
@@ -142,20 +150,20 @@ export default function AdminTopbar() {
                 <button
                   type="button"
                   onClick={() => setProfileOpen(!profileOpen)}
-                  className={`inline-flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-full border transition-all cursor-pointer backdrop-blur-md ${
+                  className={`inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-full border transition-all cursor-pointer ${
                     scrolled
-                      ? 'bg-white/95 border-slate-300/90 shadow-[0_6px_20px_rgba(15,23,42,0.08)]'
-                      : 'bg-white/95 border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)]'
+                      ? 'bg-white/95 border-slate-300/90 shadow-[0_4px_16px_rgba(15,23,42,0.08)]'
+                      : 'bg-white/95 border-slate-200/90 shadow-[0_2px_10px_rgba(15,23,42,0.04)]'
                   }`}
                 >
-                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black uppercase shadow-xs">
+                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black uppercase shadow-xs shrink-0">
                     AD
                   </div>
-                  <div className="hidden md:flex flex-col text-left leading-tight">
+                  <div className="hidden sm:flex flex-col text-left leading-tight">
                     <span className="text-xs font-bold text-slate-900">ADMIN</span>
                     <span className="text-[9px] font-semibold text-slate-500">Administrator</span>
                   </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 </button>
 
                 {profileOpen && (

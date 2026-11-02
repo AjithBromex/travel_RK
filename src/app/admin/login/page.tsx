@@ -87,42 +87,27 @@ export default function AdminLogin() {
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-x-hidden font-sans bg-[#050B17] selection:bg-blue-600 selection:text-white">
       {/* ─────────────────────────────────────────────────────────────
-          1. CINEMATIC PURE CSS AMBIENT ATMOSPHERE (NO RASTER IMAGES)
-          Multi-layer radial glows, glowing grids, and ambient light rings
+          1. CINEMATIC PURE CSS AMBIENT ATMOSPHERE (HARDWARE ACCELERATED)
           ───────────────────────────────────────────────────────────── */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Soft Radial Ambient Lighting */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-60">
         <div
-          className="absolute -top-[25%] -left-[10%] w-[65vw] h-[65vw] max-w-[850px] max-h-[850px] rounded-full blur-[140px] opacity-40"
+          className="absolute inset-0"
           style={{
-            background: 'radial-gradient(circle, rgba(37, 99, 235, 0.45) 0%, rgba(30, 64, 175, 0.2) 50%, transparent 70%)',
+            transform: 'translateZ(0)',
+            background: `
+              radial-gradient(circle 600px at 15% 20%, rgba(37, 99, 235, 0.25), transparent 70%),
+              radial-gradient(circle 500px at 85% 80%, rgba(99, 102, 241, 0.2), transparent 70%)
+            `,
           }}
         />
+        {/* Subtle Grid Layer */}
         <div
-          className="absolute -bottom-[20%] -right-[10%] w-[60vw] h-[60vw] max-w-[800px] max-h-[800px] rounded-full blur-[150px] opacity-35"
-          style={{
-            background: 'radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, rgba(79, 70, 229, 0.15) 50%, transparent 70%)',
-          }}
-        />
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vw] max-w-[650px] max-h-[650px] rounded-full blur-[160px] opacity-20"
-          style={{
-            background: 'radial-gradient(circle, rgba(14, 165, 233, 0.35) 0%, transparent 70%)',
-          }}
-        />
-
-        {/* Ambient SVG Grid Layer */}
-        <div
-          className="absolute inset-0 opacity-[0.035]"
+          className="absolute inset-0 opacity-[0.03]"
           style={{
             backgroundImage: `linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)`,
-            backgroundSize: '48px 48px',
+            backgroundSize: '40px 40px',
           }}
         />
-
-        {/* Floating Geometric Halo Rings */}
-        <div className="absolute right-[12%] top-[14%] w-96 h-96 rounded-full border border-blue-500/10 blur-[1px] pointer-events-none hidden lg:block" />
-        <div className="absolute right-[8%] top-[20%] w-72 h-72 rounded-full border border-indigo-500/15 blur-[1px] pointer-events-none hidden lg:block" />
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
