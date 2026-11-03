@@ -420,7 +420,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   const handleQuickTripPreset = () => {
     setForm((prev) => ({
       ...prev,
-      from: "kerala",
+      from: "Kerala",
       to: "Delhi",
       customerName: "Rahul",
       customerPhone: "9876543210",
@@ -1170,7 +1170,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Rahul Sharma"
+                    placeholder="e.g. Rahul"
                     autoCapitalize="words"
                     value={form.customerName}
                     onChange={(e) => setForm({ ...form, customerName: capitalizeWords(e.target.value) })}
@@ -1236,7 +1236,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Pune Central"
+                    placeholder="e.g. Kerala"
                     autoCapitalize="words"
                     value={form.from}
                     onChange={(e) => setForm({ ...form, from: capitalizeWords(e.target.value) })}
@@ -1251,7 +1251,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Mumbai Airport T2"
+                    placeholder="e.g. Delhi"
                     autoCapitalize="words"
                     value={form.to}
                     onChange={(e) => setForm({ ...form, to: capitalizeWords(e.target.value) })}
@@ -1321,7 +1321,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Rajesh Kumar"
+                    placeholder="e.g. Ramesh"
                     autoCapitalize="words"
                     value={form.driverName}
                     onChange={(e) => setForm({ ...form, driverName: capitalizeWords(e.target.value) })}
