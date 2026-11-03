@@ -29,6 +29,8 @@ import {
   ArrowLeftRight,
   FileText,
   Lock,
+  Car,
+  Clock,
 } from "lucide-react";
 import {
   exportToCSV,
@@ -827,8 +829,9 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         className="relative z-20 px-1 sm:px-2 -mt-10 sm:-mt-12 lg:-mt-14 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4"
       >
         {/* CARD 1: TOTAL TRIPS */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+        <div className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0">
+          {/* Subtle Wave Sparkline Curve at Bottom */}
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="waveBlueTrips" x1="0" y1="0" x2="0" y2="1">
@@ -841,33 +844,44 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#EAF2FD] text-[#1A68F8] flex items-center justify-center shrink-0">
-              <Bus className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#EAF2FD] text-[#1A68F8] flex items-center justify-center shrink-0">
+                <Bus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  TOTAL TRIPS
+                </span>
+                <span className="text-xl sm:text-2xl 2xl:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block truncate">
+                  {totalTripsCount}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  All dispatches
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                TOTAL TRIPS
-              </span>
-              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
-                {totalTripsCount}
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium block truncate mt-0.5">
-                All dispatches
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#EEF5FE] text-[#1A68F8] flex items-center justify-center">
+                <Car className="w-3 h-3 stroke-[2.2]" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-1 shrink-0 relative z-10">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700">
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#EEF5FE] text-[#1A68F8] items-center justify-center">
+              <Car className="w-3.5 h-3.5 stroke-[2.2]" />
+            </div>
+            <span className="text-[9px] sm:text-[10px] font-extrabold text-[#1A68F8] bg-[#EEF5FE] px-2 sm:px-3 py-0.5 rounded-full border border-blue-100/70 ml-auto sm:ml-0">
               Logged
             </span>
           </div>
         </div>
 
         {/* CARD 2: TODAY'S SCHEDULE */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+        <div className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0">
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="waveEmeraldTrips" x1="0" y1="0" x2="0" y2="1">
@@ -880,30 +894,41 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#ECFDF5] text-[#059669] flex items-center justify-center shrink-0">
-              <Calendar className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#ECFDF5] text-[#059669] flex items-center justify-center shrink-0">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  TODAY&apos;S SCHEDULE
+                </span>
+                <span className="text-xl sm:text-2xl 2xl:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block truncate">
+                  {todayTripsCount}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  Scheduled today
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                TODAY&apos;S SCHEDULE
-              </span>
-              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
-                {todayTripsCount}
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium block truncate mt-0.5">
-                Scheduled today
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#E6F8EF] text-[#059669] flex items-center justify-center">
+                <Clock className="w-3 h-3 stroke-[2.2]" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-1 shrink-0 relative z-10">
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#E6F8EF] text-[#059669] items-center justify-center">
+              <Clock className="w-3.5 h-3.5 stroke-[2.2]" />
+            </div>
             <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold ${
+              className={`text-[9px] sm:text-[10px] font-extrabold ${
                 todayTripsCount > 0
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "bg-slate-100 text-slate-600"
-              }`}
+                  ? "text-[#059669] bg-[#ECFDF5] border-emerald-100/70"
+                  : "text-slate-600 bg-slate-100 border-slate-200/70"
+              } px-2 sm:px-3 py-0.5 rounded-full border ml-auto sm:ml-0`}
             >
               {todayTripsCount > 0 ? "Active today" : "None today"}
             </span>
@@ -911,8 +936,8 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         </div>
 
         {/* CARD 3: COMPLETED TRIPS */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-purple-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+        <div className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-purple-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0">
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="wavePurpleTrips" x1="0" y1="0" x2="0" y2="1">
@@ -925,33 +950,44 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#EEF2FF] text-[#4F46E5] flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#EEF2FF] text-[#4F46E5] flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  COMPLETED TRIPS
+                </span>
+                <span className="text-xl sm:text-2xl 2xl:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block truncate">
+                  {completedTripsCount}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  Fulfilled routes
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                COMPLETED TRIPS
-              </span>
-              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
-                {completedTripsCount}
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium block truncate mt-0.5">
-                Fulfilled routes
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#EEF0FE] text-[#6366F1] flex items-center justify-center">
+                <MapPin className="w-3 h-3 stroke-[2.2]" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-1 shrink-0 relative z-10">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-50 text-indigo-700">
-              {completedPercent}%
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#EEF0FE] text-[#6366F1] items-center justify-center">
+              <MapPin className="w-3.5 h-3.5 stroke-[2.2]" />
+            </div>
+            <span className="text-[9px] sm:text-[10px] font-extrabold text-[#4F46E5] bg-[#EEF2FF] px-2 sm:px-3 py-0.5 rounded-full border border-indigo-100/70 ml-auto sm:ml-0">
+              {completedPercent}% Done
             </span>
           </div>
         </div>
 
         {/* CARD 4: CUSTOMER BALANCE */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+        <div className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0">
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="waveAmberTrips" x1="0" y1="0" x2="0" y2="1">
@@ -964,30 +1000,41 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#FEF3C7] text-[#D97706] flex items-center justify-center shrink-0">
-              <IndianRupee className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#FEF3C7] text-[#D97706] flex items-center justify-center shrink-0">
+                <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  CUSTOMER BALANCE
+                </span>
+                <span className="text-lg sm:text-2xl 2xl:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block truncate">
+                  ₹{totalPendingDues.toLocaleString("en-IN")}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  Outstanding
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                CUSTOMER BALANCE
-              </span>
-              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
-                ₹{totalPendingDues.toLocaleString("en-IN")}
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium block truncate mt-0.5">
-                Outstanding
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#FEF3D6] text-[#D97706] flex items-center justify-center">
+                <Receipt className="w-3 h-3 stroke-[2.2]" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-1 shrink-0 relative z-10">
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#FEF3D6] text-[#D97706] items-center justify-center">
+              <Receipt className="w-3.5 h-3.5 stroke-[2.2]" />
+            </div>
             <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold ${
+              className={`text-[9px] sm:text-[10px] font-extrabold ${
                 totalPendingDues === 0
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "bg-amber-100 text-amber-800"
-              }`}
+                  ? "text-[#059669] bg-[#ECFDF5] border-emerald-100/70"
+                  : "text-[#D97706] bg-[#FEF3D6] border-amber-200/70"
+              } px-2 sm:px-3 py-0.5 rounded-full border ml-auto sm:ml-0`}
             >
               {totalPendingDues === 0 ? "All cleared" : "Pending dues"}
             </span>

@@ -36,6 +36,8 @@ import {
   Lock,
   Move,
   Maximize2,
+  TrendingUp,
+  AlertTriangle,
 } from "lucide-react";
 import {
   normalizeRegNumber,
@@ -985,9 +987,9 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
         className="relative z-20 px-1 sm:px-2 -mt-10 sm:-mt-12 lg:-mt-14 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4"
       >
         {/* CARD 1: TOTAL VEHICLES */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
+        <div className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-blue-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0">
           {/* Subtle Wave Sparkline Curve at Bottom */}
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="waveBlueVeh" x1="0" y1="0" x2="0" y2="1">
@@ -1000,36 +1002,44 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#EAF2FD] text-[#1A68F8] flex items-center justify-center shrink-0">
-              <Car className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#EAF2FD] text-[#1A68F8] flex items-center justify-center shrink-0">
+                <Car className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  TOTAL VEHICLES
+                </span>
+                <span className="text-xl sm:text-2xl 2xl:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block truncate">
+                  {totalVehicles}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  Fleet registered
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                TOTAL VEHICLES
-              </span>
-              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
-                {totalVehicles}
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium block truncate mt-0.5">
-                Fleet registered
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#EEF5FE] text-[#1A68F8] flex items-center justify-center">
+                <TrendingUp className="w-3 h-3 stroke-[2.5]" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-1 shrink-0 relative z-10">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#ECFDF5] text-[#059669]">
-              ↑ 8%
-            </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700">
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#EEF5FE] text-[#1A68F8] items-center justify-center">
+              <TrendingUp className="w-3.5 h-3.5 stroke-[2.5]" />
+            </div>
+            <span className="text-[9px] sm:text-[10px] font-extrabold text-[#1A68F8] bg-[#EEF5FE] px-2 sm:px-3 py-0.5 rounded-full border border-blue-100/70 ml-auto sm:ml-0">
               Active fleet
             </span>
           </div>
         </div>
 
         {/* CARD 2: ACTIVE FLEET */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+        <div className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-emerald-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0">
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="waveEmeraldVeh" x1="0" y1="0" x2="0" y2="1">
@@ -1042,36 +1052,44 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#ECFDF5] text-[#059669] flex items-center justify-center shrink-0">
-              <Navigation className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#ECFDF5] text-[#059669] flex items-center justify-center shrink-0">
+                <Navigation className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  ACTIVE FLEET
+                </span>
+                <span className="text-xl sm:text-2xl 2xl:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block truncate">
+                  {activeVehicles}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  On the road
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                ACTIVE FLEET
-              </span>
-              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
-                {activeVehicles}
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium block truncate mt-0.5">
-                On the road
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#E6F8EF] text-[#059669] flex items-center justify-center">
+                <CheckCircle2 className="w-3 h-3 stroke-[2.2]" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-1 shrink-0 relative z-10">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#ECFDF5] text-[#059669]">
-              {activePercent}%
-            </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700">
-              Operational
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#E6F8EF] text-[#059669] items-center justify-center">
+              <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.2]" />
+            </div>
+            <span className="text-[9px] sm:text-[10px] font-extrabold text-[#059669] bg-[#ECFDF5] px-2 sm:px-3 py-0.5 rounded-full border border-emerald-100/70 ml-auto sm:ml-0">
+              {activePercent}% Operational
             </span>
           </div>
         </div>
 
         {/* CARD 3: SERVICE DUE */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+        <div className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-amber-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0">
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="waveAmberVeh" x1="0" y1="0" x2="0" y2="1">
@@ -1084,36 +1102,50 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#FFFBEB] text-[#D97706] flex items-center justify-center shrink-0">
-              <Wrench className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#FFFBEB] text-[#D97706] flex items-center justify-center shrink-0">
+                <Wrench className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  SERVICE DUE
+                </span>
+                <span className="text-xl sm:text-2xl 2xl:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block truncate">
+                  {serviceDueVehicles}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  Pending service
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                SERVICE DUE
-              </span>
-              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
-                {serviceDueVehicles}
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium block truncate mt-0.5">
-                Vehicles pending service
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#FEF3D6] text-[#D97706] flex items-center justify-center">
+                <AlertTriangle className="w-3 h-3 stroke-[2.2]" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-1 shrink-0 relative z-10">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700">
-              ↑ {serviceDueVehicles}
-            </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800">
-              Action needed
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#FEF3D6] text-[#D97706] items-center justify-center">
+              <AlertTriangle className="w-3.5 h-3.5 stroke-[2.2]" />
+            </div>
+            <span
+              className={`text-[9px] sm:text-[10px] font-extrabold ${
+                serviceDueVehicles > 0
+                  ? "text-[#D97706] bg-[#FEF3D6] border-amber-200/70"
+                  : "text-emerald-700 bg-emerald-50 border-emerald-100/70"
+              } px-2 sm:px-3 py-0.5 rounded-full border ml-auto sm:ml-0`}
+            >
+              {serviceDueVehicles > 0 ? "Action needed" : "All Good"}
             </span>
           </div>
         </div>
 
         {/* CARD 4: DOCUMENT EXPIRIES */}
-        <div className="group bg-white rounded-[22px] p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-purple-300 transition-all flex items-center justify-between relative overflow-hidden min-h-[86px] h-auto">
-          <div className="absolute right-12 bottom-1 w-24 h-10 pointer-events-none opacity-50">
+        <div className="group bg-white rounded-[20px] sm:rounded-[22px] p-3 sm:p-4 border border-slate-200/80 shadow-[0_4px_16px_rgba(15,23,42,0.05)] sm:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.03)] hover:shadow-lg hover:border-purple-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between relative overflow-hidden min-h-[100px] sm:min-h-[86px] h-auto gap-2 sm:gap-0">
+          <div className="absolute right-2 sm:right-12 bottom-1 w-20 sm:w-24 h-10 pointer-events-none opacity-40 sm:opacity-50">
             <svg viewBox="0 0 100 40" className="w-full h-full fill-none" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="wavePurpleVeh" x1="0" y1="0" x2="0" y2="1">
@@ -1126,29 +1158,43 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
             </svg>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-[16px] bg-[#F5F3FF] text-[#7C3AED] flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-[16px] bg-[#F5F3FF] text-[#7C3AED] flex items-center justify-center shrink-0">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
+                  DOCUMENT EXPIRIES
+                </span>
+                <span className="text-xl sm:text-2xl 2xl:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-0.5 sm:mt-1 block truncate">
+                  {expiringDocsCount}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 block truncate mt-0.5 sm:mt-1">
+                  Insurance / Permits
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">
-                DOCUMENT EXPIRIES
-              </span>
-              <span className="text-2xl sm:text-[26px] font-black text-slate-900 font-mono tracking-tight leading-none mt-1 block">
-                {expiringDocsCount}
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium block truncate mt-0.5">
-                Insurance / Permits
-              </span>
+
+            <div className="sm:hidden shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#F3F0FF] text-[#7C3AED] flex items-center justify-center">
+                <Shield className="w-3 h-3 stroke-[2.2]" />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-1 shrink-0 relative z-10">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700">
-              ↑ {expiringDocsCount}
-            </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800">
-              Expiring soon
+          <div className="flex sm:flex-col items-end justify-between sm:justify-between h-full shrink-0 relative z-10 w-full sm:w-auto pt-1 sm:pt-0">
+            <div className="hidden sm:flex w-6 h-6 rounded-full bg-[#F3F0FF] text-[#7C3AED] items-center justify-center">
+              <Shield className="w-3.5 h-3.5 stroke-[2.2]" />
+            </div>
+            <span
+              className={`text-[9px] sm:text-[10px] font-extrabold ${
+                expiringDocsCount > 0
+                  ? "text-rose-700 bg-rose-50 border-rose-200/70"
+                  : "text-emerald-700 bg-emerald-50 border-emerald-100/70"
+              } px-2 sm:px-3 py-0.5 rounded-full border ml-auto sm:ml-0`}
+            >
+              {expiringDocsCount > 0 ? "Expiring soon" : "All Valid"}
             </span>
           </div>
         </div>
