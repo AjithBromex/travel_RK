@@ -422,7 +422,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       ...prev,
       from: "Pune Central",
       to: "Mumbai Airport T2",
-      customerName: "Ramesh Patil",
+      customerName: "Rahul Sharma",
       customerPhone: "9876543210",
       driverName: "Rajesh Kumar",
       driverPhone: "9876543210",
@@ -1173,7 +1173,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Ramesh Patil"
+                    placeholder="e.g. Rahul Sharma"
                     autoCapitalize="words"
                     value={form.customerName}
                     onChange={(e) => setForm({ ...form, customerName: capitalizeWords(e.target.value) })}
