@@ -156,7 +156,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     fetchTripsData();
     fetchVehiclesData();
     // Clean any orphaned database records in the background
-    purgeOrphanedTripData().catch(() => {});
+    purgeOrphanedTripData().catch(() => { });
 
     // Cross-page real-time sync listener
     const unsubscribe = subscribeDataChanged((entity) => {
@@ -189,8 +189,8 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     vehicleName: vehicleList[0]?.name
       ? `${vehicleList[0].name} (${vehicleList[0].registrationNumber})`
       : vehicles[0]?.name
-      ? `${vehicles[0].name} (${vehicles[0].registrationNumber})`
-      : "",
+        ? `${vehicles[0].name} (${vehicles[0].registrationNumber})`
+        : "",
     driverName: "",
     driverPhone: "",
     driverAgreedPay: 0,
@@ -420,11 +420,11 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
   const handleQuickTripPreset = () => {
     setForm((prev) => ({
       ...prev,
-      from: "Pune Central",
-      to: "Mumbai Airport T2",
-      customerName: "Rahul Sharma",
+      from: "kerala",
+      to: "Delhi",
+      customerName: "Rahul",
       customerPhone: "9876543210",
-      driverName: "Rajesh Kumar",
+      driverName: "Ramesh",
       driverPhone: "9876543210",
       includedKm: 100,
       baseFare: 3500,
@@ -924,11 +924,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
               <Clock className="w-3.5 h-3.5 stroke-[2.2]" />
             </div>
             <span
-              className={`text-[9px] sm:text-[10px] font-extrabold ${
-                todayTripsCount > 0
-                  ? "text-[#059669] bg-[#ECFDF5] border-emerald-100/70"
-                  : "text-slate-600 bg-slate-100 border-slate-200/70"
-              } px-2 sm:px-3 py-0.5 rounded-full border ml-auto sm:ml-0`}
+              className={`text-[9px] sm:text-[10px] font-extrabold ${todayTripsCount > 0
+                ? "text-[#059669] bg-[#ECFDF5] border-emerald-100/70"
+                : "text-slate-600 bg-slate-100 border-slate-200/70"
+                } px-2 sm:px-3 py-0.5 rounded-full border ml-auto sm:ml-0`}
             >
               {todayTripsCount > 0 ? "Active today" : "None today"}
             </span>
@@ -1030,11 +1029,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
               <Receipt className="w-3.5 h-3.5 stroke-[2.2]" />
             </div>
             <span
-              className={`text-[9px] sm:text-[10px] font-extrabold ${
-                totalPendingDues === 0
-                  ? "text-[#059669] bg-[#ECFDF5] border-emerald-100/70"
-                  : "text-[#D97706] bg-[#FEF3D6] border-amber-200/70"
-              } px-2 sm:px-3 py-0.5 rounded-full border ml-auto sm:ml-0`}
+              className={`text-[9px] sm:text-[10px] font-extrabold ${totalPendingDues === 0
+                ? "text-[#059669] bg-[#ECFDF5] border-emerald-100/70"
+                : "text-[#D97706] bg-[#FEF3D6] border-amber-200/70"
+                } px-2 sm:px-3 py-0.5 rounded-full border ml-auto sm:ml-0`}
             >
               {totalPendingDues === 0 ? "All cleared" : "Pending dues"}
             </span>
@@ -1045,11 +1043,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       {/* Feedback Toast */}
       {feedback && (
         <div
-          className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-xs ${
-            feedback.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-              : "bg-rose-50 text-rose-800 border border-rose-200"
-          }`}
+          className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-xs ${feedback.type === "success"
+            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+            : "bg-rose-50 text-rose-800 border border-rose-200"
+            }`}
         >
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -1188,11 +1185,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     </label>
                     {form.customerPhone && (
                       <span
-                        className={`text-[10px] font-bold ${
-                          form.customerPhone.length === 10
-                            ? "text-emerald-600"
-                            : "text-amber-600"
-                        }`}
+                        className={`text-[10px] font-bold ${form.customerPhone.length === 10
+                          ? "text-emerald-600"
+                          : "text-amber-600"
+                          }`}
                       >
                         {form.customerPhone.length}/10 digits
                       </span>
@@ -1223,11 +1219,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                         target.value = sanitized;
                       }
                     }}
-                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 ${
-                      form.customerPhone && form.customerPhone.length < 10
-                        ? "border-amber-300 focus:border-amber-500 focus:bg-white"
-                        : "border-slate-200 focus:border-blue-500 focus:bg-white"
-                    }`}
+                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 ${form.customerPhone && form.customerPhone.length < 10
+                      ? "border-amber-300 focus:border-amber-500 focus:bg-white"
+                      : "border-slate-200 focus:border-blue-500 focus:bg-white"
+                      }`}
                   />
                 </div>
               </div>
@@ -1341,11 +1336,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     </label>
                     {form.driverPhone && (
                       <span
-                        className={`text-[10px] font-bold ${
-                          form.driverPhone.length === 10
-                            ? "text-emerald-600"
-                            : "text-amber-600"
-                        }`}
+                        className={`text-[10px] font-bold ${form.driverPhone.length === 10
+                          ? "text-emerald-600"
+                          : "text-amber-600"
+                          }`}
                       >
                         {form.driverPhone.length}/10 digits
                       </span>
@@ -1376,11 +1370,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                         target.value = sanitized;
                       }
                     }}
-                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 ${
-                      form.driverPhone && form.driverPhone.length < 10
-                        ? "border-amber-300 focus:border-amber-500 focus:bg-white"
-                        : "border-slate-200 focus:border-blue-500 focus:bg-white"
-                    }`}
+                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium text-slate-900 outline-none transition-all placeholder:text-slate-400 ${form.driverPhone && form.driverPhone.length < 10
+                      ? "border-amber-300 focus:border-amber-500 focus:bg-white"
+                      : "border-slate-200 focus:border-blue-500 focus:bg-white"
+                      }`}
                   />
                 </div>
               </div>
@@ -1589,11 +1582,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                   <button
                     type="button"
                     onClick={() => setViewMode("list")}
-                    className={`p-1.5 rounded-md transition-all cursor-pointer ${
-                      viewMode === "list"
-                        ? "bg-white text-blue-600 shadow-xs"
-                        : "text-slate-400 hover:text-slate-700"
-                    }`}
+                    className={`p-1.5 rounded-md transition-all cursor-pointer ${viewMode === "list"
+                      ? "bg-white text-blue-600 shadow-xs"
+                      : "text-slate-400 hover:text-slate-700"
+                      }`}
                     title="List View"
                   >
                     <List className="w-3.5 h-3.5" />
@@ -1601,11 +1593,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                   <button
                     type="button"
                     onClick={() => setViewMode("grid")}
-                    className={`p-1.5 rounded-md transition-all cursor-pointer ${
-                      viewMode === "grid"
-                        ? "bg-blue-100 text-blue-600 shadow-xs font-bold"
-                        : "text-slate-400 hover:text-slate-700"
-                    }`}
+                    className={`p-1.5 rounded-md transition-all cursor-pointer ${viewMode === "grid"
+                      ? "bg-blue-100 text-blue-600 shadow-xs font-bold"
+                      : "text-slate-400 hover:text-slate-700"
+                      }`}
                     title="Grid View"
                   >
                     <LayoutGrid className="w-3.5 h-3.5" />
@@ -1665,15 +1656,14 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                           </span>
                         </div>
                         <span
-                          className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
-                            trip.status === "completed"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : trip.status === "in_progress"
+                          className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${trip.status === "completed"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : trip.status === "in_progress"
                               ? "bg-blue-100 text-blue-800"
                               : trip.status === "cancelled"
-                              ? "bg-rose-100 text-rose-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
+                                ? "bg-rose-100 text-rose-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
                         >
                           {trip.status.replace("_", " ")}
                         </span>
@@ -1786,15 +1776,14 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                           {getTripReceiptDisplay(trip, trips)}
                         </span>
                         <span
-                          className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
-                            trip.status === "completed"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : trip.status === "in_progress"
+                          className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${trip.status === "completed"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : trip.status === "in_progress"
                               ? "bg-blue-100 text-blue-800"
                               : trip.status === "cancelled"
-                              ? "bg-rose-100 text-rose-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
+                                ? "bg-rose-100 text-rose-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
                         >
                           {trip.status.replace("_", " ")}
                         </span>
