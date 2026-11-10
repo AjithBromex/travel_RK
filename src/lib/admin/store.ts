@@ -57,6 +57,30 @@ function encodeFirestoreValue(val: any): any {
   return { stringValue: String(val) };
 }
 
+function resolveVehicleSeats(v: Record<string, any>): number {
+  if (v.seats != null && v.seats !== '') {
+    const s = Number(v.seats);
+    if (!isNaN(s) && s > 0) return s;
+  }
+  const notes = String(v.notes || v.note || '');
+  if (notes.includes('Seats') || notes.includes('seats')) {
+    const match = notes.match(/(\d+)\s*seats?/i);
+    if (match) {
+      const s = parseInt(match[1], 10);
+      if (!isNaN(s) && s > 0) return s;
+    }
+  }
+  const type = String(v.type || '').toLowerCase();
+  const name = String(v.name || v.model || '').toLowerCase();
+  if (type.includes('volvo') || type.includes('bus') || name.includes('volvo')) return 45;
+  if (type.includes('traveller') && !type.includes('tempo')) return 26;
+  if (type.includes('urbania')) return 17;
+  if (type.includes('tempo')) return 12;
+  if (type.includes('innova') || type.includes('suv') || type.includes('bolero') || type.includes('ertiga') || type.includes('scorpio')) return 7;
+  if (type.includes('sedan') || type.includes('etios') || type.includes('swift') || type.includes('baleno') || type.includes('dzire') || type.includes('car')) return 4;
+  return 12;
+}
+
 function normalize(slug: string, d: Record<string, any>): Record<string, any> {
   if (slug === 'users') {
     const rawEmail = String(d.email || d.userEmail || d.mail || '').trim();
@@ -99,7 +123,7 @@ function normalize(slug: string, d: Record<string, any>): Record<string, any> {
       number: d.registrationNumber || d.number || '',
       type: d.type || 'Car',
       model: d.name || d.model || '',
-      seats: Number(d.seats || 5),
+      seats: resolveVehicleSeats(d),
       driver: d.driverName || d.driver || '',
       status: d.status === 'active' ? 'Available' : d.status === 'service_due' ? 'Maintenance' : (d.status || 'Available'),
       insuranceExpiry: d.insuranceExpiry || '',

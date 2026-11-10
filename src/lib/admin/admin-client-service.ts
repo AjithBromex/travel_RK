@@ -91,6 +91,30 @@ export function normalizeTrip(t: Partial<Trip> & Record<string, any>): Record<st
   };
 }
 
+export function resolveVehicleSeats(v: Record<string, any>): number {
+  if (v.seats != null && v.seats !== '') {
+    const s = Number(v.seats);
+    if (!isNaN(s) && s > 0) return s;
+  }
+  const notes = String(v.notes || v.note || '');
+  if (notes.includes('Seats') || notes.includes('seats')) {
+    const match = notes.match(/(\d+)\s*seats?/i);
+    if (match) {
+      const s = parseInt(match[1], 10);
+      if (!isNaN(s) && s > 0) return s;
+    }
+  }
+  const type = String(v.type || '').toLowerCase();
+  const name = String(v.name || v.model || '').toLowerCase();
+  if (type.includes('volvo') || type.includes('bus') || name.includes('volvo')) return 45;
+  if (type.includes('traveller') && !type.includes('tempo')) return 26;
+  if (type.includes('urbania')) return 17;
+  if (type.includes('tempo')) return 12;
+  if (type.includes('innova') || type.includes('suv') || type.includes('bolero') || type.includes('ertiga') || type.includes('scorpio')) return 7;
+  if (type.includes('sedan') || type.includes('etios') || type.includes('swift') || type.includes('baleno') || type.includes('dzire') || type.includes('car')) return 4;
+  return 12;
+}
+
 export function normalizeVehicle(v: Partial<Vehicle> & Record<string, any>): Record<string, unknown> {
   const statusRaw = String(v.status || 'active').toLowerCase();
   const status =
@@ -110,7 +134,7 @@ export function normalizeVehicle(v: Partial<Vehicle> & Record<string, any>): Rec
     number: v.registrationNumber || v.number || '',
     type: v.type ? (v.type.charAt(0).toUpperCase() + v.type.slice(1)) : 'Car',
     model: v.name || v.model || '',
-    seats: Number(v.seats || 5),
+    seats: resolveVehicleSeats(v),
     driver: v.driverName || v.driver || '',
     status,
     insuranceExpiry: v.insuranceExpiry || '',
@@ -388,11 +412,14 @@ export async function saveAdminRow(
   }
 
   if (slug === 'vehicles') {
+    const rawSeats = Number(form.seats || 0);
+    const resolvedSeats = rawSeats > 0 ? rawSeats : resolveVehicleSeats({ ...form, name: form.model });
     const vehicleData: any = {
       registrationNumber: String(form.number || '').toUpperCase(),
       name: String(form.model || form.number || ''),
       type: String(form.type || 'Car').toLowerCase(),
-      seats: Number(form.seats || 5),
+      seats: resolvedSeats,
+      notes: form.seats ? `${form.seats} Seats` : undefined,
       driverName: String(form.driver || ''),
       status:
         form.status === 'Available'

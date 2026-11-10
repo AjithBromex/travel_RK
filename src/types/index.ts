@@ -6,6 +6,7 @@ export interface Vehicle {
   registrationNumberNormalized: string
   name: string
   type?: string
+  seats?: number
   extraKmRate: number
   currentKm: number
   nextServiceKm: number
