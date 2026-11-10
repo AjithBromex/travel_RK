@@ -76,8 +76,8 @@ function Cell({ f, v, row }: { f: FieldConfig; v: unknown; row?: Record<string, 
           t.tripNumber === tripId ||
           (t.receiptNumber && t.receiptNumber === tripId)
       );
-      if (trip && (trip.customerName || trip.customer)) {
-        displayVal = trip.customerName || trip.customer;
+      if (trip && (trip.customerName || (trip as any).customer)) {
+        displayVal = trip.customerName || (trip as any).customer;
       } else {
         displayVal = 'Customer';
       }
@@ -155,8 +155,8 @@ export default function Crud({
                 t.tripNumber === tripId ||
                 (t.receiptNumber && t.receiptNumber === tripId)
             );
-            if (trip && (trip.customerName || trip.customer)) {
-              cust = trip.customerName || trip.customer;
+            if (trip && (trip.customerName || (trip as any).customer)) {
+              cust = trip.customerName || (trip as any).customer;
             }
             if (trip && trip.from && trip.to && (!tripRef || tripRef.toLowerCase().startsWith('trip #'))) {
               tripRef = `${trip.from} → ${trip.to}`;

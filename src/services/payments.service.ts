@@ -116,8 +116,10 @@ export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'up
   }
 
   const newPayment: Payment = {
+    ...data,
     id: docId,
-    ...payload,
+    customerName,
+    tripRef,
     createdAt: now,
     updatedAt: now,
   }

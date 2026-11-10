@@ -35,6 +35,7 @@ export interface Trip {
   driverName: string
   driverPhone?: string
   customerName: string
+  customer?: string
   customerPhone: string
   from: string
   to: string
@@ -69,6 +70,7 @@ export interface Payment {
   id: string
   tripId: string
   customerName?: string
+  customer?: string
   tripRef?: string
   type: PaymentType
   amount: number

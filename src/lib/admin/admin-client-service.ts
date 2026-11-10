@@ -154,7 +154,7 @@ export function normalizePayment(
 
     if (linkedTrip) {
       if (!customerName || customerName.toLowerCase().startsWith('trip ')) {
-        customerName = linkedTrip.customerName || linkedTrip.customer || '';
+        customerName = linkedTrip.customerName || (linkedTrip as any).customer || '';
       }
       if (!tripRef || tripRef.toLowerCase().startsWith('trip #') || tripRef === tripIdentifier) {
         if (linkedTrip.from && linkedTrip.to) {
