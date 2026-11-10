@@ -84,29 +84,10 @@ export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'up
   await waitForAuthReady()
   const now = new Date().toISOString()
 
-  let customerName = data.customerName || ''
-  let tripRef = data.tripRef || ''
-  if ((!customerName || !tripRef) && data.tripId && data.tripId !== 'general') {
-    try {
-      const trips = getStoredTrips()
-      const trip = trips.find(t => t.id === data.tripId || t.tripNumber === data.tripId)
-      if (trip) {
-        if (!customerName) customerName = trip.customerName || (trip as any).customer || ''
-        if (!tripRef && trip.from && trip.to) tripRef = `${trip.from} → ${trip.to}`
-      }
-    } catch {}
-  }
-
-  const payload = {
-    ...data,
-    ...(customerName ? { customerName } : {}),
-    ...(tripRef ? { tripRef } : {}),
-  }
-
   let docId = `pay_${Date.now()}`
   try {
     const docRef = await addDoc(collection(db, COLLECTION), {
-      ...payload,
+      ...data,
       createdAt: now,
       updatedAt: now,
     })
@@ -116,10 +97,8 @@ export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'up
   }
 
   const newPayment: Payment = {
-    ...data,
     id: docId,
-    customerName: customerName || undefined,
-    tripRef: tripRef || undefined,
+    ...data,
     createdAt: now,
     updatedAt: now,
   }

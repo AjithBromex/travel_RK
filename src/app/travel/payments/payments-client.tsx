@@ -242,14 +242,8 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
     }
 
     try {
-      const matchedTrip = tripList.find((t) => t.id === form.tripId || t.tripNumber === form.tripId);
-      const custName = matchedTrip ? (matchedTrip.customerName || (matchedTrip as any).customer || "") : "";
-      const routeRef = matchedTrip && matchedTrip.from && matchedTrip.to ? `${matchedTrip.from} → ${matchedTrip.to}` : "";
-
       const newId = await createPayment({
         tripId: form.tripId || "general",
-        customerName: custName,
-        tripRef: routeRef,
         type: form.type,
         amount: amountNum,
         paymentDate: form.paymentDate,
@@ -260,8 +254,6 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       const newPayment: Payment = {
         id: newId,
         tripId: form.tripId || "general",
-        customerName: custName,
-        tripRef: routeRef,
         type: form.type,
         amount: amountNum,
         paymentDate: form.paymentDate,

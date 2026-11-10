@@ -109,21 +109,14 @@ function normalize(slug: string, d: Record<string, any>): Record<string, any> {
 
   if (slug === 'payments') {
     let customer = String(d.customerName || d.customer || '').trim();
-    let tripRef = String(d.tripRef || '').trim();
-    const tripId = String(d.tripId || d.tripNumber || '');
-
     if (!customer || customer.toLowerCase().startsWith('trip ')) {
       customer = 'Customer';
-    }
-
-    if (!tripRef) {
-      tripRef = tripId ? `Trip #${tripId}` : 'Direct';
     }
 
     return {
       id: d.id,
       customer,
-      tripRef,
+      tripRef: d.tripRef || (d.tripId ? `Trip #${d.tripId}` : ''),
       amount: Number(d.amount || 0),
       date: d.paymentDate || d.date || (typeof d.createdAt === 'string' ? d.createdAt.slice(0, 10) : ''),
       method: d.paymentMode ? d.paymentMode.toUpperCase() : (d.method || 'Cash'),

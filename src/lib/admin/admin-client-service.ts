@@ -120,10 +120,7 @@ export function normalizeVehicle(v: Partial<Vehicle> & Record<string, any>): Rec
   };
 }
 
-export function normalizePayment(
-  p: Partial<Payment> & Record<string, any>,
-  tripsList?: Trip[]
-): Record<string, unknown> {
+export function normalizePayment(p: Partial<Payment> & Record<string, any>): Record<string, unknown> {
   const mode = p.paymentMode || p.method || 'Cash';
   const status =
     p.status ||
@@ -132,50 +129,35 @@ export function normalizePayment(
   const recId = String(p.id || '');
   const isConfirmed = Boolean(p.isConfirmed || (recId && isRecordConfirmed('payments', recId)));
 
-  // Resolve Customer Name and Trip Reference
   let customerName = String(p.customerName || p.customer || '').trim();
   let tripRef = String(p.tripRef || '').trim();
-
-  const allTrips: Trip[] =
-    Array.isArray(tripsList) && tripsList.length > 0
-      ? tripsList
-      : typeof window !== 'undefined'
-      ? getStoredTrips()
-      : [];
   const tripIdentifier = String(p.tripId || p.tripNumber || '');
 
   if (tripIdentifier && tripIdentifier !== 'general') {
-    const linkedTrip = allTrips.find(
-      (t) =>
-        t.id === tripIdentifier ||
-        t.tripNumber === tripIdentifier ||
-        (t.receiptNumber && t.receiptNumber === tripIdentifier)
-    );
-
-    if (linkedTrip) {
-      if (!customerName || customerName.toLowerCase().startsWith('trip ')) {
-        const foundName = linkedTrip.customerName || (linkedTrip as any).customer || '';
-        if (foundName) customerName = String(foundName);
-      }
-      if (!tripRef || tripRef.toLowerCase().startsWith('trip #') || tripRef === tripIdentifier) {
-        if (linkedTrip.from && linkedTrip.to) {
-          tripRef = `${linkedTrip.from} → ${linkedTrip.to}`;
-        } else if (linkedTrip.tripNumber) {
-          tripRef = `Trip #${linkedTrip.tripNumber}`;
+    try {
+      const trips = typeof window !== 'undefined' ? getStoredTrips() : [];
+      const linked = trips.find(
+        (t) =>
+          t.id === tripIdentifier ||
+          t.tripNumber === tripIdentifier ||
+          (t.receiptNumber && t.receiptNumber === tripIdentifier)
+      );
+      if (linked) {
+        if (!customerName || customerName.toLowerCase().startsWith('trip ')) {
+          customerName = linked.customerName || '';
+        }
+        if (!tripRef && linked.from && linked.to) {
+          tripRef = `${linked.from} → ${linked.to}`;
         }
       }
-    }
+    } catch {}
   }
 
-  // Never fall back to "Trip TRP-..." as customer name
   if (!customerName || customerName.toLowerCase().startsWith('trip ')) {
-    const rawCust = p.customerName ? String(p.customerName).trim() : '';
-    customerName = rawCust && !rawCust.toLowerCase().startsWith('trip ') ? rawCust : 'Customer';
+    customerName = 'Customer';
   }
-
   if (!tripRef) {
-    tripRef =
-      tripIdentifier && tripIdentifier !== 'general' ? `Trip #${tripIdentifier}` : 'Direct Inflow';
+    tripRef = tripIdentifier && tripIdentifier !== 'general' ? `Trip #${tripIdentifier}` : 'Direct';
   }
 
   return {
@@ -289,10 +271,7 @@ export async function fetchAdminRows(slug: string): Promise<Record<string, unkno
     }
 
     if (slug === 'payments') {
-      const cloud: Payment[] | null = await getPayments(200).catch(() => null);
-      const trips: Trip[] = await getTrips(200).catch(() => [] as Trip[]);
-      const tripsList: Trip[] = Array.isArray(trips) && trips.length > 0 ? trips : getStoredTrips();
-
+      const cloud = await getPayments(200).catch(() => null);
       if (cloud !== null) {
         saveStoredPayments(cloud);
         return cloud
@@ -301,7 +280,7 @@ export async function fetchAdminRows(slug: string): Promise<Record<string, unkno
               !isDeleted('payments', p.id) &&
               (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
           )
-          .map((p) => normalizePayment(p, tripsList));
+          .map(normalizePayment);
       }
       const local = getStoredPayments();
       return local
@@ -310,7 +289,7 @@ export async function fetchAdminRows(slug: string): Promise<Record<string, unkno
             !isDeleted('payments', p.id) &&
             (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
         )
-        .map((p) => normalizePayment(p, tripsList));
+        .map(normalizePayment);
     }
 
     if (slug === 'expenses') {

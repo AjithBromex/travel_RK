@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import type { FieldConfig } from '@/lib/admin/modules';
 import { inr } from '@/lib/admin/modules';
-import type { Trip } from '@/types';
 import {
   fetchAdminRows,
   saveAdminRow,
@@ -30,7 +29,6 @@ import {
   unmarkDeleted,
   markAsDeleted,
   isRecordConfirmed,
-  getStoredTrips,
 } from '@/lib/storage-sync';
 
 const BADGE_STYLES: Record<string, string> = {
@@ -66,27 +64,6 @@ function Cell({ f, v, row }: { f: FieldConfig; v: unknown; row?: Record<string, 
   }
 
   let displayVal = v;
-  if (f.key === 'customer' && typeof v === 'string' && v.toLowerCase().startsWith('trip ') && row) {
-    const rawObj = ((row as any).raw as Record<string, any>) || {};
-    const tripId = String(rawObj.tripId || rawObj.tripNumber || (row as any).tripId || '');
-    if (typeof window !== 'undefined') {
-      const storedTrips: Trip[] = getStoredTrips();
-      const trip = storedTrips.find(
-        (t) =>
-          t.id === tripId ||
-          t.tripNumber === tripId ||
-          (t.receiptNumber && t.receiptNumber === tripId)
-      );
-      if (trip && (trip.customerName || (trip as any).customer)) {
-        displayVal = trip.customerName || (trip as any).customer;
-      } else {
-        displayVal = 'Customer';
-      }
-    } else {
-      displayVal = 'Customer';
-    }
-  }
-
   if (f.key === 'email' && (!v || String(v).trim() === '') && row) {
     const cleanName = String(row.name || (row as any).displayName || (row as any).userId || '')
       .trim()
@@ -125,59 +102,18 @@ export default function Crud({
   initial,
 }: CrudProps) {
   const sanitizeRows = useCallback((rawList: Record<string, unknown>[]) => {
-    if (!Array.isArray(rawList)) return rawList;
-    if (slug === 'users') {
-      return rawList.map((r) => {
-        const existingEmail = String(r.email || (r as any).userEmail || (r as any).mail || '').trim();
-        if (existingEmail) return { ...r, email: existingEmail };
-        const cleanName = String(r.name || (r as any).displayName || (r as any).userId || '')
-          .trim()
-          .replace(/@gmail\.com$/i, '')
-          .replace(/@.*$/, '')
-          .toLowerCase();
-        const fallbackEmail = cleanName && !cleanName.startsWith('usr_') ? `${cleanName}@gmail.com` : '';
-        return fallbackEmail ? { ...r, email: fallbackEmail } : r;
-      });
-    }
-
-    if (slug === 'payments') {
-      const storedTrips: Trip[] = typeof window !== 'undefined' ? getStoredTrips() : [];
-      return rawList.map((r) => {
-        let cust = String((r as any).customer || '').trim();
-        let tripRef = String((r as any).tripRef || '').trim();
-        const rawObj = ((r as any).raw as Record<string, any>) || {};
-        const tripId = String(rawObj.tripId || rawObj.tripNumber || (r as any).tripId || '');
-
-        if (cust.toLowerCase().startsWith('trip ') || !cust) {
-          if (tripId && tripId !== 'general') {
-            const trip = storedTrips.find(
-              (t) =>
-                t.id === tripId ||
-                t.tripNumber === tripId ||
-                (t.receiptNumber && t.receiptNumber === tripId)
-            );
-            if (trip && (trip.customerName || (trip as any).customer)) {
-              cust = trip.customerName || (trip as any).customer;
-            }
-            if (trip && trip.from && trip.to && (!tripRef || tripRef.toLowerCase().startsWith('trip #'))) {
-              tripRef = `${trip.from} → ${trip.to}`;
-            }
-          }
-        }
-
-        if (cust.toLowerCase().startsWith('trip ') || !cust) {
-          cust = 'Customer';
-        }
-
-        return {
-          ...r,
-          customer: cust,
-          tripRef: tripRef || (tripId ? `Trip #${tripId}` : 'Direct Inflow'),
-        };
-      });
-    }
-
-    return rawList;
+    if (slug !== 'users' || !Array.isArray(rawList)) return rawList;
+    return rawList.map((r) => {
+      const existingEmail = String(r.email || (r as any).userEmail || (r as any).mail || '').trim();
+      if (existingEmail) return { ...r, email: existingEmail };
+      const cleanName = String(r.name || (r as any).displayName || (r as any).userId || '')
+        .trim()
+        .replace(/@gmail\.com$/i, '')
+        .replace(/@.*$/, '')
+        .toLowerCase();
+      const fallbackEmail = cleanName && !cleanName.startsWith('usr_') ? `${cleanName}@gmail.com` : '';
+      return fallbackEmail ? { ...r, email: fallbackEmail } : r;
+    });
   }, [slug]);
 
   const [rows, setRows] = useState<Record<string, unknown>[]>(() => sanitizeRows(initial));
