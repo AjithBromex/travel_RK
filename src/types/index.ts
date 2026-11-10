@@ -68,6 +68,8 @@ export type PaymentMode = 'cash' | 'bank_transfer' | 'upi' | 'card' | 'other'
 export interface Payment {
   id: string
   tripId: string
+  customerName?: string
+  tripRef?: string
   type: PaymentType
   amount: number
   paymentDate: string
