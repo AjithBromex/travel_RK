@@ -130,23 +130,24 @@ export default function Crud({
     isFetchingRef.current = true;
     try {
       const live = await fetchAdminRows(slug);
-      if (live && live.length > 0) {
+      if (Array.isArray(live)) {
         setRows(sanitizeRows(live));
-      } else if (initial && initial.length > 0 && rows.length === 0) {
-        setRows(sanitizeRows(initial));
       }
     } catch (e) {
       console.warn(`[Crud] Live row fetch notice for ${slug}:`, e);
     } finally {
       isFetchingRef.current = false;
     }
-  }, [slug, initial, rows.length, sanitizeRows]);
+  }, [slug, sanitizeRows]);
 
   useEffect(() => {
-    // Only load if initial was empty
-    if (!initial || initial.length === 0) {
+    // Always fetch live rows on mount to ensure cross-device consistency
+    loadLiveRows();
+
+    const handleFocus = () => {
       loadLiveRows();
-    }
+    };
+    window.addEventListener('focus', handleFocus);
 
     let debounceTimer: NodeJS.Timeout;
     const unsub = subscribeDataChanged((entity) => {
@@ -159,10 +160,11 @@ export default function Crud({
     });
 
     return () => {
+      window.removeEventListener('focus', handleFocus);
       clearTimeout(debounceTimer);
       unsub();
     };
-  }, [slug, initial, loadLiveRows]);
+  }, [slug, loadLiveRows]);
 
   const cols = useMemo(
     () => columns.map((k) => fields.find((f) => f.key === k)!).filter(Boolean),

@@ -15,10 +15,15 @@ import {
   CheckCircle2,
   CreditCard,
   BookOpen,
+  RotateCw,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 import { inr } from '@/lib/admin/modules';
-import { fetchAdminRows } from '@/lib/admin/admin-client-service';
+import { fetchAdminRows, deleteAdminRow } from '@/lib/admin/admin-client-service';
 import { subscribeDataChanged } from '@/lib/storage-sync';
+import { db } from '@/lib/firebase/config';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 interface DashboardData {
   trips: Record<string, any>[];
@@ -40,11 +45,14 @@ const sum = (
 
 export default function AdminDashboardClient({ initialData }: Props) {
   const [data, setData] = useState<DashboardData>(initialData);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [deletingTripId, setDeletingTripId] = useState<string | null>(null);
   const isRefreshingRef = useRef(false);
 
   const refresh = async () => {
     if (isRefreshingRef.current) return;
     isRefreshingRef.current = true;
+    setIsSyncing(true);
     try {
       const [trips, payments, expenses, cash, reminders, vehicles] = await Promise.all([
         fetchAdminRows('trips'),
@@ -59,20 +67,54 @@ export default function AdminDashboardClient({ initialData }: Props) {
       console.warn('[AdminDashboard] Hydration notice:', e);
     } finally {
       isRefreshingRef.current = false;
+      setIsSyncing(false);
+    }
+  };
+
+  const handleDeleteTrip = async (id: string, label: string) => {
+    if (!window.confirm(`Are you sure you want to delete dispatch: "${label}"?`)) return;
+    setDeletingTripId(id);
+    try {
+      await deleteAdminRow('trips', id);
+      await refresh();
+    } catch (err) {
+      console.error('[AdminDashboard] Delete dispatch failed:', err);
+    } finally {
+      setDeletingTripId(null);
     }
   };
 
   useEffect(() => {
-    // Only fetch fresh data if initialData was completely empty, otherwise defer to background sync
-    const hasInitial =
-      initialData.trips.length > 0 ||
-      initialData.payments.length > 0 ||
-      initialData.vehicles.length > 0;
-    
-    if (!hasInitial) {
-      refresh();
-    }
+    // 1. Fetch live data immediately on mount to keep desktop in sync with mobile
+    refresh();
 
+    // 2. Fetch live data whenever the browser tab gains focus
+    const handleFocus = () => refresh();
+    window.addEventListener('focus', handleFocus);
+
+    // 3. Fetch live data when tab becomes visible
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // 4. Real-time Firestore sync: instantly catch mobile deletions and additions
+    let unsubTrips: (() => void) | null = null;
+    try {
+      if (db) {
+        unsubTrips = onSnapshot(
+          collection(db, 'trips'),
+          () => {
+            refresh();
+          },
+          (err) => {
+            console.warn('[AdminDashboard] Realtime trips listener notice:', err);
+          }
+        );
+      }
+    } catch {}
+
+    // 5. Cross-tab local sync listener
     let debounceTimer: NodeJS.Timeout;
     const unsub = subscribeDataChanged(() => {
       clearTimeout(debounceTimer);
@@ -82,10 +124,13 @@ export default function AdminDashboardClient({ initialData }: Props) {
     });
 
     return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (unsubTrips) unsubTrips();
       clearTimeout(debounceTimer);
       unsub();
     };
-  }, [initialData]);
+  }, []);
 
   const { trips, payments, expenses, cash, reminders, vehicles } = data;
 
@@ -159,6 +204,16 @@ export default function AdminDashboardClient({ initialData }: Props) {
 
         {/* Top Floating Action Pill Buttons */}
         <div className="relative z-10 flex items-center justify-start sm:justify-end gap-2 flex-wrap w-full">
+          <button
+            type="button"
+            onClick={() => refresh()}
+            disabled={isSyncing}
+            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-white/95 hover:bg-white text-slate-800 border border-white/70 shadow-2xs font-bold text-xs transition-colors shrink-0"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600' : 'text-slate-600'}`} />
+            <span>{isSyncing ? 'Syncing...' : 'Sync Live'}</span>
+          </button>
+
           <Link
             href="/admin/payments"
             className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-white/95 hover:bg-white text-slate-800 border border-white/70 shadow-2xs font-bold text-xs transition-colors shrink-0"
@@ -419,38 +474,70 @@ export default function AdminDashboardClient({ initialData }: Props) {
                 <p className="text-[10px] sm:text-[11px] text-slate-500">Live booking status and passenger routes</p>
               </div>
             </div>
-            <Link
-              href="/admin/trips"
-              className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline shrink-0"
-            >
-              View All
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => refresh()}
+                disabled={isSyncing}
+                title="Refresh Dispatches"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-colors"
+              >
+                <RotateCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
+                <span>Sync</span>
+              </button>
+              <Link
+                href="/admin/trips"
+                className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline shrink-0"
+              >
+                View All
+              </Link>
+            </div>
           </div>
 
           <div className="divide-y divide-slate-100 mt-2">
-            {live.map((t) => (
-              <div
-                key={String(t.id)}
-                className="py-2.5 sm:py-3 flex items-center justify-between gap-2.5 text-xs"
-              >
-                <div className="min-w-0">
-                  <p className="font-bold text-slate-900 truncate">
-                    {String(t.from)} → {String(t.to)}
-                  </p>
-                  <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 truncate">
-                    {String(t.customer)} {t.vehicle ? `· ${t.vehicle}` : ''}
-                  </p>
+            {live.map((t) => {
+              const tripId = String(t.id);
+              const label = `${t.from || 'Origin'} ➔ ${t.to || 'Destination'}`;
+              const isDeleting = deletingTripId === tripId;
+              return (
+                <div
+                  key={tripId}
+                  className="py-2.5 sm:py-3 flex items-center justify-between gap-2.5 text-xs group hover:bg-slate-50/60 px-1 rounded-lg transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-slate-900 truncate">
+                      {String(t.from)} → {String(t.to)}
+                    </p>
+                    <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 truncate">
+                      {String(t.customer)} {t.vehicle ? `· ${t.vehicle}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <span className="font-extrabold text-slate-900 block">
+                        {inr(t.amount)}
+                      </span>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+                        {String(t.startDate)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTrip(tripId, label)}
+                      disabled={isDeleting}
+                      title="Delete dispatch"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                    >
+                      {isDeleting ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-500" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <span className="font-extrabold text-slate-900 block">
-                    {inr(t.amount)}
-                  </span>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider">
-                    {String(t.startDate)}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {!live.length && (
               <p className="py-6 text-center text-xs text-slate-400 font-medium">
                 No active or scheduled dispatches right now.

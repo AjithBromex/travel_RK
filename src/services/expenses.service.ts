@@ -42,7 +42,7 @@ export async function getExpenses(limitCount = 100): Promise<Expense[]> {
             (!e.tripNumber || !isDeleted('trips', e.tripNumber))
         )
       saveStoredExpenses(list)
-      return list.length > 0 ? list : getStoredExpenses()
+      return list
     },
     { fallback: cached }
   )
@@ -57,7 +57,7 @@ export async function getExpensesByCategory(category: ExpenseCategory): Promise<
       const q = query(collection(db, COLLECTION), where('category', '==', category), orderBy('expenseDate', 'desc'))
       const snap = await getDocs(q)
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense))
-      return list.length > 0 ? list : cached
+      return list
     },
     { fallback: cached }
   )
@@ -73,7 +73,7 @@ export async function getExpensesByTrip(tripId: string): Promise<Expense[]> {
       const q = query(collection(db, COLLECTION), where('tripId', '==', tripId))
       const snap = await getDocs(q)
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense))
-      return list.length > 0 ? list : cached
+      return list
     },
     { fallback: cached }
   )

@@ -57,7 +57,7 @@ export async function getPayments(limitCount = 100): Promise<Payment[]> {
         )
       const sorted = sortPaymentsRecentFirst(list)
       saveStoredPayments(sorted)
-      return sorted.length > 0 ? sorted : getStoredPayments()
+      return sorted
     },
     { fallback: localFallback }
   )
@@ -74,7 +74,7 @@ export async function getPaymentsByTrip(tripId: string): Promise<Payment[]> {
       const q = query(collection(db, COLLECTION), where('tripId', '==', tripId))
       const snap = await getDocs(q)
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Payment))
-      return list.length > 0 ? list : localFallback
+      return list
     },
     { fallback: localFallback }
   )

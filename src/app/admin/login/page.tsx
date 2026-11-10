@@ -55,13 +55,18 @@ export default function AdminLogin() {
       });
 
       if (res.ok) {
-        // Authenticate client-side Firebase Auth asynchronously without blocking page transition
+        // Authenticate client-side Firebase Auth so Firestore queries have full credentials
         const email = username.includes('@') ? username.trim() : `${username.trim().toLowerCase()}@gmail.com`;
-        signInWithEmailAndPassword(auth, email, password).catch((firebaseAuthErr) => {
+        try {
+          await Promise.race([
+            signInWithEmailAndPassword(auth, email, password),
+            new Promise((resolve) => setTimeout(resolve, 2500)),
+          ]);
+        } catch (firebaseAuthErr) {
           console.warn('[AdminLogin] Firebase client auth notice:', firebaseAuthErr);
-        });
+        }
 
-        // Instant redirect to admin console
+        // Redirect to admin console
         window.location.href = '/admin';
       } else {
         setBusy(false);

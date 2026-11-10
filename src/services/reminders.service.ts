@@ -65,7 +65,7 @@ export async function getActiveReminders(): Promise<Reminder[]> {
         .map(d => ({ id: d.id, ...d.data() } as Reminder))
         .filter(r => !isDeleted('reminders', r.id))
 
-      return list.length > 0 ? list : localFallback
+      return list
     },
     { fallback: localFallback }
   )

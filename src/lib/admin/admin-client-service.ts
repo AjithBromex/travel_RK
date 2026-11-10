@@ -44,9 +44,13 @@ import {
 } from '@/services/users.service';
 import {
   getStoredTrips,
+  saveStoredTrips,
   getStoredVehicles,
+  saveStoredVehicles,
   getStoredPayments,
+  saveStoredPayments,
   getStoredExpenses,
+  saveStoredExpenses,
   notifyDataChanged,
   unmarkDeleted,
   markAsDeleted,
@@ -214,30 +218,39 @@ export function normalizeUser(u: Partial<UserProfile> & Record<string, any>): Re
 export async function fetchAdminRows(slug: string): Promise<Record<string, unknown>[]> {
   try {
     if (slug === 'trips') {
-      const cloud = await getTrips(200).catch(() => []);
+      const cloud = await getTrips(200).catch(() => null);
+      if (cloud !== null) {
+        saveStoredTrips(cloud);
+        return cloud.map(normalizeTrip);
+      }
       const local = getStoredTrips();
-      const map = new Map<string, any>();
-      cloud.forEach((t) => { if (t?.id) map.set(t.id, t); });
-      local.forEach((t) => { if (t?.id && !map.has(t.id)) map.set(t.id, t); });
-      return Array.from(map.values()).map(normalizeTrip);
+      return local.map(normalizeTrip);
     }
 
     if (slug === 'vehicles') {
-      const cloud = await getVehicles(200).catch(() => []);
+      const cloud = await getVehicles(200).catch(() => null);
+      if (cloud !== null) {
+        saveStoredVehicles(cloud);
+        return cloud.map(normalizeVehicle);
+      }
       const local = getStoredVehicles();
-      const map = new Map<string, any>();
-      cloud.forEach((v) => { if (v?.id) map.set(v.id, v); });
-      local.forEach((v) => { if (v?.id && !map.has(v.id)) map.set(v.id, v); });
-      return Array.from(map.values()).map(normalizeVehicle);
+      return local.map(normalizeVehicle);
     }
 
     if (slug === 'payments') {
-      const cloud = await getPayments(200).catch(() => []);
+      const cloud = await getPayments(200).catch(() => null);
+      if (cloud !== null) {
+        saveStoredPayments(cloud);
+        return cloud
+          .filter(
+            (p) =>
+              !isDeleted('payments', p.id) &&
+              (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
+          )
+          .map(normalizePayment);
+      }
       const local = getStoredPayments();
-      const map = new Map<string, any>();
-      cloud.forEach((p) => { if (p?.id) map.set(p.id, p); });
-      local.forEach((p) => { if (p?.id && !map.has(p.id)) map.set(p.id, p); });
-      return Array.from(map.values())
+      return local
         .filter(
           (p) =>
             !isDeleted('payments', p.id) &&
@@ -247,12 +260,20 @@ export async function fetchAdminRows(slug: string): Promise<Record<string, unkno
     }
 
     if (slug === 'expenses') {
-      const cloud = await getExpenses(200).catch(() => []);
+      const cloud = await getExpenses(200).catch(() => null);
+      if (cloud !== null) {
+        saveStoredExpenses(cloud);
+        return cloud
+          .filter(
+            (e) =>
+              !isDeleted('expenses', e.id) &&
+              (!e.tripId || !isDeleted('trips', e.tripId)) &&
+              (!e.tripNumber || !isDeleted('trips', e.tripNumber))
+          )
+          .map(normalizeExpense);
+      }
       const local = getStoredExpenses();
-      const map = new Map<string, any>();
-      cloud.forEach((e) => { if (e?.id) map.set(e.id, e); });
-      local.forEach((e) => { if (e?.id && !map.has(e.id)) map.set(e.id, e); });
-      return Array.from(map.values())
+      return local
         .filter(
           (e) =>
             !isDeleted('expenses', e.id) &&

@@ -35,7 +35,7 @@ export async function getVehicles(limitCount?: number): Promise<Vehicle[]> {
         .filter(v => !isDeleted('vehicles', v.id))
 
       saveStoredVehicles(list)
-      return list.length > 0 ? list : getStoredVehicles()
+      return list
     },
     { fallback: localFallback }
   )
@@ -53,7 +53,7 @@ export async function getActiveVehicles(): Promise<Vehicle[]> {
       const snap = await getDocs(q)
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Vehicle))
       list.sort((a, b) => (a.name || a.registrationNumber).localeCompare(b.name || b.registrationNumber))
-      return list.length > 0 ? list : localFallback
+      return list
     },
     { fallback: localFallback }
   )

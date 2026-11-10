@@ -48,7 +48,7 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
         .filter(t => !isDeleted('trips', t.id) && (!t.tripNumber || !isDeleted('trips', t.tripNumber)))
 
       saveStoredTrips(list)
-      return list.length > 0 ? list : getStoredTrips()
+      return list
     },
     { fallback: localFallback }
   )
@@ -65,7 +65,7 @@ export async function getRecentTrips(count = 5): Promise<Trip[]> {
       const q = query(collection(db, COLLECTION), orderBy('createdAt', 'desc'), limit(count))
       const snap = await getDocs(q)
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Trip))
-      return list.length > 0 ? list : localFallback
+      return list
     },
     { fallback: localFallback }
   )
@@ -97,7 +97,7 @@ export async function getTodayTrips(): Promise<Trip[]> {
       const q = query(collection(db, COLLECTION), where('tripDate', '==', today))
       const snap = await getDocs(q)
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Trip))
-      return list.length > 0 ? list : localFallback
+      return list
     },
     { fallback: localFallback }
   )
@@ -113,7 +113,7 @@ export async function getTripsByStatus(status: TripStatus): Promise<Trip[]> {
       const q = query(collection(db, COLLECTION), where('status', '==', status), orderBy('createdAt', 'desc'))
       const snap = await getDocs(q)
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Trip))
-      return list.length > 0 ? list : localFallback
+      return list
     },
     { fallback: localFallback }
   )
