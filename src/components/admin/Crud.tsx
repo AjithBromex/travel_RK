@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { FieldConfig } from '@/lib/admin/modules';
 import { inr } from '@/lib/admin/modules';
+import type { Trip } from '@/types';
 import {
   fetchAdminRows,
   saveAdminRow,
@@ -66,10 +67,10 @@ function Cell({ f, v, row }: { f: FieldConfig; v: unknown; row?: Record<string, 
 
   let displayVal = v;
   if (f.key === 'customer' && typeof v === 'string' && v.toLowerCase().startsWith('trip ') && row) {
-    const rawObj = (row.raw as any) || {};
-    const tripId = String(rawObj.tripId || rawObj.tripNumber || row.tripId || '');
+    const rawObj = ((row as any).raw as Record<string, any>) || {};
+    const tripId = String(rawObj.tripId || rawObj.tripNumber || (row as any).tripId || '');
     if (typeof window !== 'undefined') {
-      const storedTrips = getStoredTrips();
+      const storedTrips: Trip[] = getStoredTrips();
       const trip = storedTrips.find(
         (t) =>
           t.id === tripId ||
@@ -140,12 +141,12 @@ export default function Crud({
     }
 
     if (slug === 'payments') {
-      const storedTrips = typeof window !== 'undefined' ? getStoredTrips() : [];
+      const storedTrips: Trip[] = typeof window !== 'undefined' ? getStoredTrips() : [];
       return rawList.map((r) => {
-        let cust = String(r.customer || '').trim();
-        let tripRef = String(r.tripRef || '').trim();
-        const rawObj = (r.raw as any) || {};
-        const tripId = String(rawObj.tripId || rawObj.tripNumber || r.tripId || '');
+        let cust = String((r as any).customer || '').trim();
+        let tripRef = String((r as any).tripRef || '').trim();
+        const rawObj = ((r as any).raw as Record<string, any>) || {};
+        const tripId = String(rawObj.tripId || rawObj.tripNumber || (r as any).tripId || '');
 
         if (cust.toLowerCase().startsWith('trip ') || !cust) {
           if (tripId && tripId !== 'general') {

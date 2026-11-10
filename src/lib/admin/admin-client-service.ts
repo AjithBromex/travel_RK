@@ -136,8 +136,8 @@ export function normalizePayment(
   let customerName = String(p.customerName || p.customer || '').trim();
   let tripRef = String(p.tripRef || '').trim();
 
-  const allTrips =
-    tripsList && tripsList.length > 0
+  const allTrips: Trip[] =
+    Array.isArray(tripsList) && tripsList.length > 0
       ? tripsList
       : typeof window !== 'undefined'
       ? getStoredTrips()
@@ -154,7 +154,8 @@ export function normalizePayment(
 
     if (linkedTrip) {
       if (!customerName || customerName.toLowerCase().startsWith('trip ')) {
-        customerName = linkedTrip.customerName || (linkedTrip as any).customer || '';
+        const foundName = linkedTrip.customerName || (linkedTrip as any).customer || '';
+        if (foundName) customerName = String(foundName);
       }
       if (!tripRef || tripRef.toLowerCase().startsWith('trip #') || tripRef === tripIdentifier) {
         if (linkedTrip.from && linkedTrip.to) {
@@ -168,10 +169,8 @@ export function normalizePayment(
 
   // Never fall back to "Trip TRP-..." as customer name
   if (!customerName || customerName.toLowerCase().startsWith('trip ')) {
-    customerName =
-      p.customerName && !p.customerName.toLowerCase().startsWith('trip ')
-        ? p.customerName
-        : 'Customer';
+    const rawCust = p.customerName ? String(p.customerName).trim() : '';
+    customerName = rawCust && !rawCust.toLowerCase().startsWith('trip ') ? rawCust : 'Customer';
   }
 
   if (!tripRef) {
@@ -290,11 +289,9 @@ export async function fetchAdminRows(slug: string): Promise<Record<string, unkno
     }
 
     if (slug === 'payments') {
-      const [cloud, trips] = await Promise.all([
-        getPayments(200).catch(() => null),
-        getTrips(200).catch(() => []),
-      ]);
-      const tripsList = trips.length > 0 ? trips : getStoredTrips();
+      const cloud: Payment[] | null = await getPayments(200).catch(() => null);
+      const trips: Trip[] = await getTrips(200).catch(() => [] as Trip[]);
+      const tripsList: Trip[] = Array.isArray(trips) && trips.length > 0 ? trips : getStoredTrips();
 
       if (cloud !== null) {
         saveStoredPayments(cloud);
