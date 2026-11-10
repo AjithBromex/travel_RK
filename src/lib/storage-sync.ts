@@ -19,9 +19,9 @@ export function getLocalData<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback
   try {
     const raw = localStorage.getItem(`rk_${key}`)
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed as T
+      if (Array.isArray(parsed)) return parsed as T
       if (parsed && typeof parsed === 'object') return parsed as T
     }
   } catch (err) {
@@ -321,90 +321,24 @@ function getOffsetDate(days: number): string {
 }
 
 export function getDefaultReminders(): Reminder[] {
-  return [
-    {
-      id: 'rem-1',
-      title: 'Insurance Renewal',
-      dueDate: getOffsetDate(-2),
-      category: 'documents',
-      relatedEntityType: 'Insurance',
-      relatedEntityId: 'veh_1',
-      notes: 'Commercial fleet comprehensive policy renewal & claim coverage check.',
-      status: 'overdue',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 'rem-2',
-      title: 'Periodic Service',
-      dueDate: getOffsetDate(4),
-      category: 'vehicle_service',
-      relatedEntityType: 'Vehicle Service',
-      relatedEntityId: 'veh_2',
-      notes: 'Engine oil, transmission fluid, brake pads, and tyre rotation check.',
-      status: 'upcoming',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 'rem-3',
-      title: 'Fitness Certificate',
-      dueDate: getOffsetDate(7),
-      category: 'documents',
-      relatedEntityType: 'Compliance',
-      relatedEntityId: 'veh_3',
-      notes: 'RTO commercial inspection, tax slip verification, and speed governor test.',
-      status: 'upcoming',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 'rem-4',
-      title: 'Permit Renewal',
-      dueDate: getOffsetDate(12),
-      category: 'documents',
-      relatedEntityType: 'Permit',
-      relatedEntityId: 'veh_4',
-      notes: 'All India tourist permit renewal & quarterly road tax clearance.',
-      status: 'upcoming',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 'rem-5',
-      title: 'Driver License',
-      dueDate: getOffsetDate(18),
-      category: 'driver',
-      relatedEntityType: 'Driver Compliance',
-      notes: 'Heavy transport license renewal badge & annual medical fitness filing.',
-      status: 'upcoming',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 'rem-6',
-      title: 'Battery Check',
-      dueDate: getOffsetDate(25),
-      category: 'vehicle_service',
-      relatedEntityType: 'Maintenance',
-      notes: 'Battery acid level check, alternator charging rate, and terminal greasing.',
-      status: 'upcoming',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ]
+  return []
 }
 
 export function getStoredReminders(): Reminder[] {
   const list = getLocalData<Reminder[]>('reminders', [])
-  const nonDeleted = list.filter(r => !isDeleted('reminders', r.id))
-  if (nonDeleted.length > 0) return nonDeleted
-  const defaults = getDefaultReminders().filter(r => !isDeleted('reminders', r.id))
-  return defaults
+  return list.filter(
+    r =>
+      !isDeleted('reminders', r.id) &&
+      !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id)
+  )
 }
 
 export function saveStoredReminders(reminders: Reminder[]): void {
-  const filtered = (reminders || []).filter(r => !isDeleted('reminders', r.id))
+  const filtered = (reminders || []).filter(
+    r =>
+      !isDeleted('reminders', r.id) &&
+      !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id)
+  )
   setLocalData('reminders', filtered)
 }
 
@@ -424,6 +358,27 @@ export function removeStoredReminder(id: string): void {
   markAsDeleted('reminders', id)
   const list = getLocalData<Reminder[]>('reminders', []).filter(r => r.id !== id)
   setLocalData('reminders', list)
+}
+
+// Purge obsolete mock template reminders from client localStorage
+if (typeof window !== 'undefined') {
+  try {
+    const raw = localStorage.getItem('rk_reminders')
+    if (raw) {
+      const list = JSON.parse(raw)
+      if (Array.isArray(list)) {
+        const cleaned = list.filter(
+          (r: any) => !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r?.id)
+        )
+        if (cleaned.length !== list.length) {
+          localStorage.setItem('rk_reminders', JSON.stringify(cleaned))
+        }
+      }
+    }
+    ['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].forEach(id => {
+      markAsDeleted('reminders', id)
+    })
+  } catch {}
 }
 
 

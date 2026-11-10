@@ -51,6 +51,8 @@ import {
   saveStoredPayments,
   getStoredExpenses,
   saveStoredExpenses,
+  getStoredReminders,
+  saveStoredReminders,
   notifyDataChanged,
   unmarkDeleted,
   markAsDeleted,
@@ -284,8 +286,13 @@ export async function fetchAdminRows(slug: string): Promise<Record<string, unkno
     }
 
     if (slug === 'reminders') {
-      const list = await getReminders(100).catch(() => []);
-      return list.map(normalizeReminder);
+      const cloud = await getReminders(100).catch(() => null);
+      if (cloud !== null) {
+        saveStoredReminders(cloud);
+        return cloud.map(normalizeReminder);
+      }
+      const local = getStoredReminders();
+      return local.map(normalizeReminder);
     }
 
     if (slug === 'cashbook') {

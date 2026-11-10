@@ -47,6 +47,8 @@ import {
   subscribeDataChanged,
   isRecordConfirmed,
 } from "@/lib/storage-sync";
+import { db } from "@/lib/firebase/config";
+import { collection, onSnapshot } from "firebase/firestore";
 
 interface RemindersClientProps {
   initialReminders: Reminder[];
@@ -162,10 +164,9 @@ export default function RemindersClient({
 
   // Convert initialReminders or local backup into display items
   const [items, setItems] = useState<ReminderItem[]>(() => {
-    const rawList =
-      initialReminders && initialReminders.length > 0
-        ? initialReminders
-        : getStoredReminders();
+    const rawList = Array.isArray(initialReminders)
+      ? initialReminders.filter((r) => !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id))
+      : getStoredReminders();
     const currentVehicles =
       vehicles && vehicles.length > 0 ? vehicles : getStoredVehicles();
     return rawList.map((r) => mapReminderToItem(r, currentVehicles));
@@ -185,26 +186,41 @@ export default function RemindersClient({
       try {
         const fresh = await getReminders(100);
         const currentVehs = getStoredVehicles();
-        if (Array.isArray(fresh) && fresh.length > 0) {
-          setItems(fresh.map((r) => mapReminderToItem(r, currentVehs)));
-        } else {
-          const stored = getStoredReminders();
-          if (stored.length > 0) {
-            setItems(stored.map((r) => mapReminderToItem(r, currentVehs)));
-          }
+        if (Array.isArray(fresh)) {
+          const valid = fresh.filter((r) => !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id));
+          setItems(valid.map((r) => mapReminderToItem(r, currentVehs)));
         }
       } catch (err) {
         console.warn("[RemindersClient] Reminder fetch error:", err);
-        const stored = getStoredReminders();
-        if (stored.length > 0) {
-          const currentVehs = getStoredVehicles();
-          setItems(stored.map((r) => mapReminderToItem(r, currentVehs)));
-        }
       }
     };
 
     fetchFreshVehicles();
     fetchFreshReminders();
+
+    const handleFocus = () => fetchFreshReminders();
+    window.addEventListener("focus", handleFocus);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") fetchFreshReminders();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    let unsubFirestore: (() => void) | null = null;
+    try {
+      if (db) {
+        unsubFirestore = onSnapshot(
+          collection(db, "reminders"),
+          () => {
+            fetchFreshReminders();
+          },
+          (err) => {
+            console.warn("[RemindersClient] Firestore listener notice:", err);
+          }
+        );
+      }
+    } catch (err) {
+      console.warn("[RemindersClient] Realtime listener setup error:", err);
+    }
 
     const unsubscribe = subscribeDataChanged((entity) => {
       if (entity === "vehicles" || entity === "all") {
@@ -215,7 +231,12 @@ export default function RemindersClient({
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      if (unsubFirestore) unsubFirestore();
+      unsubscribe();
+    };
   }, []);
 
   // Filters & Search

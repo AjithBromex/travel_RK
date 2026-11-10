@@ -36,13 +36,14 @@ export async function getReminders(limitCount = 100): Promise<Reminder[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Reminder))
-        .filter(r => !isDeleted('reminders', r.id))
+        .filter(
+          r =>
+            !isDeleted('reminders', r.id) &&
+            !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id)
+        )
 
-      if (list.length > 0) {
-        saveStoredReminders(list)
-        return list
-      }
-      return getStoredReminders()
+      saveStoredReminders(list)
+      return list
     },
     { fallback: localFallback }
   )
@@ -63,7 +64,11 @@ export async function getActiveReminders(): Promise<Reminder[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Reminder))
-        .filter(r => !isDeleted('reminders', r.id))
+        .filter(
+          r =>
+            !isDeleted('reminders', r.id) &&
+            !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id)
+        )
 
       return list
     },
