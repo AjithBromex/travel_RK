@@ -15,9 +15,64 @@ import {
   upsertStoredTrip,
   notifyDataChanged,
   isDeleted,
+  markAsDeleted,
 } from '@/lib/storage-sync'
 
 const COLLECTION = 'payments'
+
+export function isPaymentLinkedToTrip(payment: Partial<Payment>, trip: Partial<Trip>): boolean {
+  if (!payment || !payment.tripId || payment.tripId === 'general') return false;
+  const pId = String(payment.tripId).trim().toLowerCase();
+  const tId = String(trip.id || '').trim().toLowerCase();
+  const tNum = String(trip.tripNumber || '').trim().toLowerCase();
+  const tRec = String(trip.receiptNumber || '').trim().toLowerCase();
+
+  return (
+    (tId !== '' && pId === tId) ||
+    (tNum !== '' && pId === tNum) ||
+    (tRec !== '' && pId === tRec) ||
+    (tRec !== '' && pId.replace(/^#/, '') === tRec.replace(/^#/, '')) ||
+    (Boolean((payment as any).tripNumber) && (String((payment as any).tripNumber).trim().toLowerCase() === tId || String((payment as any).tripNumber).trim().toLowerCase() === tNum))
+  );
+}
+
+export function reconcileTripWithPayments(trip: Trip, allPayments?: Payment[]): Trip {
+  const paymentsList = allPayments || getStoredPayments();
+  const activePayments = paymentsList.filter(
+    (p) => !isDeleted('payments', p.id) && isPaymentLinkedToTrip(p, trip)
+  );
+
+  const customerPaidSum = activePayments
+    .filter((p) => p.type === 'customer_received')
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const driverPaidSum = activePayments
+    .filter((p) => p.type === 'driver_payment')
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const advance = Number(trip.advanceReceived) || 0;
+  const totalFare = Number(trip.totalFare ?? (Number(trip.baseFare || 0) + Number(trip.extraKmCharge || 0))) || 0;
+  const agreedDriverPay = Number(trip.driverAgreedPay) || 0;
+
+  const trueCustomerPaid = advance + customerPaidSum;
+  const trueCustomerBalance = Math.max(0, totalFare - trueCustomerPaid);
+
+  const trueDriverPaid = driverPaidSum;
+  const trueDriverBalance = Math.max(0, agreedDriverPay - trueDriverPaid);
+
+  return {
+    ...trip,
+    customerPaid: trueCustomerPaid,
+    customerBalance: trueCustomerBalance,
+    driverPaid: trueDriverPaid,
+    driverBalance: trueDriverBalance,
+  };
+}
+
+export function reconcileTripsWithPayments(trips: Trip[], allPayments?: Payment[]): Trip[] {
+  const paymentsList = allPayments || getStoredPayments();
+  return (trips || []).map((t) => reconcileTripWithPayments(t, paymentsList));
+}
 
 export function sortPaymentsRecentFirst(list: Payment[]): Payment[] {
   return [...list].sort((a, b) => {
@@ -109,35 +164,24 @@ export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'up
   if (data.tripId && data.tripId !== 'general') {
     try {
       const trips = getStoredTrips()
-      const trip = trips.find(t => t.id === data.tripId || t.tripNumber === data.tripId)
-      if (trip) {
-        let updatedCustomerPaid = Number(trip.customerPaid) || 0
-        let updatedCustomerBalance = Number(trip.customerBalance) || 0
-        let updatedDriverPaid = Number(trip.driverPaid) || 0
-        let updatedDriverBalance = Number(trip.driverBalance) || 0
-
-        if (data.type === 'customer_received') {
-          updatedCustomerPaid += Number(data.amount) || 0
-          const total = Number(trip.totalFare) || 0
-          updatedCustomerBalance = Math.max(0, total - updatedCustomerPaid)
-        } else if (data.type === 'driver_payment') {
-          updatedDriverPaid += Number(data.amount) || 0
-          const agreed = Number(trip.driverAgreedPay) || 0
-          updatedDriverBalance = Math.max(0, agreed - updatedDriverPaid)
-        }
+      const targetTrip = trips.find(t => isPaymentLinkedToTrip(newPayment, t))
+      if (targetTrip) {
+        const currentPayments = getStoredPayments()
+        const allPaymentsForTrip = [newPayment, ...currentPayments.filter(p => p.id !== newPayment.id)]
+        const reconciled = reconcileTripWithPayments(targetTrip, allPaymentsForTrip)
 
         const tripUpdates: Partial<Trip> = {
-          customerPaid: updatedCustomerPaid,
-          customerBalance: updatedCustomerBalance,
-          driverPaid: updatedDriverPaid,
-          driverBalance: updatedDriverBalance,
+          customerPaid: reconciled.customerPaid,
+          customerBalance: reconciled.customerBalance,
+          driverPaid: reconciled.driverPaid,
+          driverBalance: reconciled.driverBalance,
           updatedAt: now,
         }
 
-        upsertStoredTrip({ ...trip, ...tripUpdates })
+        upsertStoredTrip({ ...targetTrip, ...tripUpdates })
 
         try {
-          await updateDoc(doc(db, 'trips', trip.id), tripUpdates)
+          await updateDoc(doc(db, 'trips', targetTrip.id), tripUpdates)
         } catch (tripErr) {
           console.warn('[PaymentsService] Linked trip update fallback to local:', tripErr)
         }
@@ -190,6 +234,10 @@ export async function updatePayment(id: string, data: Partial<Payment>): Promise
 
 export async function deletePayment(id: string): Promise<void> {
   await waitForAuthReady()
+
+  const currentPayments = getStoredPayments()
+  const paymentToDelete = currentPayments.find(p => p.id === id)
+
   try {
     await deleteDoc(doc(db, COLLECTION, id))
   } catch (err) {
@@ -197,6 +245,39 @@ export async function deletePayment(id: string): Promise<void> {
   }
 
   removeStoredPayment(id)
+  markAsDeleted('payments', id)
+
+  // Reconcile and update linked trip dues when payment is deleted
+  if (paymentToDelete && paymentToDelete.tripId && paymentToDelete.tripId !== 'general') {
+    try {
+      const remainingPayments = currentPayments.filter(p => p.id !== id && !isDeleted('payments', p.id))
+      const allTrips = getStoredTrips()
+      const targetTrip = allTrips.find(t => isPaymentLinkedToTrip(paymentToDelete, t))
+
+      if (targetTrip) {
+        const reconciled = reconcileTripWithPayments(targetTrip, remainingPayments)
+        const now = new Date().toISOString()
+        const tripUpdates: Partial<Trip> = {
+          customerPaid: reconciled.customerPaid,
+          customerBalance: reconciled.customerBalance,
+          driverPaid: reconciled.driverPaid,
+          driverBalance: reconciled.driverBalance,
+          updatedAt: now,
+        }
+
+        upsertStoredTrip({ ...targetTrip, ...tripUpdates })
+
+        try {
+          await updateDoc(doc(db, 'trips', targetTrip.id), tripUpdates)
+        } catch (tripErr) {
+          console.warn('[PaymentsService] Linked trip update fallback to local on delete:', tripErr)
+        }
+      }
+    } catch (syncErr) {
+      console.warn('[PaymentsService] Error reconciling linked trip dues on delete:', syncErr)
+    }
+  }
+
   invalidateCache('payments')
   invalidateCache('trips')
   invalidateCache('cashbook')
@@ -204,4 +285,5 @@ export async function deletePayment(id: string): Promise<void> {
   invalidateCache('dashboard')
   notifyDataChanged('payments')
   notifyDataChanged('trips')
+  notifyDataChanged('all')
 }

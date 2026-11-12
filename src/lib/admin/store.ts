@@ -385,6 +385,65 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
       }
     }
 
+    if (slug === 'payments') {
+      try {
+        const payRes = await fetch(getEndpoint('payments', id), { cache: 'no-store' });
+        if (payRes.ok) {
+          const payDoc = decodeDoc(await payRes.json());
+          const targetTripId = payDoc.tripId || payDoc.tripNumber;
+          if (targetTripId && targetTripId !== 'general') {
+            const tripsRes = await fetch(getEndpoint('trips') + (API_KEY ? '&pageSize=300' : '?pageSize=300'), { cache: 'no-store' });
+            const allPayRes = await fetch(getEndpoint('payments') + (API_KEY ? '&pageSize=300' : '?pageSize=300'), { cache: 'no-store' });
+            if (tripsRes.ok && allPayRes.ok) {
+              const tripsData = await tripsRes.json();
+              const allPayData = await allPayRes.json();
+              const tripDocs = (tripsData.documents || []).map(decodeDoc);
+              const allPayments = (allPayData.documents || []).map(decodeDoc).filter((p: any) => p.id !== id);
+
+              const targetTrip = tripDocs.find((t: any) =>
+                t.id === targetTripId ||
+                t.tripNumber === targetTripId ||
+                t.receiptNumber === targetTripId ||
+                (t.receiptNumber && String(targetTripId).replace(/^#/, '') === String(t.receiptNumber).replace(/^#/, ''))
+              );
+
+              if (targetTrip) {
+                const isLinked = (p: any) => {
+                  return (
+                    p.tripId === targetTrip.id ||
+                    p.tripId === targetTrip.tripNumber ||
+                    p.tripId === targetTrip.receiptNumber ||
+                    (targetTrip.receiptNumber && String(p.tripId).replace(/^#/, '') === String(targetTrip.receiptNumber).replace(/^#/, ''))
+                  );
+                };
+
+                const activeCustPayments = allPayments.filter((p: any) => p.type === 'customer_received' && isLinked(p));
+                const activeDriverPayments = allPayments.filter((p: any) => p.type === 'driver_payment' && isLinked(p));
+                const custPaidSum = activeCustPayments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+                const driverPaidSum = activeDriverPayments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+                const advance = Number(targetTrip.advanceReceived) || 0;
+                const totalFare = Number(targetTrip.totalFare ?? (Number(targetTrip.baseFare || 0) + Number(targetTrip.extraKmCharge || 0))) || 0;
+                const agreedPay = Number(targetTrip.driverAgreedPay) || 0;
+                const trueCustPaid = advance + custPaidSum;
+                const trueCustBal = Math.max(0, totalFare - trueCustPaid);
+                const trueDriverBal = Math.max(0, agreedPay - driverPaidSum);
+
+                await updateRow('trips', targetTrip.id, {
+                  customerPaid: trueCustPaid,
+                  customerBalance: trueCustBal,
+                  driverPaid: driverPaidSum,
+                  driverBalance: trueDriverBal,
+                });
+                rowsCache.delete('trips');
+              }
+            }
+          }
+        }
+      } catch (payReconcileErr) {
+        console.warn('[AdminStore] Cascade delete linked payment error:', payReconcileErr);
+      }
+    }
+
     const res = await fetch(getEndpoint(slug, id), {
       method: 'DELETE',
     });
@@ -392,6 +451,9 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
     if (slug === 'trips') {
       rowsCache.delete('payments');
       rowsCache.delete('expenses');
+    }
+    if (slug === 'payments') {
+      rowsCache.delete('trips');
     }
     return res.ok;
   } catch {

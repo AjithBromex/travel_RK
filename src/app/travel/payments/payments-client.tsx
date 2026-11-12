@@ -34,13 +34,20 @@ import {
 } from "lucide-react";
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Payment, Trip, Vehicle, PaymentType, PaymentMode } from "@/types";
-import { getPayments, createPayment, deletePayment, sortPaymentsRecentFirst } from "@/services/payments.service";
-import { getTrips } from "@/services/trips.service";
+import {
+  getPayments,
+  createPayment,
+  deletePayment,
+  sortPaymentsRecentFirst,
+  reconcileTripsWithPayments,
+} from "@/services/payments.service";
+import { getTrips, updateTrip } from "@/services/trips.service";
 import { getVehicles } from "@/services/vehicles.service";
 import {
   getStoredPayments,
   getStoredTrips,
   getStoredVehicles,
+  upsertStoredTrip,
   subscribeDataChanged,
   isRecordConfirmed,
 } from "@/lib/storage-sync";
@@ -73,6 +80,35 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
     if (vehicles && vehicles.length > 0) return vehicles;
     return getStoredVehicles();
   });
+
+  // Reconcile trip balances dynamically against actual active payments
+  const reconciledTripList = useMemo(() => {
+    return reconcileTripsWithPayments(tripList, payments);
+  }, [tripList, payments]);
+
+  // Synchronize any discrepancies to localStorage and Firestore in the background
+  useEffect(() => {
+    if (tripList.length > 0) {
+      reconciledTripList.forEach((rTrip) => {
+        const original = tripList.find((t) => t.id === rTrip.id);
+        if (
+          original &&
+          (Number(original.customerPaid) !== Number(rTrip.customerPaid) ||
+           Number(original.customerBalance) !== Number(rTrip.customerBalance) ||
+           Number(original.driverPaid) !== Number(rTrip.driverPaid) ||
+           Number(original.driverBalance) !== Number(rTrip.driverBalance))
+        ) {
+          upsertStoredTrip(rTrip);
+          updateTrip(rTrip.id, {
+            customerPaid: rTrip.customerPaid,
+            customerBalance: rTrip.customerBalance,
+            driverPaid: rTrip.driverPaid,
+            driverBalance: rTrip.driverBalance,
+          }).catch(() => {});
+        }
+      });
+    }
+  }, [tripList, payments, reconciledTripList]);
 
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -174,7 +210,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
   const [form, setForm] = useState(emptyForm);
 
   const handleTripSelect = (selectedId: string) => {
-    const trip = tripList.find((t) => t.id === selectedId || t.tripNumber === selectedId);
+    const trip = reconciledTripList.find((t) => t.id === selectedId || t.tripNumber === selectedId);
     let autoAmount = form.amount;
     if (trip) {
       if (form.type === "customer_received" && Number(trip.customerBalance) > 0) {
@@ -191,7 +227,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
   };
 
   const handleOpenInvoice = (payment: Payment) => {
-    const linkedTrip = tripList.find((t) => t.id === payment.tripId || t.tripNumber === payment.tripId);
+    const linkedTrip = reconciledTripList.find((t) => t.id === payment.tripId || t.tripNumber === payment.tripId);
     const linkedVehicle = linkedTrip
       ? vehicleList.find((v) => v.id === linkedTrip.vehicleId || v.registrationNumber === linkedTrip.vehicleName)
       : undefined;
@@ -202,7 +238,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
 
   const handleDownloadInvoiceDirect = async (payment: Payment, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const linkedTrip = tripList.find((t) => t.id === payment.tripId || t.tripNumber === payment.tripId);
+    const linkedTrip = reconciledTripList.find((t) => t.id === payment.tripId || t.tripNumber === payment.tripId);
     const linkedVehicle = linkedTrip
       ? vehicleList.find((v) => v.id === linkedTrip.vehicleId || v.registrationNumber === linkedTrip.vehicleName)
       : undefined;
@@ -219,7 +255,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
     .filter((p) => p.type === "driver_payment")
     .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-  const realPendingDues = tripList.reduce(
+  const realPendingDues = reconciledTripList.reduce(
     (sum, t) => sum + (Number(t.customerBalance) > 0 ? Number(t.customerBalance) : 0),
     0
   );
@@ -287,7 +323,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
         );
       }
 
-      const linkedTrip = matchedTrip || tripList.find((t) => t.id === form.tripId || t.tripNumber === form.tripId);
+      const linkedTrip = matchedTrip || reconciledTripList.find((t) => t.id === form.tripId || t.tripNumber === form.tripId);
       const linkedVehicle = linkedTrip
         ? vehicleList.find((v) => v.id === linkedTrip.vehicleId || v.registrationNumber === linkedTrip.vehicleName)
         : undefined;
@@ -328,7 +364,9 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
     setDeletingId(payment.id);
     try {
       await deletePayment(payment.id);
-      setPayments((prev) => prev.filter((p) => p.id !== payment.id));
+      const remainingPayments = payments.filter((p) => p.id !== payment.id);
+      setPayments(remainingPayments);
+      setTripList((prev) => reconcileTripsWithPayments(prev, remainingPayments));
       setFeedback({ message: "Payment entry deleted successfully.", type: "success" });
     } catch {
       setFeedback({ message: "Failed to delete payment.", type: "error" });
@@ -762,14 +800,14 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                   </Link>
                 </div>
                 <SearchableTripSelect
-                  trips={tripList}
+                  trips={reconciledTripList}
                   value={form.tripId}
                   onChange={(selectedId) => handleTripSelect(selectedId)}
                   placeholder="Search trip #, receipt, customer, route, vehicle, phone..."
                   unlinkedLabel="🔍 General / Unlinked Payment"
                   showDueBadge={true}
                 />
-                {tripList.length === 0 && (
+                {reconciledTripList.length === 0 && (
                   <p className="text-[10px] text-amber-600 mt-1">
                     No trips found. <Link href="/travel/trips" className="font-bold underline text-blue-600">Create a trip here</Link>.
                   </p>
@@ -1101,7 +1139,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                         </td>
                         <td className="py-3 px-3">
                           {(() => {
-                            const linkedTrip = tripList.find((t) => t.id === p.tripId || t.tripNumber === p.tripId);
+                            const linkedTrip = reconciledTripList.find((t) => t.id === p.tripId || t.tripNumber === p.tripId);
                             if (linkedTrip) {
                               return (
                                 <div>
@@ -1246,7 +1284,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                         {formatINR(p.amount)}
                       </div>
                       {(() => {
-                        const linkedTrip = tripList.find((t) => t.id === p.tripId || t.tripNumber === p.tripId);
+                        const linkedTrip = reconciledTripList.find((t) => t.id === p.tripId || t.tripNumber === p.tripId);
                         if (linkedTrip) {
                           return (
                             <div className="mt-1">

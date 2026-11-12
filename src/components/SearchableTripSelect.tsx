@@ -143,10 +143,28 @@ export default function SearchableTripSelect({
               <span className="text-slate-500 text-[11px] truncate">
                 ({selectedTrip.from || "Origin"} → {selectedTrip.to || "Destination"})
               </span>
-              {showDueBadge && Number(selectedTrip.customerBalance) > 0 && (
-                <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded-md">
-                  Due {formatINR(selectedTrip.customerBalance)}
-                </span>
+              {showDueBadge && (
+                (() => {
+                  const tTotal = Number(selectedTrip.totalFare) || 0;
+                  const tPaid = Number(selectedTrip.customerPaid) || 0;
+                  const tBal = Number(selectedTrip.customerBalance) || 0;
+                  const effBal = tBal > 0 ? tBal : Math.max(0, tTotal - tPaid);
+                  if (effBal > 0) {
+                    return (
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded-md">
+                        Due {formatINR(effBal)}
+                      </span>
+                    );
+                  }
+                  if (tTotal > 0 && tPaid >= tTotal) {
+                    return (
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded-md">
+                        Paid
+                      </span>
+                    );
+                  }
+                  return null;
+                })()
               )}
             </div>
           ) : (
@@ -237,7 +255,12 @@ export default function SearchableTripSelect({
                   trip.id === value ||
                   trip.tripNumber === value ||
                   (trip.receiptNumber && trip.receiptNumber === value);
-                const hasDue = Number(trip.customerBalance) > 0;
+                const totalFare = Number(trip.totalFare ?? (Number(trip.baseFare || 0) + Number(trip.extraKmCharge || 0))) || 0;
+                const customerPaid = Number(trip.customerPaid) || 0;
+                const rawBalance = Number(trip.customerBalance) || 0;
+                const effectiveBalance = rawBalance > 0 ? rawBalance : Math.max(0, totalFare - customerPaid);
+                const isPaid = totalFare > 0 ? customerPaid >= totalFare : (customerPaid > 0 && effectiveBalance === 0);
+                const hasDue = effectiveBalance > 0 || (totalFare > 0 && !isPaid);
 
                 return (
                   <div
@@ -280,13 +303,13 @@ export default function SearchableTripSelect({
                         <div>
                           {hasDue ? (
                             <span className="inline-block text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/70 px-1.5 py-0.5 rounded">
-                              Due {formatINR(trip.customerBalance)}
+                              Due {formatINR(effectiveBalance)}
                             </span>
-                          ) : (
+                          ) : isPaid ? (
                             <span className="inline-block text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-1.5 py-0.5 rounded">
                               Paid
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       )}
                       {isSelected && (

@@ -31,11 +31,12 @@ import {
   notifyDataChanged,
   isDeleted,
 } from '@/lib/storage-sync'
+import { reconcileTripsWithPayments } from './payments.service'
 
 const COLLECTION = 'trips'
 
 export async function getTrips(limitCount = 100): Promise<Trip[]> {
-  const localFallback = getStoredTrips()
+  const localFallback = reconcileTripsWithPayments(getStoredTrips(), getStoredPayments())
 
   return withCache(
     `trips:list:${limitCount}`,
@@ -47,8 +48,9 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
         .map(d => ({ id: d.id, ...d.data() } as Trip))
         .filter(t => !isDeleted('trips', t.id) && (!t.tripNumber || !isDeleted('trips', t.tripNumber)))
 
-      saveStoredTrips(list)
-      return list
+      const reconciled = reconcileTripsWithPayments(list, getStoredPayments())
+      saveStoredTrips(reconciled)
+      return reconciled
     },
     { fallback: localFallback }
   )
