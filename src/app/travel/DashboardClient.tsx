@@ -526,17 +526,34 @@ export default function DashboardClient({
                       {/* Right: Fare & Due */}
                       <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                         <div className="text-left sm:text-right">
-                          <div className="text-xs font-bold text-slate-900 font-mono">
-                            {formatINR(trip.totalFare || 0)}
-                          </div>
-                          <div className="mt-0.5">
-                            {hasDue ? (
-                              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/50">
-                                Due {formatINR(trip.customerBalance)}
+                          <div className="flex items-center sm:justify-end gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-slate-900 font-mono">
+                              {formatINR(trip.totalFare || 0)}
+                            </span>
+                            {Number(trip.advanceReceived) > 0 && (
+                              <span className="text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-200/60 px-1 rounded">
+                                Adv: {formatINR(trip.advanceReceived)}
                               </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 flex items-center sm:justify-end gap-1">
+                            {hasDue ? (
+                              <>
+                                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/50">
+                                  Due {formatINR(trip.customerBalance)}
+                                </span>
+                                <Link
+                                  href={`/travel/payments?tripId=${trip.tripNumber || trip.id}&amount=${trip.customerBalance}&type=customer_received&stage=balance`}
+                                  className="text-[9px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-1.5 py-0.5 rounded transition-colors inline-flex items-center gap-0.5"
+                                  title="Record balance settlement"
+                                >
+                                  <CreditCard className="w-2.5 h-2.5" />
+                                  <span>Collect</span>
+                                </Link>
+                              </>
                             ) : (
                               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/50">
-                                Paid Full
+                                Paid Full ✓
                               </span>
                             )}
                           </div>

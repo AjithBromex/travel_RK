@@ -423,19 +423,36 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
                 const activeDriverPayments = allPayments.filter((p: any) => p.type === 'driver_payment' && isLinked(p));
                 const custPaidSum = activeCustPayments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
                 const driverPaidSum = activeDriverPayments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
-                const advance = Number(targetTrip.advanceReceived) || 0;
+
+                const advancePayments = activeCustPayments.filter(
+                  (p: any) => p.paymentStage === 'advance' || (p.notes && /advance/i.test(p.notes))
+                );
+                const advanceFromPayments = advancePayments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+
+                const hasCustPayments = activeCustPayments.length > 0;
+                const trueCustPaid = hasCustPayments ? custPaidSum : 0;
+                const trueAdv = hasCustPayments ? advanceFromPayments : 0;
+
                 const totalFare = Number(targetTrip.totalFare ?? (Number(targetTrip.baseFare || 0) + Number(targetTrip.extraKmCharge || 0))) || 0;
                 const agreedPay = Number(targetTrip.driverAgreedPay) || 0;
-                const trueCustPaid = advance + custPaidSum;
                 const trueCustBal = Math.max(0, totalFare - trueCustPaid);
                 const trueDriverBal = Math.max(0, agreedPay - driverPaidSum);
 
-                await updateRow('trips', targetTrip.id, {
-                  customerPaid: trueCustPaid,
-                  customerBalance: trueCustBal,
-                  driverPaid: driverPaidSum,
-                  driverBalance: trueDriverBal,
-                });
+                const patchUrl = `${getEndpoint('trips', targetTrip.id)}${API_KEY ? '&' : '?'}updateMask.fieldPaths=customerPaid&updateMask.fieldPaths=customerBalance&updateMask.fieldPaths=driverPaid&updateMask.fieldPaths=driverBalance&updateMask.fieldPaths=advanceReceived&updateMask.fieldPaths=updatedAt`;
+                await fetch(patchUrl, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    fields: {
+                      customerPaid: encodeFirestoreValue(trueCustPaid),
+                      customerBalance: encodeFirestoreValue(trueCustBal),
+                      driverPaid: encodeFirestoreValue(driverPaidSum),
+                      driverBalance: encodeFirestoreValue(trueDriverBal),
+                      advanceReceived: encodeFirestoreValue(trueAdv),
+                      updatedAt: encodeFirestoreValue(new Date().toISOString()),
+                    },
+                  }),
+                }).catch(() => {});
                 rowsCache.delete('trips');
               }
             }

@@ -105,10 +105,7 @@ export default function ReportsClient({
     refreshAll();
 
     const unsubscribe = subscribeDataChanged(() => {
-      setTripsData(getStoredTrips());
-      setVehiclesData(getStoredVehicles());
-      setExpensesData(getStoredExpenses());
-      setPaymentsData(getStoredPayments());
+      refreshAll();
     });
 
     return () => unsubscribe();

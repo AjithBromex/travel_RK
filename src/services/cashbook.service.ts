@@ -15,11 +15,14 @@ export async function getCashBookEntries(): Promise<CashBookEntry[]> {
     payments
       .filter(p => p.type === 'customer_received')
       .forEach(p => {
+        const isAdvance = p.paymentStage === 'advance' || (p.notes && /advance/i.test(p.notes))
+        const stageLabel = isAdvance ? 'Customer Advance' : 'Customer Balance'
+        const tripRef = p.tripId && p.tripId !== 'general' ? ` (Trip #${p.tripId})` : ''
         entries.push({
           id: `p-${p.id}`,
           date: p.paymentDate,
           tripId: p.tripId,
-          description: `Customer Receipt (Trip ${p.tripId})`,
+          description: `${stageLabel}${tripRef}${p.notes ? ` - ${p.notes}` : ''}`,
           cashIn: Number(p.amount) || 0,
           cashOut: 0,
           balance: 0,

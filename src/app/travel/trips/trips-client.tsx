@@ -100,7 +100,9 @@ export function getTripReceiptDisplay(trip: Trip, allTrips: Trip[]): string {
 
 export default function TripsClient({ initialTrips, vehicles }: TripsClientProps) {
   const [trips, setTrips] = useState<Trip[]>(() => {
-    if (initialTrips && initialTrips.length > 0) return initialTrips;
+    if (initialTrips && initialTrips.length > 0) {
+      return initialTrips.filter((t) => !isDeleted("trips", t.id) && (!t.tripNumber || !isDeleted("trips", t.tripNumber)));
+    }
     return getStoredTrips();
   });
 
@@ -160,7 +162,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
     // Cross-page real-time sync listener
     const unsubscribe = subscribeDataChanged((entity) => {
-      if (entity === "trips" || entity === "all") {
+      if (entity === "trips" || entity === "payments" || entity === "all") {
         fetchTripsData();
       }
       if (entity === "vehicles" || entity === "all") {

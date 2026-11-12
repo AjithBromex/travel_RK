@@ -55,19 +55,21 @@ export function reconcileTripWithPayments(trip: Trip, allPayments?: Payment[]): 
   );
   const advanceFromPayments = advancePayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
+  // If active customer payments exist for this trip, customerPaid is strictly customerPaidSum
+  // and advanceReceived is advanceFromPayments.
+  // If no customer payments are linked at all, fall back to trip.advanceReceived (e.g. legacy trips)
+  const hasLinkedCustomerPayments = customerPayments.length > 0;
   const tripAdvance = Number(trip.advanceReceived) || 0;
-  // If the trip already has advance recorded in payments, don't double count it with trip.advanceReceived
-  const extraAdvance = Math.max(0, tripAdvance - advanceFromPayments);
 
-  const trueCustomerPaid = extraAdvance + customerPaidSum;
+  const trueCustomerPaid = hasLinkedCustomerPayments ? customerPaidSum : tripAdvance;
+  const effectiveAdvanceReceived = hasLinkedCustomerPayments ? advanceFromPayments : tripAdvance;
+
   const totalFare = Number(trip.totalFare ?? (Number(trip.baseFare || 0) + Number(trip.extraKmCharge || 0))) || 0;
   const agreedDriverPay = Number(trip.driverAgreedPay) || 0;
 
   const trueCustomerBalance = Math.max(0, totalFare - trueCustomerPaid);
   const trueDriverPaid = driverPaidSum;
   const trueDriverBalance = Math.max(0, agreedDriverPay - trueDriverPaid);
-
-  const effectiveAdvanceReceived = Math.max(tripAdvance, advanceFromPayments);
 
   return {
     ...trip,
@@ -265,7 +267,16 @@ export async function deletePayment(id: string): Promise<void> {
   await waitForAuthReady()
 
   const currentPayments = getStoredPayments()
-  const paymentToDelete = currentPayments.find(p => p.id === id)
+  let paymentToDelete = currentPayments.find(p => p.id === id)
+
+  if (!paymentToDelete) {
+    try {
+      const snap = await getDoc(doc(db, COLLECTION, id))
+      if (snap.exists()) {
+        paymentToDelete = { id: snap.id, ...snap.data() } as Payment
+      }
+    } catch {}
+  }
 
   try {
     await deleteDoc(doc(db, COLLECTION, id))
@@ -279,9 +290,26 @@ export async function deletePayment(id: string): Promise<void> {
   // Reconcile and update linked trip dues when payment is deleted
   if (paymentToDelete && paymentToDelete.tripId && paymentToDelete.tripId !== 'general') {
     try {
-      const remainingPayments = currentPayments.filter(p => p.id !== id && !isDeleted('payments', p.id))
-      const allTrips = getStoredTrips()
-      const targetTrip = allTrips.find(t => isPaymentLinkedToTrip(paymentToDelete, t))
+      let remainingPayments = currentPayments.filter(p => p.id !== id && !isDeleted('payments', p.id))
+      try {
+        const paySnap = await getDocs(query(collection(db, COLLECTION), limit(200)))
+        const livePayments = paySnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Payment))
+          .filter(p => p.id !== id && !isDeleted('payments', p.id))
+        if (livePayments.length > 0) remainingPayments = livePayments
+      } catch {}
+
+      let allTrips = getStoredTrips()
+      let targetTrip = allTrips.find(t => isPaymentLinkedToTrip(paymentToDelete!, t))
+
+      if (!targetTrip) {
+        try {
+          const tripSnap = await getDoc(doc(db, 'trips', paymentToDelete.tripId))
+          if (tripSnap.exists()) {
+            targetTrip = { id: tripSnap.id, ...tripSnap.data() } as Trip
+          }
+        } catch {}
+      }
 
       if (targetTrip) {
         const reconciled = reconcileTripWithPayments(targetTrip, remainingPayments)

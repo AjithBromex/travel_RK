@@ -46,6 +46,7 @@ import {
   removeStoredReminder,
   subscribeDataChanged,
   isRecordConfirmed,
+  isDeleted,
 } from "@/lib/storage-sync";
 import { db } from "@/lib/firebase/config";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -165,7 +166,7 @@ export default function RemindersClient({
   // Convert initialReminders or local backup into display items
   const [items, setItems] = useState<ReminderItem[]>(() => {
     const rawList = Array.isArray(initialReminders)
-      ? initialReminders.filter((r) => !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id))
+      ? initialReminders.filter((r) => !isDeleted('reminders', r.id) && !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id))
       : getStoredReminders();
     const currentVehicles =
       vehicles && vehicles.length > 0 ? vehicles : getStoredVehicles();
@@ -187,7 +188,7 @@ export default function RemindersClient({
         const fresh = await getReminders(100);
         const currentVehs = getStoredVehicles();
         if (Array.isArray(fresh)) {
-          const valid = fresh.filter((r) => !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id));
+          const valid = fresh.filter((r) => !isDeleted('reminders', r.id) && !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id));
           setItems(valid.map((r) => mapReminderToItem(r, currentVehs)));
         }
       } catch (err) {

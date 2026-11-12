@@ -54,7 +54,19 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
         .map(d => ({ id: d.id, ...d.data() } as Trip))
         .filter(t => !isDeleted('trips', t.id) && (!t.tripNumber || !isDeleted('trips', t.tripNumber)))
 
-      const reconciled = reconcileTripsWithPayments(list, getStoredPayments())
+      let paymentsList = getStoredPayments()
+      try {
+        const paySnap = await getDocs(query(collection(db, 'payments'), limit(200)))
+        const cloudPayments = paySnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Payment))
+          .filter(p => !isDeleted('payments', p.id))
+        if (cloudPayments.length > 0) {
+          saveStoredPayments(cloudPayments)
+          paymentsList = cloudPayments
+        }
+      } catch {}
+
+      const reconciled = reconcileTripsWithPayments(list, paymentsList)
       saveStoredTrips(reconciled)
       return reconciled
     },
@@ -62,9 +74,8 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
   )
 }
 
-
 export async function getRecentTrips(count = 5): Promise<Trip[]> {
-  const localFallback = getStoredTrips().slice(0, count)
+  const localFallback = reconcileTripsWithPayments(getStoredTrips().slice(0, count), getStoredPayments())
 
   return withCache(
     `trips:recent:${count}`,
@@ -72,8 +83,10 @@ export async function getRecentTrips(count = 5): Promise<Trip[]> {
       await waitForAuthReady()
       const q = query(collection(db, COLLECTION), orderBy('createdAt', 'desc'), limit(count))
       const snap = await getDocs(q)
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Trip))
-      return list
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Trip))
+        .filter(t => !isDeleted('trips', t.id) && (!t.tripNumber || !isDeleted('trips', t.tripNumber)))
+      return reconcileTripsWithPayments(list, getStoredPayments())
     },
     { fallback: localFallback }
   )
@@ -178,6 +191,8 @@ export async function createTrip(data: Omit<Trip, 'id' | 'tripNumber' | 'created
   invalidateCache('reports')
   invalidateCache('dashboard')
   notifyDataChanged('trips')
+  notifyDataChanged('payments')
+  notifyDataChanged('all')
 
   return docId
 }
@@ -244,6 +259,8 @@ export async function updateTrip(id: string, data: Partial<Trip>): Promise<void>
   invalidateCache('reports')
   invalidateCache('dashboard')
   notifyDataChanged('trips')
+  notifyDataChanged('payments')
+  notifyDataChanged('all')
 }
 
 export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
@@ -538,6 +555,8 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
 
   // 9. Broadcast data change notifications across all pages & tabs
   notifyDataChanged('trips')
+  notifyDataChanged('payments')
+  notifyDataChanged('all')
   notifyDataChanged('payments')
   notifyDataChanged('expenses')
   notifyDataChanged('cashbook')
