@@ -149,6 +149,24 @@ export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'up
   await waitForAuthReady()
   const now = new Date().toISOString()
 
+  // Guard against adding balance payment greater than outstanding balance
+  if (data.tripId && data.tripId !== 'general') {
+    const trips = getStoredTrips()
+    const targetTrip = trips.find(t => isPaymentLinkedToTrip(data, t))
+    if (targetTrip) {
+      if (data.type === 'customer_received' && data.paymentStage === 'balance') {
+        const reconciled = reconcileTripWithPayments(targetTrip)
+        const remainingBal = Number(reconciled.customerBalance) || 0
+        if (remainingBal <= 0) {
+          throw new Error('This trip is already fully settled. There is no pending balance due.')
+        }
+        if (Number(data.amount) > remainingBal) {
+          throw new Error(`Balance payment amount (₹${Number(data.amount).toLocaleString('en-IN')}) cannot exceed the remaining balance of ₹${remainingBal.toLocaleString('en-IN')}`)
+        }
+      }
+    }
+  }
+
   let docId = `pay_${Date.now()}`
   try {
     const docRef = await addDoc(collection(db, COLLECTION), {

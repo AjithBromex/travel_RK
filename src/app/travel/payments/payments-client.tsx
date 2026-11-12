@@ -221,6 +221,11 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
     );
   }, [form.tripId, reconciledTripList]);
 
+  const maxCustomerBalance = useMemo(() => {
+    if (!selectedTrip) return null;
+    return Number(selectedTrip.customerBalance) || 0;
+  }, [selectedTrip]);
+
   const handleTripSelect = (selectedId: string) => {
     const trip = reconciledTripList.find((t) => t.id === selectedId || t.tripNumber === selectedId);
     let autoAmount = form.amount;
@@ -240,6 +245,8 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
           // Pre-trip advance payment
           autoStage = "advance";
           autoNotes = `Advance payment before trip - Trip #${trip.tripNumber || trip.id.slice(0, 6)} (${trip.customerName})`;
+        } else if (bal === 0) {
+          autoAmount = "";
         }
       } else if (form.type === "driver_payment" && Number(trip.driverBalance) > 0) {
         autoAmount = String(trip.driverBalance);
@@ -264,7 +271,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
         newAmount = selectedTrip.advanceReceived ? String(selectedTrip.advanceReceived) : form.amount;
         newNotes = `Advance payment before trip - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`;
       } else if (stage === "balance") {
-        newAmount = Number(selectedTrip.customerBalance) > 0 ? String(selectedTrip.customerBalance) : form.amount;
+        newAmount = Number(selectedTrip.customerBalance) > 0 ? String(selectedTrip.customerBalance) : "";
         newNotes = `Balance payment after trip completion - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`;
       } else {
         newNotes = `Payment receipt - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`;
@@ -328,6 +335,31 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       setFeedback({ message: "Please enter a valid payment amount", type: "error" });
       setLoading(false);
       return;
+    }
+
+    // STRICT CHECK: while adding the balance amount, add only that balance, not more than the balance
+    if (
+      selectedTrip &&
+      form.type === "customer_received" &&
+      form.paymentStage === "balance" &&
+      maxCustomerBalance !== null
+    ) {
+      if (maxCustomerBalance <= 0) {
+        setFeedback({
+          message: "This trip is already fully settled. There is no pending balance due.",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+      if (amountNum > maxCustomerBalance) {
+        setFeedback({
+          message: `Cannot enter more than the remaining balance of ${formatINR(maxCustomerBalance)}.`,
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -1005,10 +1037,17 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
               {/* Amount & Date (2 columns) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5 flex items-center gap-1">
-                    <span>Amount (₹)</span>
-                    <span className="text-rose-500 font-bold">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                      <span>Amount (₹)</span>
+                      <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    {selectedTrip && form.type === "customer_received" && form.paymentStage === "balance" && maxCustomerBalance !== null && (
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/70">
+                        Max: {formatINR(maxCustomerBalance)}
+                      </span>
+                    )}
+                  </div>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
                       ₹
@@ -1017,13 +1056,60 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                       ref={amountInputRef}
                       type="number"
                       min={1}
-                      placeholder="e.g. 5000"
+                      max={
+                        selectedTrip && form.type === "customer_received" && form.paymentStage === "balance" && maxCustomerBalance !== null && maxCustomerBalance > 0
+                          ? maxCustomerBalance
+                          : undefined
+                      }
+                      placeholder={
+                        selectedTrip && form.type === "customer_received" && form.paymentStage === "balance" && maxCustomerBalance !== null && maxCustomerBalance > 0
+                          ? String(maxCustomerBalance)
+                          : "e.g. 5000"
+                      }
                       value={form.amount}
-                      onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (
+                          selectedTrip &&
+                          form.type === "customer_received" &&
+                          form.paymentStage === "balance" &&
+                          maxCustomerBalance !== null
+                        ) {
+                          const num = Number(val);
+                          if (num > maxCustomerBalance) {
+                            setForm({ ...form, amount: String(maxCustomerBalance) });
+                            setFeedback({
+                              message: `Amount cannot exceed the remaining balance of ${formatINR(maxCustomerBalance)}. Capped to balance.`,
+                              type: "error",
+                            });
+                            return;
+                          }
+                        }
+                        setForm({ ...form, amount: val });
+                      }}
                       required
-                      className="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                      className={`w-full pl-7 pr-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white transition-all ${
+                        selectedTrip &&
+                        form.type === "customer_received" &&
+                        form.paymentStage === "balance" &&
+                        maxCustomerBalance !== null &&
+                        Number(form.amount) > maxCustomerBalance
+                          ? "border-rose-400 focus:border-rose-500"
+                          : "border-slate-200 focus:border-blue-500"
+                      }`}
                     />
                   </div>
+                  {selectedTrip &&
+                    form.type === "customer_received" &&
+                    form.paymentStage === "balance" &&
+                    maxCustomerBalance !== null && (
+                      <div className="mt-1 flex items-center justify-between text-[10px]">
+                        <span className="text-slate-400">Remaining Balance:</span>
+                        <span className={`font-bold font-mono-nums ${maxCustomerBalance > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                          {maxCustomerBalance > 0 ? `Only up to ${formatINR(maxCustomerBalance)}` : "Fully Settled ✓"}
+                        </span>
+                      </div>
+                    )}
                 </div>
 
                 <div>
@@ -1125,11 +1211,22 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
-                className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50 ${
+                disabled={
+                  loading ||
+                  Boolean(
+                    selectedTrip &&
+                      form.type === "customer_received" &&
+                      form.paymentStage === "balance" &&
+                      maxCustomerBalance !== null &&
+                      (maxCustomerBalance <= 0 || Number(form.amount) > maxCustomerBalance)
+                  )
+                }
+                className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                   form.type === "customer_received"
                     ? form.paymentStage === "advance"
                       ? "bg-sky-600 hover:bg-sky-700 shadow-sky-500/25"
+                      : maxCustomerBalance !== null && maxCustomerBalance <= 0
+                      ? "bg-slate-400 hover:bg-slate-400 shadow-none"
                       : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/25"
                     : "bg-[#0D62FE] hover:bg-[#0952DC] shadow-blue-500/25"
                 }`}
@@ -1141,6 +1238,11 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                     <>
                       <Clock className="w-4 h-4 stroke-[2.5]" />
                       <span>Record Advance Payment (Pre-Trip)</span>
+                    </>
+                  ) : maxCustomerBalance !== null && maxCustomerBalance <= 0 ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                      <span>Trip is Already Fully Settled ✓</span>
                     </>
                   ) : (
                     <>
