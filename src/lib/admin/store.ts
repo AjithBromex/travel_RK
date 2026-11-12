@@ -256,7 +256,7 @@ export async function createRow(slug: string, body: Record<string, unknown>): Pr
 
   // Sync dual keys for compatibility between user app & admin table
   if (slug === 'trips') {
-    payload.customerName = cleaned.customer || cleaned.customerName;
+    payload.customerName = (cleaned as Record<string, any>).customer || (cleaned as Record<string, any>).customerName || '';
     payload.totalFare = cleaned.amount;
     payload.tripDate = cleaned.startDate;
     payload.vehicleName = cleaned.vehicle;
@@ -307,7 +307,7 @@ export async function updateRow(slug: string, id: string, body: Record<string, u
   const payload: Record<string, any> = { ...cleaned, updatedAt: now };
 
   if (slug === 'trips') {
-    payload.customerName = cleaned.customer || cleaned.customerName;
+    payload.customerName = (cleaned as Record<string, any>).customer || (cleaned as Record<string, any>).customerName || '';
     payload.totalFare = cleaned.amount;
     payload.tripDate = cleaned.startDate;
     payload.vehicleName = cleaned.vehicle;

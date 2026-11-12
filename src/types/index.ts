@@ -60,6 +60,10 @@ export interface Trip {
   createdBy?: string
   createdAt: string
   updatedAt: string
+  customer?: string
+  pickupTime?: string
+  time?: string
+  reportingTime?: string
 }
 
 // ─── Payment ───

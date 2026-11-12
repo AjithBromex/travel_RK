@@ -396,19 +396,19 @@ export async function saveAdminRow(
         : 'scheduled';
 
     const tripData: any = {
-      customerName: String(form.customer || form.customerName || ''),
-      customerPhone: String(form.customerPhone || ''),
-      driverName: String(form.driverName || ''),
-      driverPhone: String(form.driverPhone || ''),
-      vehicleName: String(form.vehicle || form.vehicleName || ''),
-      from: String(form.from || ''),
-      to: String(form.to || ''),
-      tripDate: String(form.startDate || new Date().toISOString().slice(0, 10)),
-      endDate: String(form.endDate || ''),
-      pickupTime: String(form.pickupTime || ''),
-      totalFare: Number(form.amount || 0),
+      customerName: String((form as Record<string, any>).customer || (form as Record<string, any>).customerName || ''),
+      customerPhone: String((form as Record<string, any>).customerPhone || ''),
+      driverName: String((form as Record<string, any>).driverName || ''),
+      driverPhone: String((form as Record<string, any>).driverPhone || ''),
+      vehicleName: String((form as Record<string, any>).vehicle || (form as Record<string, any>).vehicleName || ''),
+      from: String((form as Record<string, any>).from || ''),
+      to: String((form as Record<string, any>).to || ''),
+      tripDate: String((form as Record<string, any>).startDate || new Date().toISOString().slice(0, 10)),
+      endDate: String((form as Record<string, any>).endDate || ''),
+      pickupTime: String((form as Record<string, any>).pickupTime || ''),
+      totalFare: Number((form as Record<string, any>).amount || 0),
       status: mappedStatus,
-      notes: String(form.note || ''),
+      notes: String((form as Record<string, any>).note || ''),
     };
 
     let targetId = id;

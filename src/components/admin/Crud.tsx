@@ -632,7 +632,7 @@ export default function Crud({
                             <span>Customer</span>
                           </button>
 
-                          {isTripDriverAssigned(r) ? (
+                          {isTripDriverAssigned(r as any) ? (
                             <button
                               type="button"
                               onClick={() => openWhatsAppModal('driver', r)}

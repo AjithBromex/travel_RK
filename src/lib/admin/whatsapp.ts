@@ -83,7 +83,7 @@ export function validateAndFormatWhatsAppPhone(rawInput?: string | null): PhoneV
  * Extracts and separates vehicle model name and registration number cleanly
  */
 export function resolveVehicleDetails(
-  trip: Partial<Trip> & Record<string, any>,
+  trip: Record<string, any>,
   vehicle?: Partial<Vehicle> | null
 ): { vehicleName: string; vehicleNumber: string } {
   let vehicleName = String(vehicle?.name || '').trim();
@@ -138,7 +138,7 @@ export function resolveVehicleDetails(
 /**
  * Extracts pickup/reporting time from trip notes or time fields if available
  */
-export function extractPickupTime(trip: Partial<Trip> & Record<string, any>): string {
+export function extractPickupTime(trip: Record<string, any>): string {
   const raw = trip.raw || trip;
   const directTime = String(
     raw.pickupTime || raw.reportingTime || raw.time || trip.pickupTime || ''
@@ -157,7 +157,7 @@ export function extractPickupTime(trip: Partial<Trip> & Record<string, any>): st
  * Generates the Customer WhatsApp Message
  */
 export function buildCustomerWhatsAppMessage(
-  trip: Partial<Trip> & Record<string, any>,
+  trip: Record<string, any>,
   vehicle?: Partial<Vehicle> | null
 ): string {
   const raw = trip.raw || trip;
@@ -207,7 +207,7 @@ export function buildCustomerWhatsAppMessage(
 /**
  * Checks if a trip has a valid driver assigned
  */
-export function isTripDriverAssigned(trip: Partial<Trip> & Record<string, any>): boolean {
+export function isTripDriverAssigned(trip: Record<string, any>): boolean {
   const raw = trip.raw || trip;
   const driverName = String(raw.driverName || trip.driverName || trip.driver || '').trim();
   if (!driverName) return false;
@@ -219,7 +219,7 @@ export function isTripDriverAssigned(trip: Partial<Trip> & Record<string, any>):
  * Generates the Driver WhatsApp Message
  */
 export function buildDriverWhatsAppMessage(
-  trip: Partial<Trip> & Record<string, any>,
+  trip: Record<string, any>,
   vehicle?: Partial<Vehicle> | null
 ): string {
   const raw = trip.raw || trip;
@@ -312,7 +312,7 @@ export interface TripWhatsAppContext {
 }
 
 export function resolveTripWhatsAppContext(
-  trip: Partial<Trip> & Record<string, any>,
+  trip: Record<string, any>,
   vehicle?: Partial<Vehicle> | null
 ): TripWhatsAppContext {
   const raw = trip.raw || trip;
