@@ -100,26 +100,54 @@ export function normalizeTrip(t: Partial<Trip> & Record<string, any>): Record<st
 }
 
 export function resolveVehicleSeats(v: Record<string, any>): number {
+  const combined = `${v.name || ''} ${v.model || ''} ${v.type || ''}`.toLowerCase();
+
+  // Check if vehicle is explicitly a large commercial van / bus / traveller / winger
+  const isLargeCommercial =
+    combined.includes('winger') ||
+    combined.includes('traveller') ||
+    combined.includes('tempo') ||
+    combined.includes('urbania') ||
+    combined.includes('bus') ||
+    combined.includes('coach') ||
+    combined.includes('volvo');
+
   if (v.seats != null && v.seats !== '') {
     const s = Number(v.seats);
-    if (!isNaN(s) && s > 0) return s;
+    // If it's a known large commercial vehicle, a seat count of 5 or less is a bad placeholder
+    if (!isNaN(s) && s > 0 && (!isLargeCommercial || s > 5)) {
+      return s;
+    }
   }
+
   const notes = String(v.notes || v.note || '');
   if (notes.includes('Seats') || notes.includes('seats')) {
     const match = notes.match(/(\d+)\s*seats?/i);
     if (match) {
       const s = parseInt(match[1], 10);
-      if (!isNaN(s) && s > 0) return s;
+      if (!isNaN(s) && s > 0 && (!isLargeCommercial || s > 5)) {
+        return s;
+      }
     }
   }
-  const type = String(v.type || '').toLowerCase();
-  const name = String(v.name || v.model || '').toLowerCase();
-  if (type.includes('volvo') || type.includes('bus') || name.includes('volvo')) return 45;
-  if (type.includes('traveller') && !type.includes('tempo')) return 26;
-  if (type.includes('urbania')) return 17;
-  if (type.includes('tempo')) return 12;
-  if (type.includes('innova') || type.includes('suv') || type.includes('bolero') || type.includes('ertiga') || type.includes('scorpio')) return 7;
-  if (type.includes('sedan') || type.includes('etios') || type.includes('swift') || type.includes('baleno') || type.includes('dzire') || type.includes('car')) return 4;
+
+  // Model & Type based auto-detection (checks name, model, and type)
+  if (combined.includes('volvo') || combined.includes('coach') || (combined.includes('bus') && !combined.includes('mini'))) return 45;
+  if (combined.includes('mini bus')) return 21;
+  if (combined.includes('traveller') && !combined.includes('tempo')) return 26;
+  if (combined.includes('urbania')) return 17;
+  if (combined.includes('winger')) return 12; // Tata Winger is standard 12 seats
+  if (combined.includes('tempo')) return 12;
+  if (combined.includes('innova') || combined.includes('crysta') || combined.includes('hycross') || combined.includes('ertiga') || combined.includes('bolero') || combined.includes('scorpio') || combined.includes('suv')) return 7;
+  if (combined.includes('sedan') || combined.includes('etios') || combined.includes('swift') || combined.includes('baleno') || combined.includes('dzire') || combined.includes('car')) return 4;
+  if (combined.includes('van')) return 12;
+
+  // Fallback to explicit numeric seats if available
+  if (v.seats != null && v.seats !== '') {
+    const s = Number(v.seats);
+    if (!isNaN(s) && s > 0) return s;
+  }
+
   return 12;
 }
 

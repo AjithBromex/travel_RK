@@ -47,12 +47,10 @@ import {
   deleteTrip,
   purgeOrphanedTripData,
 } from "@/services/trips.service";
-import { reconcileTripsWithPayments } from "@/services/payments.service";
 import { getVehicles, createVehicle } from "@/services/vehicles.service";
 import {
   getStoredVehicles,
   getStoredTrips,
-  getStoredPayments,
   subscribeDataChanged,
   isRecordConfirmed,
 } from "@/lib/storage-sync";
@@ -102,9 +100,10 @@ export function getTripReceiptDisplay(trip: Trip, allTrips: Trip[]): string {
 
 export default function TripsClient({ initialTrips, vehicles }: TripsClientProps) {
   const [trips, setTrips] = useState<Trip[]>(() => {
-    const baseList = (initialTrips && initialTrips.length > 0 ? initialTrips : getStoredTrips())
-      .filter((t) => !isDeleted("trips", t.id) && (!t.tripNumber || !isDeleted("trips", t.tripNumber)));
-    return reconcileTripsWithPayments(baseList, getStoredPayments());
+    if (initialTrips && initialTrips.length > 0) {
+      return initialTrips.filter((t) => !isDeleted("trips", t.id) && (!t.tripNumber || !isDeleted("trips", t.tripNumber)));
+    }
+    return getStoredTrips();
   });
 
   const [vehicleList, setVehicleList] = useState<Vehicle[]>(() => {
@@ -309,11 +308,14 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     try {
       const vName = quickVehicleForm.name.trim() || reg;
       const rate = Number(quickVehicleForm.extraKmRate) || 25;
+      const typeLower = (quickVehicleForm.type || "").toLowerCase();
+      const detectedSeats = typeLower.includes("winger") ? 12 : typeLower.includes("traveller") ? 26 : typeLower.includes("urbania") ? 17 : typeLower.includes("tempo") ? 12 : typeLower.includes("bus") ? 45 : typeLower.includes("innova") ? 7 : 12;
       const payload: Omit<Vehicle, "id" | "createdAt" | "updatedAt"> = {
         registrationNumber: reg,
         registrationNumberNormalized: reg.replace(/[^A-Z0-9]/g, ""),
         name: vName,
         type: quickVehicleForm.type,
+        seats: detectedSeats,
         extraKmRate: rate,
         currentKm: 0,
         nextServiceKm: 10000,
@@ -321,7 +323,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         permitExpiry: "",
         pollutionExpiry: "",
         status: "active",
-        notes: "Added via Quick Add in Trips",
+        notes: `${detectedSeats} Seats • Added via Quick Add in Trips`,
       };
 
       const newId = await createVehicle(payload);

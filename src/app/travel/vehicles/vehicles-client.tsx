@@ -706,6 +706,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
         type: form.type,
         registrationNumber: normalizedReg,
         registrationNumberNormalized: normalizedReg.replace(/[^A-Z0-9]/g, ""),
+        seats: Number(form.seats) || 12,
         extraKmRate: Number(form.extraKmRate) || 0,
         currentKm: Number(form.currentKm) || 0,
         nextServiceKm: Number(form.nextServiceKm) || 0,

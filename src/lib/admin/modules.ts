@@ -62,7 +62,17 @@ export const MODULES: Record<string, ModuleConfig> = {
     singular: 'vehicle',
     fields: [
       T('number', 'Registration no.', { required: true }),
-      S('type', 'Type', ['Car', 'Van', 'Tempo Traveller', 'Mini Bus', 'Bus']),
+      S('type', 'Type', [
+        'Tata Winger',
+        'Force Traveller',
+        'Tempo Traveller',
+        'Innova / SUV',
+        'Luxury Bus',
+        'Mini Bus',
+        'Urbania',
+        'Car',
+        'Van',
+      ]),
       T('model', 'Model'),
       { key: 'seats', label: 'Seats', type: 'number' },
       S('status', 'Status', ['Available', 'On trip', 'Maintenance']),

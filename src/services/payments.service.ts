@@ -307,6 +307,15 @@ export async function deletePayment(id: string): Promise<void> {
         } catch {}
       }
 
+      if (!targetTrip) {
+        try {
+          const qTrips = query(collection(db, 'trips'), limit(200))
+          const tSnap = await getDocs(qTrips)
+          const cloudTrips = tSnap.docs.map(d => ({ id: d.id, ...d.data() } as Trip))
+          targetTrip = cloudTrips.find(t => isPaymentLinkedToTrip(paymentToDelete!, t))
+        } catch {}
+      }
+
       if (targetTrip) {
         const reconciled = reconcileTripWithPayments(targetTrip, remainingPayments)
         const now = new Date().toISOString()
