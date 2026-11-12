@@ -55,14 +55,10 @@ export function reconcileTripWithPayments(trip: Trip, allPayments?: Payment[]): 
   );
   const advanceFromPayments = advancePayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-  // If active customer payments exist for this trip, customerPaid is strictly customerPaidSum
-  // and advanceReceived is advanceFromPayments.
-  // If no customer payments are linked at all, fall back to trip.advanceReceived (e.g. legacy trips)
-  const hasLinkedCustomerPayments = customerPayments.length > 0;
-  const tripAdvance = Number(trip.advanceReceived) || 0;
-
-  const trueCustomerPaid = hasLinkedCustomerPayments ? customerPaidSum : tripAdvance;
-  const effectiveAdvanceReceived = hasLinkedCustomerPayments ? advanceFromPayments : tripAdvance;
+  // Advance received and customer paid are strictly derived from active customer payment vouchers.
+  // When an advance voucher is deleted, advanceReceived is 0 and full fare is due!
+  const effectiveAdvanceReceived = advanceFromPayments;
+  const trueCustomerPaid = customerPaidSum;
 
   const totalFare = Number(trip.totalFare ?? (Number(trip.baseFare || 0) + Number(trip.extraKmCharge || 0))) || 0;
   const agreedDriverPay = Number(trip.driverAgreedPay) || 0;

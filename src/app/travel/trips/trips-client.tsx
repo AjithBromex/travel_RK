@@ -100,10 +100,9 @@ export function getTripReceiptDisplay(trip: Trip, allTrips: Trip[]): string {
 
 export default function TripsClient({ initialTrips, vehicles }: TripsClientProps) {
   const [trips, setTrips] = useState<Trip[]>(() => {
-    if (initialTrips && initialTrips.length > 0) {
-      return initialTrips.filter((t) => !isDeleted("trips", t.id) && (!t.tripNumber || !isDeleted("trips", t.tripNumber)));
-    }
-    return getStoredTrips();
+    const baseList = (initialTrips && initialTrips.length > 0 ? initialTrips : getStoredTrips())
+      .filter((t) => !isDeleted("trips", t.id) && (!t.tripNumber || !isDeleted("trips", t.tripNumber)));
+    return reconcileTripsWithPayments(baseList, getStoredPayments());
   });
 
   const [vehicleList, setVehicleList] = useState<Vehicle[]>(() => {

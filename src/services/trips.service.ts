@@ -60,14 +60,33 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
         const cloudPayments = paySnap.docs
           .map(d => ({ id: d.id, ...d.data() } as Payment))
           .filter(p => !isDeleted('payments', p.id))
-        if (cloudPayments.length > 0) {
-          saveStoredPayments(cloudPayments)
-          paymentsList = cloudPayments
-        }
+        saveStoredPayments(cloudPayments)
+        paymentsList = cloudPayments
       } catch {}
 
       const reconciled = reconcileTripsWithPayments(list, paymentsList)
       saveStoredTrips(reconciled)
+
+      // Sync Firestore trip documents if they differ from reconciled amounts
+      reconciled.forEach((rTrip) => {
+        const raw = list.find((t) => t.id === rTrip.id)
+        if (
+          raw &&
+          (Number(raw.advanceReceived || 0) !== Number(rTrip.advanceReceived || 0) ||
+            Number(raw.customerPaid || 0) !== Number(rTrip.customerPaid || 0) ||
+            Number(raw.customerBalance || 0) !== Number(rTrip.customerBalance || 0))
+        ) {
+          try {
+            updateDoc(doc(db, COLLECTION, rTrip.id), {
+              advanceReceived: rTrip.advanceReceived,
+              customerPaid: rTrip.customerPaid,
+              customerBalance: rTrip.customerBalance,
+              updatedAt: new Date().toISOString(),
+            }).catch(() => {})
+          } catch {}
+        }
+      })
+
       return reconciled
     },
     { fallback: localFallback }
