@@ -47,10 +47,12 @@ import {
   deleteTrip,
   purgeOrphanedTripData,
 } from "@/services/trips.service";
+import { reconcileTripsWithPayments } from "@/services/payments.service";
 import { getVehicles, createVehicle } from "@/services/vehicles.service";
 import {
   getStoredVehicles,
   getStoredTrips,
+  getStoredPayments,
   subscribeDataChanged,
   isRecordConfirmed,
 } from "@/lib/storage-sync";

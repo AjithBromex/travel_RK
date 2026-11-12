@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   Bell,
   ArrowRight,
+  CreditCard,
 } from "lucide-react";
 import { formatINR, formatDateShort, formatDate } from "@/lib/utils";
 import type { DashboardMetrics, Trip, Reminder } from "@/types";

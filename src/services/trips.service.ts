@@ -22,6 +22,7 @@ import {
   upsertStoredTrip,
   removeStoredTrip,
   getStoredPayments,
+  saveStoredPayments,
   removeStoredPayment,
   getStoredExpenses,
   removeStoredExpense,
