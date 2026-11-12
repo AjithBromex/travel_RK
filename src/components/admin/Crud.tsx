@@ -172,7 +172,7 @@ export default function Crud({
   }, [waModal]);
 
   const handleCopyMessage = (text: string) => {
-    if (!navigator?.clipboard) return;
+    if (typeof window === 'undefined' || typeof navigator === 'undefined' || !navigator.clipboard) return;
     navigator.clipboard.writeText(text);
     setWaCopied(true);
     setTimeout(() => setWaCopied(false), 2000);
@@ -194,7 +194,9 @@ export default function Crud({
     const tripId = String(waModal.row.id || (waModal.row as any).tripNumber || '');
     const updated = markWhatsAppSent(tripId, type, true, 'Administrator');
     setWaTrackingRecord({ ...updated });
-    window.open(url, '_blank', 'noopener,noreferrer');
+    if (typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const loadLiveRows = useCallback(async () => {
@@ -990,7 +992,7 @@ export default function Crud({
                       </div>
                       <div className="text-[11px] text-slate-500">
                         {sentAt
-                          ? `Recorded on ${new Date(sentAt).toLocaleDateString('en-IN', {
+                          ? `Recorded on ${new Date(String(sentAt)).toLocaleDateString('en-IN', {
                               day: '2-digit',
                               month: 'short',
                               year: 'numeric',

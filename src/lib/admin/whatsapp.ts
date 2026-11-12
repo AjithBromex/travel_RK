@@ -2,7 +2,6 @@
 // RK Travel Hub - Strictly Admin-Only WhatsApp Messaging Integration
 
 import type { Trip, Vehicle } from '@/types';
-import { getStoredVehicles } from '@/lib/storage-sync';
 
 export interface PhoneValidationResult {
   isValid: boolean;
@@ -89,31 +88,12 @@ export function resolveVehicleDetails(
   let vehicleName = String(vehicle?.name || '').trim();
   let vehicleNumber = String(vehicle?.registrationNumber || '').trim();
 
-  // If vehicle was not provided or partial, attempt to lookup in stored vehicles
-  if (!vehicleName || !vehicleNumber) {
-    try {
-      const stored = getStoredVehicles();
-      const raw = trip.raw || trip;
-      const targetVehicleId = String(raw.vehicleId || trip.vehicleId || '').trim();
-      const targetVehicleNum = String(raw.vehicle || trip.vehicle || '').trim();
-
-      const matched = stored.find(
-        (v) =>
-          (targetVehicleId && (v.id === targetVehicleId || v.registrationNumber === targetVehicleId)) ||
-          (targetVehicleNum && (v.registrationNumber === targetVehicleNum || v.name === targetVehicleNum))
-      );
-
-      if (matched) {
-        if (!vehicleName) vehicleName = matched.name || '';
-        if (!vehicleNumber) vehicleNumber = matched.registrationNumber || '';
-      }
-    } catch {}
-  }
-
-  // If still not resolved, check trip fields
+  // If vehicle was not provided or partial, check trip fields
   if (!vehicleName || !vehicleNumber) {
     const raw = trip.raw || trip;
-    const tripVehStr = String(raw.vehicleName || raw.vehicle || trip.vehicle || '').trim();
+    const tripVehStr = String(
+      raw.vehicleName || raw.vehicle || trip.vehicleName || trip.vehicle || ''
+    ).trim();
     if (tripVehStr && tripVehStr !== '–' && tripVehStr !== '-') {
       // Check pattern "Model Name (REG NUMBER)"
       const match = tripVehStr.match(/^(.*?)\s*\((.*?)\)$/);
