@@ -177,10 +177,10 @@ export default function InvoiceModal({ isOpen, onClose, data: initialData }: Inv
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-5 sm:px-7 py-4 bg-white">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-black text-[#0D233A] tracking-tight">
-                  INVOICE
+                  {data.paymentStage === 'advance' ? 'ADVANCE PAYMENT RECEIPT' : data.paymentStage === 'balance' ? 'FINAL SETTLEMENT INVOICE' : 'INVOICE'}
                 </h2>
                 <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wide">
-                  CASH RECEIPT / PAYMENT VOUCHER
+                  {data.paymentStage === 'advance' ? 'PRE-TRIP ADVANCE RECEIPT' : data.paymentStage === 'balance' ? 'POST-TRIP BALANCE SETTLEMENT VOUCHER' : 'CASH RECEIPT / PAYMENT VOUCHER'}
                 </p>
               </div>
 

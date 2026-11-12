@@ -68,12 +68,14 @@ export interface Trip {
 
 // ─── Payment ───
 export type PaymentType = 'customer_received' | 'driver_payment'
+export type PaymentStage = 'advance' | 'balance' | 'full'
 export type PaymentMode = 'cash' | 'bank_transfer' | 'upi' | 'card' | 'other'
 
 export interface Payment {
   id: string
   tripId: string
   type: PaymentType
+  paymentStage?: PaymentStage
   amount: number
   paymentDate: string
   paymentMode: PaymentMode

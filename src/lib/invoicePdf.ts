@@ -20,6 +20,7 @@ export interface InvoiceData {
   tripAmount: number
   advanceReceived: number
   balanceAmount: number
+  paymentStage?: 'advance' | 'balance' | 'full' | 'payout'
   amountReceivedInWords: string
 
   // Trip Details
@@ -134,14 +135,22 @@ export function buildInvoiceData(
     : formattedDate
 
   const totalFare = Number(trip?.totalFare) || Number(payment.amount) || 0
-  const advance =
-    payment.type === 'customer_received'
-      ? Number(payment.amount)
-      : Number(trip?.advanceReceived) || 0
-  const balance =
-    trip?.customerBalance !== undefined
-      ? Number(trip.customerBalance)
-      : Math.max(0, totalFare - advance)
+  const isAdvancePayment = payment.paymentStage === 'advance' || (Boolean(payment.notes) && /advance/i.test(payment.notes!))
+  const isBalancePayment = payment.paymentStage === 'balance' || (Boolean(payment.notes) && /balance/i.test(payment.notes!))
+
+  let advance = 0
+  let balance = 0
+
+  if (isAdvancePayment) {
+    advance = Number(payment.amount)
+    balance = trip?.customerBalance !== undefined ? Number(trip.customerBalance) : Math.max(0, totalFare - advance)
+  } else if (isBalancePayment) {
+    advance = Number(trip?.advanceReceived) || Math.max(0, totalFare - Number(payment.amount))
+    balance = trip?.customerBalance !== undefined ? Number(trip.customerBalance) : 0
+  } else {
+    advance = Number(trip?.advanceReceived) || (payment.type === 'customer_received' ? Number(payment.amount) : 0)
+    balance = trip?.customerBalance !== undefined ? Number(trip.customerBalance) : Math.max(0, totalFare - advance)
+  }
 
   const distanceVal =
     trip && trip.endingKm > trip.startingKm
@@ -170,6 +179,7 @@ export function buildInvoiceData(
     tripAmount: totalFare,
     advanceReceived: advance,
     balanceAmount: balance,
+    paymentStage: isAdvancePayment ? 'advance' : isBalancePayment ? 'balance' : payment.type === 'driver_payment' ? 'payout' : 'full',
     amountReceivedInWords: numberToWordsINR(payment.amount),
     routePlaces: trip ? `${trip.from} - ${trip.to}` : 'Tour Package Route',
     totalDistance: distanceVal,

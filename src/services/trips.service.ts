@@ -31,7 +31,13 @@ import {
   notifyDataChanged,
   isDeleted,
 } from '@/lib/storage-sync'
-import { reconcileTripsWithPayments } from './payments.service'
+import {
+  reconcileTripsWithPayments,
+  createPayment,
+  updatePayment,
+  deletePayment,
+  isPaymentLinkedToTrip,
+} from './payments.service'
 
 const COLLECTION = 'trips'
 
@@ -148,6 +154,24 @@ export async function createTrip(data: Omit<Trip, 'id' | 'tripNumber' | 'created
   }
 
   upsertStoredTrip(createdTrip)
+
+  // Automatically record advance payment voucher in payments if advance is received at booking
+  if (Number(data.advanceReceived) > 0) {
+    try {
+      await createPayment({
+        tripId: tripNum,
+        type: 'customer_received',
+        paymentStage: 'advance',
+        amount: Number(data.advanceReceived),
+        paymentDate: data.tripDate || now.split('T')[0],
+        paymentMode: 'cash',
+        notes: `Advance payment received at booking for Trip #${tripNum} (${data.customerName || 'Customer'})`,
+      })
+    } catch (advErr) {
+      console.warn('[TripsService] Could not auto-create advance payment voucher:', advErr)
+    }
+  }
+
   invalidateCache('trips')
   invalidateCache('payments')
   invalidateCache('cashbook')
@@ -176,6 +200,42 @@ export async function updateTrip(id: string, data: Partial<Trip>): Promise<void>
   const existing = currentList.find(t => t.id === id || t.tripNumber === id)
   if (existing) {
     upsertStoredTrip({ ...existing, ...updateData } as Trip)
+  }
+
+  // Synchronize advance payment voucher if advanceReceived was modified
+  if (data.advanceReceived !== undefined) {
+    try {
+      const advAmt = Number(data.advanceReceived)
+      const allPayments = getStoredPayments()
+      const existingAdvPayment = allPayments.find(
+        (p) =>
+          !isDeleted('payments', p.id) &&
+          p.type === 'customer_received' &&
+          (p.paymentStage === 'advance' || (p.notes && /advance/i.test(p.notes))) &&
+          isPaymentLinkedToTrip(p, { id, tripNumber: existing?.tripNumber })
+      )
+
+      if (existingAdvPayment && advAmt > 0 && Number(existingAdvPayment.amount) !== advAmt) {
+        await updatePayment(existingAdvPayment.id, {
+          amount: advAmt,
+          notes: `Advance payment received at booking for Trip #${existing?.tripNumber || id}`,
+        })
+      } else if (!existingAdvPayment && advAmt > 0) {
+        await createPayment({
+          tripId: existing?.tripNumber || id,
+          type: 'customer_received',
+          paymentStage: 'advance',
+          amount: advAmt,
+          paymentDate: data.tripDate || existing?.tripDate || now.split('T')[0],
+          paymentMode: 'cash',
+          notes: `Advance payment received at booking for Trip #${existing?.tripNumber || id}`,
+        })
+      } else if (existingAdvPayment && advAmt === 0) {
+        await deletePayment(existingAdvPayment.id)
+      }
+    } catch (syncAdvErr) {
+      console.warn('[TripsService] Error updating advance payment on trip update:', syncAdvErr)
+    }
   }
 
   invalidateCache('trips')

@@ -154,7 +154,8 @@ function normalize(slug: string, d: Record<string, any>): Record<string, any> {
       amount: Number(d.amount || 0),
       date: d.paymentDate || d.date || (typeof d.createdAt === 'string' ? d.createdAt.slice(0, 10) : ''),
       method: d.paymentMode ? d.paymentMode.toUpperCase() : (d.method || 'Cash'),
-      status: d.status || (d.type === 'customer_received' ? 'Paid' : 'Pending'),
+      status: d.status || (d.paymentStage === 'advance' ? 'Advance' : d.paymentStage === 'balance' ? 'Balance' : d.type === 'customer_received' ? 'Paid' : 'Pending'),
+      paymentStage: d.paymentStage || '',
       note: d.notes || d.note || '',
     };
   }
@@ -267,6 +268,7 @@ export async function createRow(slug: string, body: Record<string, unknown>): Pr
     payload.paymentDate = cleaned.date;
     payload.paymentMode = String(cleaned.method || 'cash').toLowerCase();
     payload.type = 'customer_received';
+    if (cleaned.paymentStage) payload.paymentStage = cleaned.paymentStage;
   } else if (slug === 'expenses') {
     payload.expenseDate = cleaned.date;
     payload.description = cleaned.note;

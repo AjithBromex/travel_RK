@@ -1703,22 +1703,29 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs gap-2">
                       <div>
-                        <span className="text-[10px] text-slate-400 block">Total Fare</span>
-                        <span className="font-extrabold font-mono text-slate-900">
-                          ₹{Number(trip.totalFare).toLocaleString("en-IN")}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] text-slate-400">Total:</span>
+                          <span className="font-extrabold font-mono text-slate-900">
+                            ₹{Number(trip.totalFare).toLocaleString("en-IN")}
+                          </span>
+                          {Number(trip.advanceReceived) > 0 && (
+                            <span className="text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-200/60 px-1 rounded">
+                              Adv: ₹{Number(trip.advanceReceived).toLocaleString("en-IN")}
+                            </span>
+                          )}
+                        </div>
                         {Number(trip.customerBalance) > 0 && (
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded">
                               Due ₹{Number(trip.customerBalance).toLocaleString("en-IN")}
                             </span>
                             <Link
-                              href={`/travel/payments?tripId=${trip.tripNumber || trip.id}&amount=${trip.customerBalance}&type=customer_received`}
+                              href={`/travel/payments?tripId=${trip.tripNumber || trip.id}&amount=${trip.customerBalance}&type=customer_received&stage=balance`}
                               className="text-[9px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-1.5 py-0.2 rounded transition-colors inline-flex items-center gap-0.5"
-                              title="Record payment in Payments Ledger"
+                              title="Record balance settlement in Payments Ledger"
                             >
                               <CreditCard className="w-2.5 h-2.5" />
-                              <span>Collect</span>
+                              <span>Collect Balance</span>
                             </Link>
                           </div>
                         )}
@@ -1820,21 +1827,28 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
                     <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t border-slate-100 sm:border-0 w-full sm:w-auto">
                       <div className="text-left sm:text-right">
-                        <span className="text-xs font-black font-mono text-slate-900 block">
-                          ₹{Number(trip.totalFare).toLocaleString("en-IN")}
-                        </span>
+                        <div className="flex items-center sm:justify-end gap-1.5 flex-wrap">
+                          <span className="text-xs font-black font-mono text-slate-900">
+                            ₹{Number(trip.totalFare).toLocaleString("en-IN")}
+                          </span>
+                          {Number(trip.advanceReceived) > 0 && (
+                            <span className="text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-200/60 px-1 rounded">
+                              Adv: ₹{Number(trip.advanceReceived).toLocaleString("en-IN")}
+                            </span>
+                          )}
+                        </div>
                         {Number(trip.customerBalance) > 0 && (
                           <div className="flex items-center sm:justify-end gap-1 mt-0.5">
                             <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded block">
                               Due ₹{Number(trip.customerBalance).toLocaleString("en-IN")}
                             </span>
                             <Link
-                              href={`/travel/payments?tripId=${trip.tripNumber || trip.id}&amount=${trip.customerBalance}&type=customer_received`}
+                              href={`/travel/payments?tripId=${trip.tripNumber || trip.id}&amount=${trip.customerBalance}&type=customer_received&stage=balance`}
                               className="text-[9px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-1.5 py-0.2 rounded transition-colors inline-flex items-center gap-0.5"
-                              title="Record payment in Payments Ledger"
+                              title="Record balance settlement in Payments Ledger"
                             >
                               <CreditCard className="w-2.5 h-2.5" />
-                              <span>Collect</span>
+                              <span>Collect Balance</span>
                             </Link>
                           </div>
                         )}

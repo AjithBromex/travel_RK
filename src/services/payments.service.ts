@@ -42,26 +42,36 @@ export function reconcileTripWithPayments(trip: Trip, allPayments?: Payment[]): 
     (p) => !isDeleted('payments', p.id) && isPaymentLinkedToTrip(p, trip)
   );
 
-  const customerPaidSum = activePayments
-    .filter((p) => p.type === 'customer_received')
-    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const customerPayments = activePayments.filter((p) => p.type === 'customer_received');
+  const customerPaidSum = customerPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
   const driverPaidSum = activePayments
     .filter((p) => p.type === 'driver_payment')
     .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-  const advance = Number(trip.advanceReceived) || 0;
+  // Check how much advance payment is already recorded in active payments
+  const advancePayments = customerPayments.filter(
+    (p) => p.paymentStage === 'advance' || (p.notes && /advance/i.test(p.notes))
+  );
+  const advanceFromPayments = advancePayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const tripAdvance = Number(trip.advanceReceived) || 0;
+  // If the trip already has advance recorded in payments, don't double count it with trip.advanceReceived
+  const extraAdvance = Math.max(0, tripAdvance - advanceFromPayments);
+
+  const trueCustomerPaid = extraAdvance + customerPaidSum;
   const totalFare = Number(trip.totalFare ?? (Number(trip.baseFare || 0) + Number(trip.extraKmCharge || 0))) || 0;
   const agreedDriverPay = Number(trip.driverAgreedPay) || 0;
 
-  const trueCustomerPaid = advance + customerPaidSum;
   const trueCustomerBalance = Math.max(0, totalFare - trueCustomerPaid);
-
   const trueDriverPaid = driverPaidSum;
   const trueDriverBalance = Math.max(0, agreedDriverPay - trueDriverPaid);
 
+  const effectiveAdvanceReceived = Math.max(tripAdvance, advanceFromPayments);
+
   return {
     ...trip,
+    advanceReceived: effectiveAdvanceReceived,
     customerPaid: trueCustomerPaid,
     customerBalance: trueCustomerBalance,
     driverPaid: trueDriverPaid,
@@ -171,6 +181,7 @@ export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'up
         const reconciled = reconcileTripWithPayments(targetTrip, allPaymentsForTrip)
 
         const tripUpdates: Partial<Trip> = {
+          advanceReceived: reconciled.advanceReceived,
           customerPaid: reconciled.customerPaid,
           customerBalance: reconciled.customerBalance,
           driverPaid: reconciled.driverPaid,
@@ -258,6 +269,7 @@ export async function deletePayment(id: string): Promise<void> {
         const reconciled = reconcileTripWithPayments(targetTrip, remainingPayments)
         const now = new Date().toISOString()
         const tripUpdates: Partial<Trip> = {
+          advanceReceived: reconciled.advanceReceived,
           customerPaid: reconciled.customerPaid,
           customerBalance: reconciled.customerBalance,
           driverPaid: reconciled.driverPaid,

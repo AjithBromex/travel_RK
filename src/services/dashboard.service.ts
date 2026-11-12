@@ -41,11 +41,20 @@ export async function getDashboardData(): Promise<{
         const todayStr = new Date().toISOString().split('T')[0]
         const todayTrips = trips.filter(t => t.tripDate === todayStr)
 
-        // Total Collection = payments from customers (advance + received)
-        const totalCollection = payments
-          .filter(p => p.type === 'customer_received')
-          .reduce((sum, p) => sum + (Number(p.amount) || 0), 0) +
-          trips.reduce((sum, t) => sum + (Number(t.advanceReceived) || 0), 0)
+        // Total Collection = customer receipts (advance + balance settlement)
+        const customerPayments = payments.filter(p => p.type === 'customer_received')
+        const custPaymentSum = customerPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+
+        // For older trips that only had advance on trip document and not yet recorded as a payment voucher
+        const unrecordedTripAdvances = trips.reduce((sum, t) => {
+          const hasRecordedAdv = customerPayments.some(p =>
+            (p.paymentStage === 'advance' || (p.notes && /advance/i.test(p.notes))) &&
+            (p.tripId === t.id || p.tripId === t.tripNumber)
+          )
+          return sum + (hasRecordedAdv ? 0 : (Number(t.advanceReceived) || 0))
+        }, 0)
+
+        const totalCollection = custPaymentSum + unrecordedTripAdvances
 
         // Total Expenses
         const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)

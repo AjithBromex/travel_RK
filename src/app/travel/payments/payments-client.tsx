@@ -33,7 +33,7 @@ import {
   Lock,
 } from "lucide-react";
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
-import type { Payment, Trip, Vehicle, PaymentType, PaymentMode } from "@/types";
+import type { Payment, Trip, Vehicle, PaymentType, PaymentMode, PaymentStage } from "@/types";
 import {
   getPayments,
   createPayment,
@@ -170,12 +170,14 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       const qTripId = params.get("tripId");
       const qAmount = params.get("amount");
       const qType = params.get("type") as PaymentType;
+      const qStage = params.get("stage") as PaymentStage;
       if (qTripId) {
         setForm((prev) => ({
           ...prev,
           tripId: qTripId,
           amount: qAmount || prev.amount,
           type: qType || prev.type,
+          paymentStage: qStage || (qAmount ? "balance" : prev.paymentStage),
         }));
       }
     }
@@ -201,6 +203,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
   const emptyForm = {
     tripId: "",
     type: "customer_received" as PaymentType,
+    paymentStage: "advance" as PaymentStage,
     paymentDate: todayStr,
     amount: "",
     paymentMode: "upi" as PaymentMode,
@@ -209,20 +212,70 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
 
   const [form, setForm] = useState(emptyForm);
 
+  const selectedTrip = useMemo(() => {
+    if (!form.tripId || form.tripId === "general") return null;
+    return (
+      reconciledTripList.find(
+        (t) => t.id === form.tripId || t.tripNumber === form.tripId
+      ) || null
+    );
+  }, [form.tripId, reconciledTripList]);
+
   const handleTripSelect = (selectedId: string) => {
     const trip = reconciledTripList.find((t) => t.id === selectedId || t.tripNumber === selectedId);
     let autoAmount = form.amount;
+    let autoStage: PaymentStage = form.paymentStage;
+    let autoNotes = form.notes;
+
     if (trip) {
-      if (form.type === "customer_received" && Number(trip.customerBalance) > 0) {
-        autoAmount = String(trip.customerBalance);
+      const adv = Number(trip.advanceReceived) || 0;
+      const bal = Number(trip.customerBalance) || 0;
+      if (form.type === "customer_received") {
+        if (bal > 0 && adv > 0) {
+          // Advance was already received before trip, so this is the balance settlement after trip
+          autoStage = "balance";
+          autoAmount = String(bal);
+          autoNotes = `Balance payment after trip completion - Trip #${trip.tripNumber || trip.id.slice(0, 6)} (${trip.customerName})`;
+        } else if (bal > 0 && adv === 0) {
+          // Pre-trip advance payment
+          autoStage = "advance";
+          autoNotes = `Advance payment before trip - Trip #${trip.tripNumber || trip.id.slice(0, 6)} (${trip.customerName})`;
+        }
       } else if (form.type === "driver_payment" && Number(trip.driverBalance) > 0) {
         autoAmount = String(trip.driverBalance);
       }
     }
+
     setForm((prev) => ({
       ...prev,
       tripId: selectedId,
+      paymentStage: autoStage,
       amount: autoAmount || prev.amount,
+      notes: autoNotes || prev.notes,
+    }));
+  };
+
+  const handleStageSelect = (stage: PaymentStage) => {
+    let newAmount = form.amount;
+    let newNotes = form.notes;
+
+    if (selectedTrip) {
+      if (stage === "advance") {
+        newAmount = selectedTrip.advanceReceived ? String(selectedTrip.advanceReceived) : form.amount;
+        newNotes = `Advance payment before trip - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`;
+      } else if (stage === "balance") {
+        newAmount = Number(selectedTrip.customerBalance) > 0 ? String(selectedTrip.customerBalance) : form.amount;
+        newNotes = `Balance payment after trip completion - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`;
+      } else {
+        newNotes = `Payment receipt - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`;
+      }
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      paymentStage: stage,
+      amount: newAmount,
+      notes: newNotes,
     }));
   };
 
@@ -281,6 +334,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       const newId = await createPayment({
         tripId: form.tripId || "general",
         type: form.type,
+        paymentStage: form.type === "customer_received" ? form.paymentStage : undefined,
         amount: amountNum,
         paymentDate: form.paymentDate,
         paymentMode: form.paymentMode,
@@ -291,6 +345,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
         id: newId,
         tripId: form.tripId || "general",
         type: form.type,
+        paymentStage: form.type === "customer_received" ? form.paymentStage : undefined,
         amount: amountNum,
         paymentDate: form.paymentDate,
         paymentMode: form.paymentMode,
@@ -311,7 +366,10 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
               if (form.type === "customer_received") {
                 const newPaid = (Number(t.customerPaid) || 0) + amountNum;
                 const newBal = Math.max(0, (Number(t.totalFare) || 0) - newPaid);
-                return { ...t, customerPaid: newPaid, customerBalance: newBal };
+                const newAdv = form.paymentStage === "advance"
+                  ? (Number(t.advanceReceived) || 0) + amountNum
+                  : t.advanceReceived;
+                return { ...t, customerPaid: newPaid, customerBalance: newBal, advanceReceived: newAdv };
               } else if (form.type === "driver_payment") {
                 const newDriverPaid = (Number(t.driverPaid) || 0) + amountNum;
                 const newDriverBal = Math.max(0, (Number(t.driverAgreedPay) || 0) - newDriverPaid);
@@ -332,7 +390,9 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
 
       setFeedback({
         message: form.type === "customer_received"
-          ? "Customer receipt recorded successfully! Invoice generated."
+          ? form.paymentStage === "advance"
+            ? "Advance payment (pre-trip) recorded successfully! Receipt generated."
+            : "Balance payment (post-trip) recorded successfully! Final settlement receipt generated."
           : "Driver payout voucher recorded successfully! Voucher generated.",
         type: "success",
       });
@@ -384,7 +444,14 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
     const data = filteredPayments.map((p) => ({
       "Payment Date": formatDate(p.paymentDate),
       "Trip Reference": p.tripId && p.tripId !== "general" ? `Trip #${p.tripId}` : "General Payment",
-      "Transaction Type": p.type === "customer_received" ? "Customer Inflow" : "Driver Payout",
+      "Transaction Type":
+        p.type === "driver_payment"
+          ? "Driver Payout"
+          : (p.paymentStage === "advance" || (Boolean(p.notes) && /advance/i.test(p.notes!)))
+          ? "Advance Payment (Pre-Trip)"
+          : (p.paymentStage === "balance" || (Boolean(p.notes) && /balance/i.test(p.notes!)))
+          ? "Balance Payment (Post-Trip)"
+          : "Customer Inflow",
       "Amount (INR)": p.amount,
       "Payment Mode": p.paymentMode.toUpperCase(),
       Notes: p.notes || "-",
@@ -401,7 +468,13 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
     const data = filteredPayments.map((p) => [
       formatDate(p.paymentDate),
       p.tripId && p.tripId !== "general" ? `Trip #${p.tripId}` : "General Payment",
-      p.type === "customer_received" ? "Customer Inflow" : "Driver Payout",
+      p.type === "driver_payment"
+        ? "Driver Payout"
+        : (p.paymentStage === "advance" || (Boolean(p.notes) && /advance/i.test(p.notes!)))
+        ? "Advance (Pre-Trip)"
+        : (p.paymentStage === "balance" || (Boolean(p.notes) && /balance/i.test(p.notes!)))
+        ? "Balance (Post-Trip)"
+        : "Customer Inflow",
       formatINR(p.amount),
       p.paymentMode.toUpperCase(),
       p.notes || "-",
@@ -442,10 +515,21 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
         if (!matches) return false;
       }
 
-      if (typeFilter === "customer_received" && p.type !== "customer_received") return false;
-      if (typeFilter === "driver_payment" && p.type !== "driver_payment") return false;
-      if (typeFilter === "upi" && p.paymentMode !== "upi") return false;
-      if (typeFilter === "cash" && p.paymentMode !== "cash") return false;
+      if (typeFilter === "advance") {
+        const isAdv = p.type === "customer_received" && (p.paymentStage === "advance" || (Boolean(p.notes) && /advance/i.test(p.notes!)));
+        if (!isAdv) return false;
+      } else if (typeFilter === "balance") {
+        const isBal = p.type === "customer_received" && (p.paymentStage === "balance" || (Boolean(p.notes) && /balance/i.test(p.notes!)));
+        if (!isBal) return false;
+      } else if (typeFilter === "customer_received" && p.type !== "customer_received") {
+        return false;
+      } else if (typeFilter === "driver_payment" && p.type !== "driver_payment") {
+        return false;
+      } else if (typeFilter === "upi" && p.paymentMode !== "upi") {
+        return false;
+      } else if (typeFilter === "cash" && p.paymentMode !== "cash") {
+        return false;
+      }
 
       return true;
     });
@@ -784,6 +868,45 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                 </button>
               </div>
 
+              {/* Customer Payment Stage (Advance vs Balance Settlement) */}
+              {form.type === "customer_received" && (
+                <div className="space-y-1.5 p-2.5 bg-slate-50/80 rounded-xl border border-slate-200/60">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                      <span>Customer Payment Type</span>
+                      <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-medium">Advance before trip or Balance after trip</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => handleStageSelect("advance")}
+                      className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                        form.paymentStage === "advance"
+                          ? "bg-sky-600 text-white shadow-xs"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Advance (Pre-Trip)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStageSelect("balance")}
+                      className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                        form.paymentStage === "balance"
+                          ? "bg-emerald-600 text-white shadow-xs"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Balance (Post-Trip)</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Linked Trip Booking Searchable Selector */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -813,6 +936,71 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                   </p>
                 )}
               </div>
+
+              {/* Selected Trip Financial Breakdown Card with Quick Action Buttons */}
+              {selectedTrip && (
+                <div className="p-3 bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-50 border border-blue-200/70 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-800 truncate">
+                      Trip #{selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} • {selectedTrip.customerName}
+                    </span>
+                    <span className="font-bold text-slate-900 font-mono-nums shrink-0 ml-2">
+                      Total Fare: {formatINR(selectedTrip.totalFare)}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-slate-200/60">
+                    <div className="bg-white/80 p-2 rounded-lg border border-slate-100">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Advance Paid (Pre-Trip)</span>
+                      <span className="font-extrabold text-sky-700 text-xs font-mono-nums">
+                        {formatINR(selectedTrip.advanceReceived || 0)}
+                      </span>
+                    </div>
+                    <div className="bg-white/80 p-2 rounded-lg border border-slate-100">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Remaining Due</span>
+                      <span className={`font-extrabold text-xs font-mono-nums ${Number(selectedTrip.customerBalance) > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                        {Number(selectedTrip.customerBalance) > 0 ? formatINR(selectedTrip.customerBalance) : "Fully Settled ✓"}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Quick-fill helper buttons */}
+                  <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                    {Number(selectedTrip.customerBalance) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm((prev) => ({
+                            ...prev,
+                            type: "customer_received",
+                            paymentStage: "balance",
+                            amount: String(selectedTrip.customerBalance),
+                            notes: `Balance payment after trip completion - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`,
+                          }));
+                        }}
+                        className="text-[10px] font-bold px-2.5 py-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                      >
+                        <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                        <span>Fill Remaining Balance ({formatINR(selectedTrip.customerBalance)})</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          type: "customer_received",
+                          paymentStage: "advance",
+                          amount: selectedTrip.advanceReceived ? String(selectedTrip.advanceReceived) : prev.amount,
+                          notes: `Advance payment before trip - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`,
+                        }));
+                      }}
+                      className="text-[10px] font-bold px-2.5 py-1 bg-sky-100 text-sky-800 hover:bg-sky-200 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Clock className="w-3 h-3 text-sky-700" />
+                      <span>Record Advance (Pre-Trip)</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Amount & Date (2 columns) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -938,10 +1126,34 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#0D62FE] hover:bg-[#0952DC] text-white text-xs sm:text-sm font-bold shadow-md shadow-blue-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50"
+                className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50 ${
+                  form.type === "customer_received"
+                    ? form.paymentStage === "advance"
+                      ? "bg-sky-600 hover:bg-sky-700 shadow-sky-500/25"
+                      : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/25"
+                    : "bg-[#0D62FE] hover:bg-[#0952DC] shadow-blue-500/25"
+                }`}
               >
-                <Plus className="w-4 h-4 stroke-[2.75]" />
-                <span>{loading ? "Recording..." : "Record Payment Voucher"}</span>
+                {loading ? (
+                  <span>Recording...</span>
+                ) : form.type === "customer_received" ? (
+                  form.paymentStage === "advance" ? (
+                    <>
+                      <Clock className="w-4 h-4 stroke-[2.5]" />
+                      <span>Record Advance Payment (Pre-Trip)</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                      <span>Record Balance Payment (Post-Trip)</span>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+                    <span>Record Driver Payout Voucher</span>
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -1000,7 +1212,9 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                     className="appearance-none pl-3 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
                   >
                     <option value="all">All Transactions</option>
-                    <option value="customer_received">Customer Inflows</option>
+                    <option value="advance">Advance (Pre-Trip)</option>
+                    <option value="balance">Balance (Post-Trip)</option>
+                    <option value="customer_received">All Customer Inflows</option>
                     <option value="driver_payment">Driver Payouts</option>
                     <option value="upi">UPI Payments</option>
                     <option value="cash">Cash Payments</option>
@@ -1174,25 +1388,47 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                           })()}
                         </td>
                         <td className="py-3 px-3">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              p.type === "customer_received"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-blue-50 text-blue-700"
-                            }`}
-                          >
-                            {p.type === "customer_received" ? (
-                              <>
-                                <ArrowDownLeft className="w-3 h-3 text-emerald-600" />
-                                <span>Inflow</span>
-                              </>
-                            ) : (
-                              <>
+                          {(() => {
+                            const isAdv =
+                              p.type === "customer_received" &&
+                              (p.paymentStage === "advance" ||
+                                (Boolean(p.notes) && /advance/i.test(p.notes!)));
+                            const isBal =
+                              p.type === "customer_received" &&
+                              (p.paymentStage === "balance" ||
+                                (Boolean(p.notes) && /balance/i.test(p.notes!)));
+
+                            if (isAdv) {
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200/70">
+                                  <Clock className="w-3 h-3 text-sky-600" />
+                                  <span>Advance</span>
+                                </span>
+                              );
+                            }
+                            if (isBal) {
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  <span>Balance</span>
+                                </span>
+                              );
+                            }
+                            if (p.type === "customer_received") {
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
+                                  <ArrowDownLeft className="w-3 h-3 text-emerald-600" />
+                                  <span>Inflow</span>
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/70">
                                 <ArrowUpRight className="w-3 h-3 text-blue-600" />
                                 <span>Payout</span>
-                              </>
-                            )}
-                          </span>
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="py-3 px-3">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
@@ -1265,15 +1501,44 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                     className="p-4 rounded-2xl border border-slate-200/90 bg-white hover:shadow-sm transition-all flex flex-col justify-between space-y-3"
                   >
                     <div className="flex items-start justify-between">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          p.type === "customer_received"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-blue-50 text-blue-700"
-                        }`}
-                      >
-                        {p.type === "customer_received" ? "Customer Inflow" : "Driver Payout"}
-                      </span>
+                      {(() => {
+                        const isAdv =
+                          p.type === "customer_received" &&
+                          (p.paymentStage === "advance" ||
+                            (Boolean(p.notes) && /advance/i.test(p.notes!)));
+                        const isBal =
+                          p.type === "customer_received" &&
+                          (p.paymentStage === "balance" ||
+                            (Boolean(p.notes) && /balance/i.test(p.notes!)));
+
+                        if (isAdv) {
+                          return (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200/70">
+                              <Clock className="w-3 h-3 text-sky-600" />
+                              <span>Advance (Pre-Trip)</span>
+                            </span>
+                          );
+                        }
+                        if (isBal) {
+                          return (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Balance (Post-Trip)</span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              p.type === "customer_received"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200/70"
+                                : "bg-blue-50 text-blue-700 border border-blue-200/70"
+                            }`}
+                          >
+                            {p.type === "customer_received" ? "Customer Inflow" : "Driver Payout"}
+                          </span>
+                        );
+                      })()}
                       <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md uppercase">
                         {p.paymentMode}
                       </span>
