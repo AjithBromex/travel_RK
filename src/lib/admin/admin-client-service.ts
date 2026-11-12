@@ -87,6 +87,14 @@ export function normalizeTrip(t: Partial<Trip> & Record<string, any>): Record<st
     status,
     note: t.notes || t.note || '',
     isConfirmed,
+    customerName: t.customerName || t.customer || '',
+    customerPhone: t.customerPhone || '',
+    driverName: t.driverName || t.driver || '',
+    driverPhone: t.driverPhone || '',
+    receiptNumber: t.receiptNumber || t.tripNumber || '',
+    vehicleName: t.vehicleName || '',
+    vehicleId: t.vehicleId || '',
+    pickupTime: t.pickupTime || t.reportingTime || t.time || '',
     raw: t,
   };
 }
@@ -388,12 +396,16 @@ export async function saveAdminRow(
         : 'scheduled';
 
     const tripData: any = {
-      customerName: String(form.customer || ''),
-      vehicleName: String(form.vehicle || ''),
+      customerName: String(form.customer || form.customerName || ''),
+      customerPhone: String(form.customerPhone || ''),
+      driverName: String(form.driverName || ''),
+      driverPhone: String(form.driverPhone || ''),
+      vehicleName: String(form.vehicle || form.vehicleName || ''),
       from: String(form.from || ''),
       to: String(form.to || ''),
       tripDate: String(form.startDate || new Date().toISOString().slice(0, 10)),
       endDate: String(form.endDate || ''),
+      pickupTime: String(form.pickupTime || ''),
       totalFare: Number(form.amount || 0),
       status: mappedStatus,
       notes: String(form.note || ''),

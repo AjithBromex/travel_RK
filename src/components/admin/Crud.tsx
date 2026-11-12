@@ -14,6 +14,10 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
+  Copy,
+  Check,
+  ExternalLink,
+  MessageSquare,
 } from 'lucide-react';
 import type { FieldConfig } from '@/lib/admin/modules';
 import { inr } from '@/lib/admin/modules';
@@ -30,6 +34,28 @@ import {
   markAsDeleted,
   isRecordConfirmed,
 } from '@/lib/storage-sync';
+import {
+  resolveTripWhatsAppContext,
+  isTripDriverAssigned,
+  getWhatsAppRecord,
+  markWhatsAppSent,
+  type TripWhatsAppContext,
+  type WhatsAppNotificationRecord,
+} from '@/lib/admin/whatsapp';
+
+function WhatsAppIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="currentColor"
+      className={className}
+    >
+      <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0012.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 012.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 01-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.53c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.03-1.25-.75-.67-1.26-1.5-1.41-1.75-.14-.25-.02-.39.11-.51.11-.11.25-.29.37-.44.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.12.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.61.19 1.16.17 1.6.1.49-.07 1.47-.6 1.68-1.18.21-.59.21-1.09.15-1.19-.06-.1-.22-.16-.47-.28z" />
+    </svg>
+  );
+}
 
 const BADGE_STYLES: Record<string, string> = {
   Active: 'bg-emerald-50 text-emerald-700 border border-emerald-200/90',
@@ -124,6 +150,52 @@ export default function Crud({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const isFetchingRef = useRef(false);
+
+  // WhatsApp Click-to-Chat Modal & Tracking State (Admin-Only)
+  const [waModal, setWaModal] = useState<{
+    type: 'customer' | 'driver';
+    row: Record<string, unknown>;
+  } | null>(null);
+  const [waCopied, setWaCopied] = useState(false);
+  const [waTrackingRecord, setWaTrackingRecord] = useState<WhatsAppNotificationRecord>({});
+
+  const openWhatsAppModal = (type: 'customer' | 'driver', row: Record<string, unknown>) => {
+    setWaModal({ type, row });
+    setWaCopied(false);
+    const tripId = String(row.id || (row as any).tripNumber || '');
+    setWaTrackingRecord(getWhatsAppRecord(tripId));
+  };
+
+  const waCtx = useMemo<TripWhatsAppContext | null>(() => {
+    if (!waModal) return null;
+    return resolveTripWhatsAppContext(waModal.row as any);
+  }, [waModal]);
+
+  const handleCopyMessage = (text: string) => {
+    if (!navigator?.clipboard) return;
+    navigator.clipboard.writeText(text);
+    setWaCopied(true);
+    setTimeout(() => setWaCopied(false), 2000);
+  };
+
+  const handleToggleWaSent = (type: 'customer' | 'driver') => {
+    if (!waModal) return;
+    const tripId = String(waModal.row.id || (waModal.row as any).tripNumber || '');
+    const isCurrentlySent =
+      type === 'customer'
+        ? Boolean(waTrackingRecord.customerSentAt)
+        : Boolean(waTrackingRecord.driverSentAt);
+    const updated = markWhatsAppSent(tripId, type, !isCurrentlySent, 'Administrator');
+    setWaTrackingRecord({ ...updated });
+  };
+
+  const handleOpenWhatsApp = (url: string, type: 'customer' | 'driver') => {
+    if (!url || !waModal) return;
+    const tripId = String(waModal.row.id || (waModal.row as any).tripNumber || '');
+    const updated = markWhatsAppSent(tripId, type, true, 'Administrator');
+    setWaTrackingRecord({ ...updated });
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const loadLiveRows = useCallback(async () => {
     if (isFetchingRef.current) return;
@@ -497,53 +569,90 @@ export default function Crud({
                     </td>
                   ))}
                   <td className="py-3 px-3.5 sm:px-5 text-right whitespace-nowrap">
-                    <div className="inline-flex items-center gap-1.5">
-                      {slug !== 'users' && (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleConfirm(r)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                            r.isConfirmed
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300 shadow-xs'
-                              : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200'
-                          }`}
-                          title={
-                            r.isConfirmed
-                              ? 'Click to Unconfirm (Allow user edits)'
-                              : 'Click to Confirm (Locks record from user editing/deletion)'
-                          }
-                        >
-                          <CheckCircle2
-                            className={`w-3.5 h-3.5 ${
-                              r.isConfirmed ? 'text-emerald-700' : 'text-slate-400'
+                    <div className="flex flex-col items-end gap-1.5">
+                      <div className="inline-flex items-center gap-1.5">
+                        {slug !== 'users' && (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleConfirm(r)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                              r.isConfirmed
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300 shadow-xs'
+                                : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200'
                             }`}
-                          />
-                          <span>{r.isConfirmed ? 'Confirmed' : 'Confirm'}</span>
-                        </button>
-                      )}
-                      {slug !== 'users' && (
+                            title={
+                              r.isConfirmed
+                                ? 'Click to Unconfirm (Allow user edits)'
+                                : 'Click to Confirm (Locks record from user editing/deletion)'
+                            }
+                          >
+                            <CheckCircle2
+                              className={`w-3.5 h-3.5 ${
+                                r.isConfirmed ? 'text-emerald-700' : 'text-slate-400'
+                              }`}
+                            />
+                            <span>{r.isConfirmed ? 'Confirmed' : 'Confirm'}</span>
+                          </button>
+                        )}
+                        {slug !== 'users' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setErr('');
+                              setForm({ ...r });
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                            title="Edit record"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Edit</span>
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => {
-                            setErr('');
-                            setForm({ ...r });
-                          }}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                          title="Edit record"
+                          onClick={() => remove(r)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title="Delete record"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Edit</span>
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Delete</span>
                         </button>
+                      </div>
+
+                      {/* WhatsApp Actions (Strictly Admin Trips Only) */}
+                      {slug === 'trips' && r.isConfirmed && String(r.status || '').toLowerCase() !== 'cancelled' && (
+                        <div className="inline-flex items-center gap-1 pt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => openWhatsAppModal('customer', r)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] font-bold text-[#075E54] bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/40 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                            title="WhatsApp Customer: Review and dispatch trip confirmation message"
+                          >
+                            <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366]" />
+                            <span>Customer</span>
+                          </button>
+
+                          {isTripDriverAssigned(r) ? (
+                            <button
+                              type="button"
+                              onClick={() => openWhatsAppModal('driver', r)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] font-bold text-[#075E54] bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/40 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                              title="WhatsApp Driver: Review and dispatch assignment details"
+                            >
+                              <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366]" />
+                              <span>Driver</span>
+                            </button>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] font-medium text-slate-400 bg-slate-100 border border-slate-200 rounded-lg cursor-not-allowed select-none"
+                              title="Driver unassigned: Assign a driver to enable driver WhatsApp messaging"
+                            >
+                              <WhatsAppIcon className="w-3 h-3 text-slate-400 grayscale opacity-50" />
+                              <span>Driver unassigned</span>
+                            </span>
+                          )}
+                        </div>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => remove(r)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                        title="Delete record"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Delete</span>
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -716,6 +825,221 @@ export default function Crud({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          5. WHATSAPP DISPATCH MODAL (ADMIN-ONLY CLICK-TO-CHAT)
+          ───────────────────────────────────────────────────────────── */}
+      {waModal && waCtx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="w-full max-w-xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-4 sm:p-6 relative max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#25D366]/15 text-[#128C7E] flex items-center justify-center border border-[#25D366]/30 shrink-0">
+                  <WhatsAppIcon className="w-5 h-5 text-[#25D366]" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-2">
+                    <span>
+                      {waModal.type === 'customer'
+                        ? 'WhatsApp Customer Notification'
+                        : 'WhatsApp Driver Assignment'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#25D366]/20 text-[#075E54] border border-[#25D366]/40">
+                      Click-to-Chat
+                    </span>
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                    Trip #{String(waModal.row.receiptNumber || waModal.row.id || '')} · {String(waModal.row.from || '')} → {String(waModal.row.to || '')}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWaModal(null)}
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Recipient Details & Message Preview */}
+            {(() => {
+              const isCust = waModal.type === 'customer';
+              const name = isCust ? waCtx.customerName : waCtx.driverName;
+              const validation = isCust ? waCtx.customerValidation : waCtx.driverValidation;
+              const rawPhone = isCust ? waCtx.customerPhone : waCtx.driverPhone;
+              const message = isCust ? waCtx.customerMessage : waCtx.driverMessage;
+              const waUrl = isCust ? waCtx.customerWhatsAppUrl : waCtx.driverWhatsAppUrl;
+              const sentAt = isCust ? waTrackingRecord.customerSentAt : waTrackingRecord.driverSentAt;
+              const sentBy = isCust ? waTrackingRecord.customerSentBy : waTrackingRecord.driverSentBy;
+
+              return (
+                <div className="mt-4 space-y-4">
+                  {/* Recipient Card */}
+                  <div className="p-3.5 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-200/90 space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                          Recipient ({isCust ? 'Customer' : 'Assigned Driver'})
+                        </div>
+                        <div className="text-sm font-extrabold text-slate-900">
+                          {name || <span className="text-rose-500 italic">Not Specified</span>}
+                        </div>
+                      </div>
+
+                      {/* Phone Number with Validation Badge */}
+                      <div className="sm:text-right">
+                        <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                          Phone Number
+                        </div>
+                        {validation.isValid ? (
+                          <div className="flex items-center sm:justify-end gap-1.5 font-bold text-slate-900 text-sm">
+                            <span className="font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                              {validation.displayNumber}
+                            </span>
+                            <span className="inline-flex items-center text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded-full">
+                              Valid
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center sm:justify-end gap-1 text-rose-600 font-bold text-xs">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{rawPhone ? `Invalid: ${rawPhone}` : 'Missing Phone Number'}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Validation Warning Alert if phone invalid/missing */}
+                    {!validation.isValid && (
+                      <div className="mt-2 p-2.5 bg-rose-50 border border-rose-200/90 rounded-xl flex items-start gap-2 text-xs font-semibold text-rose-800">
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p>
+                            {validation.errorMessage || 'A valid phone number is required to generate the WhatsApp Click-to-Chat link.'}
+                          </p>
+                          <p className="text-[11px] text-rose-700/90 mt-0.5">
+                            Please update the {isCust ? 'customer' : 'driver'} phone number in this trip record.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentRow = waModal.row;
+                              setWaModal(null);
+                              setErr('');
+                              setForm({ ...currentRow });
+                            }}
+                            className="mt-2 inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-white text-rose-700 border border-rose-300 rounded-lg hover:bg-rose-50 shadow-2xs cursor-pointer"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            <span>Edit Trip Details Now</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Message Preview Box (WhatsApp Styled Chat Bubble) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-[#128C7E]" />
+                        <span>Pre-filled WhatsApp Message Preview</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyMessage(message)}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                        title="Copy message text to clipboard"
+                      >
+                        {waCopied ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span className="text-emerald-700">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy Text</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="bg-[#EFEAE2] p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-[#DFD8CE] shadow-inner max-h-56 overflow-y-auto">
+                      <div className="bg-white p-3 rounded-lg sm:rounded-xl shadow-xs border border-slate-200/50 text-xs text-slate-800 whitespace-pre-wrap font-sans leading-relaxed select-text">
+                        {message}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Manual Dispatch Tracking Banner */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                    <div>
+                      <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${sentAt ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                        <span>
+                          {sentAt
+                            ? `Marked as Sent by ${sentBy || 'Admin'}`
+                            : 'Dispatch Status: Not marked as sent'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {sentAt
+                          ? `Recorded on ${new Date(sentAt).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}`
+                          : 'Click-to-Chat requires administrator to manually press Send inside WhatsApp.'}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleToggleWaSent(waModal.type)}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border transition-colors cursor-pointer shrink-0 ${
+                        sentAt
+                          ? 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${sentAt ? 'text-slate-400' : 'text-emerald-600'}`} />
+                      <span>{sentAt ? 'Unmark as Sent' : 'Mark as Sent'}</span>
+                    </button>
+                  </div>
+
+                  {/* Modal Action Buttons */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setWaModal(null)}
+                      className="px-3.5 py-2 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                      Close
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenWhatsApp(waUrl, waModal.type)}
+                      disabled={!validation.isValid}
+                      className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 rounded-full bg-[#25D366] hover:bg-[#1EBE5D] disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                      title={validation.isValid ? 'Open in WhatsApp with prefilled message' : validation.errorMessage}
+                    >
+                      <WhatsAppIcon className="w-4 h-4 fill-white" />
+                      <span>Open in WhatsApp</span>
+                      <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

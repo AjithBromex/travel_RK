@@ -114,6 +114,16 @@ function normalize(slug: string, d: Record<string, any>): Record<string, any> {
       amount: Number(d.totalFare || d.amount || d.baseFare || 0),
       status: d.status ? (d.status.charAt(0).toUpperCase() + d.status.slice(1).replace('_', ' ')) : 'Scheduled',
       note: d.notes || d.note || '',
+      customerName: d.customerName || d.customer || '',
+      customerPhone: d.customerPhone || '',
+      driverName: d.driverName || d.driver || '',
+      driverPhone: d.driverPhone || '',
+      receiptNumber: d.receiptNumber || d.tripNumber || '',
+      vehicleName: d.vehicleName || '',
+      vehicleId: d.vehicleId || '',
+      pickupTime: d.pickupTime || d.reportingTime || d.time || '',
+      isConfirmed: Boolean(d.isConfirmed),
+      raw: d,
     };
   }
 
@@ -246,9 +256,10 @@ export async function createRow(slug: string, body: Record<string, unknown>): Pr
 
   // Sync dual keys for compatibility between user app & admin table
   if (slug === 'trips') {
-    payload.customerName = cleaned.customer;
+    payload.customerName = cleaned.customer || cleaned.customerName;
     payload.totalFare = cleaned.amount;
     payload.tripDate = cleaned.startDate;
+    payload.vehicleName = cleaned.vehicle;
   } else if (slug === 'vehicles') {
     payload.registrationNumber = cleaned.number;
     payload.name = cleaned.model;
@@ -296,9 +307,10 @@ export async function updateRow(slug: string, id: string, body: Record<string, u
   const payload: Record<string, any> = { ...cleaned, updatedAt: now };
 
   if (slug === 'trips') {
-    payload.customerName = cleaned.customer;
+    payload.customerName = cleaned.customer || cleaned.customerName;
     payload.totalFare = cleaned.amount;
     payload.tripDate = cleaned.startDate;
+    payload.vehicleName = cleaned.vehicle;
   } else if (slug === 'vehicles') {
     payload.registrationNumber = cleaned.number;
     payload.name = cleaned.model;
