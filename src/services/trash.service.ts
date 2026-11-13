@@ -99,21 +99,24 @@ export async function moveToTrash(
   collectionName: string,
   id: string,
   reason?: string,
-  user?: { uid?: string; email?: string; displayName?: string; role?: string }
+  user?: { uid?: string; email?: string; displayName?: string; role?: string },
+  existingDataParam?: Record<string, any>
 ): Promise<string> {
   await waitForAuthReady()
   const now = new Date().toISOString()
   const trashDocId = `${collectionName}_${id}`
 
   // 1. Fetch current document data
-  let existingData: Record<string, any> = {}
-  try {
-    const snap = await getDoc(doc(db, collectionName, id))
-    if (snap.exists()) {
-      existingData = { id: snap.id, ...snap.data() }
+  let existingData: Record<string, any> = existingDataParam ? { ...existingDataParam } : {}
+  if (!existingData || Object.keys(existingData).length === 0) {
+    try {
+      const snap = await getDoc(doc(db, collectionName, id))
+      if (snap.exists()) {
+        existingData = { id: snap.id, ...snap.data() }
+      }
+    } catch (err) {
+      console.warn(`[TrashService] Cloud fetch for ${collectionName}/${id}:`, err)
     }
-  } catch (err) {
-    console.warn(`[TrashService] Cloud fetch for ${collectionName}/${id}:`, err)
   }
 
   // Fallback to local storage if document wasn't fetched
@@ -188,6 +191,41 @@ export async function moveToTrash(
     console.warn(`[TrashService] Write to /trash/${trashDocId} error:`, trashErr)
   }
 
+  // REST API fallback for server environments or when client auth token is in exchange
+  try {
+    const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'rk-travels-1f4f3'
+    const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+    const updateMaskParams = [
+      'updateMask.fieldPaths=id',
+      'updateMask.fieldPaths=originalId',
+      'updateMask.fieldPaths=originalCollection',
+      'updateMask.fieldPaths=recordName',
+      'updateMask.fieldPaths=recordType',
+      'updateMask.fieldPaths=isDeleted',
+      'updateMask.fieldPaths=deletedAt',
+      'updateMask.fieldPaths=restored',
+      'updateMask.fieldPaths=updatedAt',
+    ].join('&')
+    const restUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/trash/${trashDocId}${API_KEY ? `?key=${API_KEY}&${updateMaskParams}` : `?${updateMaskParams}`}`
+    fetch(restUrl, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          id: { stringValue: trashDocId },
+          originalId: { stringValue: id },
+          originalCollection: { stringValue: collectionName },
+          recordName: { stringValue: recordName },
+          recordType: { stringValue: collectionName },
+          isDeleted: { booleanValue: true },
+          deletedAt: { stringValue: now },
+          restored: { booleanValue: false },
+          updatedAt: { stringValue: now },
+        },
+      }),
+    }).catch(() => {})
+  } catch {}
+
   // 4. Update local storage caches
   markAsDeleted(collectionName, id)
   if (existingData.tripNumber) markAsDeleted(collectionName, existingData.tripNumber)
@@ -237,34 +275,156 @@ export async function moveToTrash(
 /**
  * Retrieves all items currently in Trash.
  */
+/**
+ * Retrieves all items currently in Trash.
+ * Scans both dedicated 'trash' collection and soft-deleted documents across business collections.
+ */
 export async function getTrashItems(collectionFilter?: string): Promise<TrashItem[]> {
-  const localFallback = getLocalData<TrashItem[]>(LOCAL_STORAGE_KEY, []).filter(
-    (t) => !t.restored && t.isDeleted
-  )
+  const itemsMap = new Map<string, TrashItem>()
 
+  // 1. Read from local storage trash cache
+  const localItems = getLocalData<TrashItem[]>(LOCAL_STORAGE_KEY, [])
+  for (const item of localItems) {
+    if (item && !item.restored && item.isDeleted !== false) {
+      itemsMap.set(item.id, item)
+    }
+  }
+
+  // 2. Scan local soft-deleted entity caches
+  if (typeof window !== 'undefined') {
+    const collectionsToScan = ['expenses', 'trips', 'vehicles', 'payments', 'reminders']
+    for (const col of collectionsToScan) {
+      try {
+        const rawDeleted = localStorage.getItem(`rk_deleted_${col}`)
+        const deletedIds: string[] = rawDeleted ? JSON.parse(rawDeleted) : []
+        const rawEntities = getLocalData<any[]>(col, [])
+        for (const entity of rawEntities) {
+          if (entity && (entity.isDeleted === true || deletedIds.includes(entity.id))) {
+            const trashId = `${col}_${entity.id}`
+            if (!itemsMap.has(trashId)) {
+              itemsMap.set(trashId, {
+                id: trashId,
+                originalId: entity.id,
+                originalCollection: col,
+                recordName: getRecordDisplayName(col, entity),
+                recordType: col,
+                data: { ...entity, isDeleted: true },
+                isDeleted: true,
+                deletedAt: entity.deletedAt || new Date().toISOString(),
+                deletedBy: entity.deletedBy || { uid: 'admin', email: 'admin@gmail.com', role: 'admin' },
+                deletionReason: entity.deletionReason || 'Manual deletion',
+                restored: false,
+                createdAt: entity.createdAt || new Date().toISOString(),
+                updatedAt: entity.updatedAt || new Date().toISOString(),
+              })
+            }
+          }
+        }
+      } catch {}
+    }
+  }
+
+  // 3. Query Firestore 'trash' collection
   try {
     await waitForAuthReady()
     const q = query(collection(db, TRASH_COLLECTION), orderBy('deletedAt', 'desc'), limit(300))
     const snap = await getDocs(q)
-    const list = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() } as TrashItem))
-      .filter((t) => !t.restored && t.isDeleted)
-
-    if (list.length > 0) {
-      setLocalData(LOCAL_STORAGE_KEY, list)
-      if (collectionFilter && collectionFilter !== 'all') {
-        return list.filter((t) => t.originalCollection === collectionFilter)
+    for (const d of snap.docs) {
+      const data = d.data() as TrashItem
+      if (data && !data.restored && data.isDeleted !== false) {
+        itemsMap.set(d.id, { id: d.id, ...data })
       }
-      return list
     }
   } catch (err) {
-    console.warn('[TrashService] Cloud getTrashItems fallback to local:', err)
+    console.warn('[TrashService] Cloud getDocs /trash error:', err)
+  }
+
+  // 4. Query Firestore collections for documents with isDeleted: true (expenses, trips, vehicles, payments)
+  const targetCols = collectionFilter && collectionFilter !== 'all'
+    ? [collectionFilter]
+    : ['expenses', 'trips', 'vehicles', 'payments', 'reminders']
+
+  for (const col of targetCols) {
+    try {
+      const delQuery = query(collection(db, col), where('isDeleted', '==', true), limit(100))
+      const delSnap = await getDocs(delQuery)
+      for (const d of delSnap.docs) {
+        const docData = d.data()
+        const trashId = `${col}_${d.id}`
+        if (!itemsMap.has(trashId)) {
+          const item: TrashItem = {
+            id: trashId,
+            originalId: d.id,
+            originalCollection: col,
+            recordName: getRecordDisplayName(col, { id: d.id, ...docData }),
+            recordType: col,
+            data: { id: d.id, ...docData },
+            isDeleted: true,
+            deletedAt: docData.deletedAt || new Date().toISOString(),
+            deletedBy: docData.deletedBy || { uid: 'admin', email: 'admin@gmail.com', role: 'admin' },
+            deletionReason: docData.deletionReason || 'Manual deletion',
+            restored: false,
+            createdAt: docData.createdAt || new Date().toISOString(),
+            updatedAt: docData.updatedAt || new Date().toISOString(),
+          }
+          itemsMap.set(trashId, item)
+        }
+      }
+    } catch {}
+  }
+
+  // 5. REST API fallback for server-side SSR
+  try {
+    const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'rk-travels-1f4f3'
+    const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+    const restUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/trash?pageSize=100${API_KEY ? `&key=${API_KEY}` : ''}`
+    const restRes = await fetch(restUrl, { cache: 'no-store' })
+    if (restRes.ok) {
+      const restData = await restRes.json()
+      if (restData && restData.documents) {
+        for (const d of restData.documents) {
+          const docId = d.name.split('/').pop()
+          const fields: Record<string, any> = {}
+          for (const [k, v] of Object.entries(d.fields || {})) {
+            fields[k] = (v as any).stringValue || (v as any).booleanValue || (v as any).integerValue || null
+          }
+          if (docId && !fields.restored && fields.isDeleted !== false) {
+            if (!itemsMap.has(docId)) {
+              itemsMap.set(docId, {
+                id: docId,
+                originalId: fields.originalId || docId,
+                originalCollection: fields.originalCollection || 'expenses',
+                recordName: fields.recordName || `Record #${docId}`,
+                recordType: fields.recordType || 'expenses',
+                data: fields,
+                isDeleted: true,
+                deletedAt: fields.deletedAt || new Date().toISOString(),
+                deletedBy: { uid: 'admin', email: 'admin@gmail.com', role: 'admin' },
+                restored: false,
+                createdAt: fields.createdAt || new Date().toISOString(),
+                updatedAt: fields.updatedAt || new Date().toISOString(),
+              })
+            }
+          }
+        }
+      }
+    }
+  } catch {}
+
+  const resultList = Array.from(itemsMap.values()).sort(
+    (a, b) => new Date(b.deletedAt || 0).getTime() - new Date(a.deletedAt || 0).getTime()
+  )
+
+  // Cache to local storage
+  if (typeof window !== 'undefined' && resultList.length > 0) {
+    setLocalData(LOCAL_STORAGE_KEY, resultList)
   }
 
   if (collectionFilter && collectionFilter !== 'all') {
-    return localFallback.filter((t) => t.originalCollection === collectionFilter)
+    return resultList.filter((t) => t.originalCollection === collectionFilter)
   }
-  return localFallback
+
+  return resultList
 }
 
 /**

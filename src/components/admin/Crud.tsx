@@ -348,13 +348,18 @@ export default function Crud({
     markAsDeleted(slug, targetId);
     setRows((prev) => prev.filter((x) => String(x.id) !== targetId && String((x as any).uid) !== targetId));
     notifyDataChanged(slug as any);
+    notifyDataChanged('trash');
     notifyDataChanged('all');
 
     try {
-      await deleteAdminRow(slug, targetId);
+      await deleteAdminRow(slug, targetId, r);
     } catch {
       try {
-        await fetch(`/api/${slug}/${targetId}`, { method: 'DELETE' });
+        await fetch(`/api/${slug}/${targetId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(r),
+        });
       } catch (err) {
         console.warn(`[Crud] Delete fallback error for ${slug}/${targetId}:`, err);
       }

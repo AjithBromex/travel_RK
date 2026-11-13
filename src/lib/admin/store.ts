@@ -513,8 +513,33 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
 
     // Also record in trash collection
     try {
+      let existingDocData: Record<string, any> = {};
+      try {
+        const getRes = await fetch(getEndpoint(slug, id), { cache: 'no-store' });
+        if (getRes.ok) {
+          existingDocData = decodeDoc(await getRes.json());
+        }
+      } catch {}
+
       const trashId = `${slug}_${id}`;
-      const trashUrl = getEndpoint('trash', trashId);
+      const recordName = existingDocData.category
+        ? `${String(existingDocData.category).toUpperCase()}: ${existingDocData.description || existingDocData.note || ''} (₹${existingDocData.amount || 0})`
+        : existingDocData.customer || existingDocData.customerName || existingDocData.name || `${slug.toUpperCase()} #${id}`;
+
+      const updateMaskParams = [
+        'updateMask.fieldPaths=id',
+        'updateMask.fieldPaths=originalId',
+        'updateMask.fieldPaths=originalCollection',
+        'updateMask.fieldPaths=recordName',
+        'updateMask.fieldPaths=recordType',
+        'updateMask.fieldPaths=isDeleted',
+        'updateMask.fieldPaths=deletedAt',
+        'updateMask.fieldPaths=restored',
+        'updateMask.fieldPaths=updatedAt',
+        'updateMask.fieldPaths=data',
+      ].join('&');
+
+      const trashUrl = `${getEndpoint('trash', trashId)}${API_KEY ? '&' : '?'}${updateMaskParams}`;
       await fetch(trashUrl, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -523,16 +548,19 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
             id: encodeFirestoreValue(trashId),
             originalId: encodeFirestoreValue(id),
             originalCollection: encodeFirestoreValue(slug),
-            recordName: encodeFirestoreValue(`${slug.toUpperCase()} #${id}`),
+            recordName: encodeFirestoreValue(recordName),
             recordType: encodeFirestoreValue(slug),
             isDeleted: encodeFirestoreValue(true),
             deletedAt: encodeFirestoreValue(now),
             restored: encodeFirestoreValue(false),
             updatedAt: encodeFirestoreValue(now),
+            data: encodeFirestoreValue({ ...existingDocData, isDeleted: true, deletedAt: now }),
           },
         }),
       });
-    } catch {}
+    } catch (trashErr) {
+      console.warn('[AdminStore] Record in trash collection error:', trashErr);
+    }
 
     rowsCache.delete(slug);
     if (slug === 'trips') {

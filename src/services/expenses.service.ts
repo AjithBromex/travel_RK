@@ -139,10 +139,10 @@ export async function updateExpense(id: string, data: Partial<Expense>): Promise
   notifyDataChanged('expenses')
 }
 
-export async function deleteExpense(id: string): Promise<void> {
+export async function deleteExpense(id: string, recordData?: Partial<Expense>): Promise<void> {
   await waitForAuthReady()
   try {
-    await moveToTrash('expenses', id, 'Expense deleted')
+    await moveToTrash('expenses', id, 'Expense deleted', undefined, recordData as any)
   } catch (err) {
     console.warn('[Expenses] moveToTrash failed, removing locally:', err)
   }
@@ -154,5 +154,7 @@ export async function deleteExpense(id: string): Promise<void> {
   invalidateCache('cashbook')
   invalidateCache('reports')
   notifyDataChanged('expenses')
+  notifyDataChanged('trash')
+  notifyDataChanged('all')
 }
 

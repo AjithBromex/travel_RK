@@ -76,8 +76,11 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
   }, [])
 
   useEffect(() => {
+    // Automatically load all trash items on mount
+    reloadTrash()
+
     const unsub = subscribeDataChanged((entity) => {
-      if (entity === 'trash' || entity === 'all') {
+      if (entity === 'trash' || entity === 'all' || entity === 'expenses') {
         reloadTrash()
       }
     })
@@ -99,12 +102,18 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
   // Filtered items
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      const recName = String(item.recordName || '')
+      const origId = String(item.originalId || item.id || '')
+      const reason = String(item.deletionReason || '')
+      const actorEmail = String(item.deletedBy?.email || '')
+      const q = search.toLowerCase()
+
       const matchesSearch =
         search === '' ||
-        item.recordName.toLowerCase().includes(search.toLowerCase()) ||
-        item.originalId.toLowerCase().includes(search.toLowerCase()) ||
-        (item.deletionReason && item.deletionReason.toLowerCase().includes(search.toLowerCase())) ||
-        (item.deletedBy?.email && item.deletedBy.email.toLowerCase().includes(search.toLowerCase()))
+        recName.toLowerCase().includes(q) ||
+        origId.toLowerCase().includes(q) ||
+        reason.toLowerCase().includes(q) ||
+        actorEmail.toLowerCase().includes(q)
 
       const matchesCollection =
         collectionFilter === 'all' || item.originalCollection === collectionFilter

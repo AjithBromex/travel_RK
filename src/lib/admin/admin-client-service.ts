@@ -628,7 +628,11 @@ export async function toggleAdminConfirm(
   return nextStatus;
 }
 
-export async function deleteAdminRow(slug: string, id: string): Promise<void> {
+export async function deleteAdminRow(
+  slug: string,
+  id: string,
+  recordData?: Record<string, unknown>
+): Promise<void> {
   if (slug === 'trips') {
     await deleteTrip(id);
   } else if (slug === 'vehicles') {
@@ -636,18 +640,19 @@ export async function deleteAdminRow(slug: string, id: string): Promise<void> {
   } else if (slug === 'payments') {
     await deletePayment(id);
   } else if (slug === 'expenses') {
-    await deleteExpense(id);
+    await deleteExpense(id, recordData as any);
   } else if (slug === 'reminders') {
     await deleteReminder(id);
   } else if (slug === 'users') {
     await deleteUserProfile(id);
   } else if (slug === 'cashbook') {
-    await moveToTrash('cashbook', id, 'Deleted from Cash Book');
+    await moveToTrash('cashbook', id, 'Deleted from Cash Book', undefined, recordData as any);
   } else {
-    await moveToTrash(slug, id, `Deleted from ${slug}`);
+    await moveToTrash(slug, id, `Deleted from ${slug}`, undefined, recordData as any);
   }
   markAsDeleted(slug, id);
   notifyDataChanged(slug as any);
+  notifyDataChanged('trash');
   notifyDataChanged('all');
 }
 
