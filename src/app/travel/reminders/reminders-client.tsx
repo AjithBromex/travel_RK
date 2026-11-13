@@ -19,7 +19,6 @@ import {
   ChevronDown,
   Trash2,
   Pencil,
-  MoreVertical,
   Calendar,
   Zap,
   Car,
@@ -267,7 +266,6 @@ export default function RemindersClient({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -469,7 +467,6 @@ export default function RemindersClient({
 
   // Toggle complete / pending
   const handleToggleStatus = async (item: ReminderItem) => {
-    setActiveMenuId(null);
     const nextStatus = item.status === "completed" ? "upcoming" : "completed";
     setItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, status: nextStatus } : i))
@@ -489,7 +486,6 @@ export default function RemindersClient({
       alert("This reminder has been confirmed by Admin and cannot be deleted.");
       return;
     }
-    setActiveMenuId(null);
     if (!confirm("Are you sure you want to delete this reminder?")) return;
     setItems((prev) => prev.filter((i) => i.id !== id));
     removeStoredReminder(id);
@@ -1331,7 +1327,7 @@ export default function RemindersClient({
           </div>
 
           {/* Table Container with Horizontal Scroll on small screens */}
-          <div className="overflow-x-auto -mx-5 sm:mx-0">
+          <div className="overflow-x-auto overflow-y-visible -mx-5 sm:mx-0">
             <table className="w-full text-left border-collapse min-w-[620px]">
               <thead>
                 <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -1340,7 +1336,7 @@ export default function RemindersClient({
                   <th className="py-2.5 px-3 font-bold">CATEGORY</th>
                   <th className="py-2.5 px-3 font-bold">VEHICLE / DRIVER</th>
                   <th className="py-2.5 px-3 font-bold">STATUS</th>
-                  <th className="py-2.5 px-3 text-right font-bold pr-4">ACTIONS</th>
+                  <th className="py-2.5 px-3 text-right font-bold pr-4 min-w-[120px]">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
@@ -1453,63 +1449,51 @@ export default function RemindersClient({
                           )}
                         </td>
 
-                        {/* Actions (Pencil & 3 Dots) */}
-                        <td className="py-3 px-3 pr-4 text-right whitespace-nowrap">
-                          <div className="inline-flex items-center gap-1 relative">
+                        {/* Actions (Done, Edit, Delete - directly accessible without scrolling or menus) */}
+                        <td className="py-3 px-3 pr-4 text-right whitespace-nowrap min-w-[120px]">
+                          <div className="inline-flex items-center justify-end gap-1.5">
+                            {/* Toggle Done / Pending Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStatus(item)}
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                                isCompleted
+                                  ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60"
+                                  : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
+                              }`}
+                              title={isCompleted ? "Mark as Pending" : "Mark as Done"}
+                            >
+                              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                            </button>
+
                             {/* Edit Pencil Button */}
                             <button
                               type="button"
                               onClick={() => handleStartEdit(item)}
-                              className="w-7 h-7 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors cursor-pointer"
+                              className="w-7 h-7 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors cursor-pointer"
                               title="Edit reminder"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
 
-                            {/* 3-dots Menu Button */}
-                            <div className="relative">
+                            {/* Delete Trash Button */}
+                            {isRecordConfirmed('reminders', item.id, item as any) ? (
+                              <span
+                                className="w-7 h-7 rounded-lg text-slate-300 flex items-center justify-center cursor-not-allowed"
+                                title="Confirmed by Admin (Locked)"
+                              >
+                                <Lock className="w-3.5 h-3.5" />
+                              </span>
+                            ) : (
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setActiveMenuId(activeMenuId === item.id ? null : item.id)
-                                }
-                                className="w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
-                                title="More actions"
+                                onClick={() => handleDelete(item.id)}
+                                className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer"
+                                title="Delete reminder"
                               >
-                                <MoreVertical className="w-3.5 h-3.5" />
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
-
-                              {/* Dropdown Popover */}
-                              {activeMenuId === item.id && (
-                                <div className="absolute right-0 top-8 z-30 w-36 bg-white rounded-xl shadow-lg border border-slate-200 py-1 text-left">
-                                  {isRecordConfirmed('reminders', item.id, item as any) ? (
-                                    <div className="px-3 py-1.5 text-emerald-700 bg-emerald-50/70 flex items-center gap-1.5 text-[11px] font-bold">
-                                      <Lock className="w-3 h-3 text-emerald-600" />
-                                      <span>Confirmed (Locked)</span>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleToggleStatus(item)}
-                                        className="w-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                                      >
-                                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                        <span>{isCompleted ? "Mark Pending" : "Mark Done"}</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDelete(item.id)}
-                                        className="w-full px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                        <span>Delete</span>
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                            )}
                           </div>
                         </td>
                       </tr>
