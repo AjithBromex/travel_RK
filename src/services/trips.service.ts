@@ -411,37 +411,30 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
 
   // Soft-delete linked payments
   try {
-    const allPaymentsSnap = await getDocs(collection(db, 'payments'))
-    for (const d of allPaymentsSnap.docs) {
-      const p = d.data() as Payment
-      const isLinked =
-        (p.tripId && tripIdentifiers.has(p.tripId)) ||
-        ((p as any).tripNumber && tripIdentifiers.has((p as any).tripNumber)) ||
-        ((p as any).tripRef && tripIdentifiers.has((p as any).tripRef))
-      if (isLinked) {
+    for (const ident of idArray) {
+      const qPay = query(collection(db, 'payments'), where('tripId', '==', ident))
+      const paySnap = await getDocs(qPay)
+      for (const d of paySnap.docs) {
         markAsDeleted('payments', d.id)
         cascadeTasks.push(moveToTrash('payments', d.id, `Cascade soft-delete from Trip #${id}`))
       }
     }
   } catch (err) {
-    console.warn('[TripsService] Error scanning payments for trip deletion:', err)
+    console.warn('[TripsService] Error querying payments for trip deletion:', err)
   }
 
   // Soft-delete linked expenses
   try {
-    const allExpSnap = await getDocs(collection(db, 'expenses'))
-    for (const d of allExpSnap.docs) {
-      const e = d.data() as Expense
-      const isLinked =
-        (e.tripId && tripIdentifiers.has(e.tripId)) ||
-        ((e as any).tripNumber && tripIdentifiers.has((e as any).tripNumber))
-      if (isLinked) {
+    for (const ident of idArray) {
+      const qExp = query(collection(db, 'expenses'), where('tripId', '==', ident))
+      const expSnap = await getDocs(qExp)
+      for (const d of expSnap.docs) {
         markAsDeleted('expenses', d.id)
         cascadeTasks.push(moveToTrash('expenses', d.id, `Cascade soft-delete from Trip #${id}`))
       }
     }
   } catch (err) {
-    console.warn('[TripsService] Error scanning expenses for trip deletion:', err)
+    console.warn('[TripsService] Error querying expenses for trip deletion:', err)
   }
 
   // Soft-delete linked reminders

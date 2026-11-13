@@ -111,7 +111,7 @@ export async function getAuditLogs(
     const snap = await getDocs(q)
     for (const d of snap.docs) {
       const data = d.data() as AuditLogEntry
-      if (data && d.id) logsMap.set(d.id, { id: d.id, ...data })
+      if (data && d.id) logsMap.set(d.id, { ...data, id: d.id })
     }
   } catch (err) {
     console.warn('[AuditService] Cloud audit read fallback to local:', err)

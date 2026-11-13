@@ -1,9 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createBackup, pruneExpiredBackups, BACKUP_RETENTION_DAYS } from '@/services/backup.service'
+import { verifyAdminAuth } from '@/lib/admin/auth-check'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
+  const auth = verifyAdminAuth(req)
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.reason || 'Unauthorized cron execution.' }, { status: 401 })
+  }
+
   try {
     const isWeekly = req.nextUrl.searchParams.get('schedule') === 'weekly'
     const type = isWeekly ? 'scheduled_weekly' : 'scheduled_daily'
@@ -37,4 +43,3 @@ export async function GET(req: NextRequest) {
     )
   }
 }
-

@@ -1,31 +1,81 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { createAdminSessionToken, secureCompare } from '@/lib/admin/auth-check';
+
+// Rate Limiting: Max 5 failed attempts per IP / identifier within 15 minutes
+const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+function getClientIdentifier(req: NextRequest): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0].trim();
+  const realIp = req.headers.get('x-real-ip');
+  if (realIp) return realIp.trim();
+  return 'unknown-client';
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { username, password } = await req.json();
+    const clientId = getClientIdentifier(req);
+    const now = Date.now();
+    const rateRecord = loginAttempts.get(clientId);
 
-    const allowedUser = (process.env.ADMIN_USER || 'admin@gmail.com').toLowerCase();
-    const allowedPass = process.env.ADMIN_PASS || 'admin123';
-    const secret = process.env.ADMIN_SESSION_SECRET || 'rk-travel-admin-secret-2026-key';
+    // Check if client is currently locked out
+    if (rateRecord && rateRecord.lockedUntil > now) {
+      const remainingMinutes = Math.ceil((rateRecord.lockedUntil - now) / 60000);
+      return NextResponse.json(
+        {
+          error: `Too many failed login attempts. Please wait ${remainingMinutes} minute(s) before trying again.`,
+        },
+        { status: 429 }
+      );
+    }
+
+    const { username, password } = await req.json().catch(() => ({}));
+
+    const configuredUser = process.env.ADMIN_USER ? process.env.ADMIN_USER.toLowerCase().trim() : 'admin@gmail.com';
+    const configuredPass = process.env.ADMIN_PASS || (process.env.NODE_ENV === 'production' ? '' : 'admin123');
 
     const inputUser = String(username || '').toLowerCase().trim();
     const inputPass = String(password || '');
 
-    const isValidUser =
-      inputUser === allowedUser ||
-      inputUser === 'admin@gmail.com' ||
-      inputUser === 'admin';
-
-    const isValidPass =
-      inputPass === allowedPass ||
-      inputPass === 'admin123';
-
-    if (!isValidUser || !isValidPass) {
-      return NextResponse.json({ error: 'Wrong username or password' }, { status: 401 });
+    if (!inputUser || !inputPass) {
+      return NextResponse.json({ error: 'Username and password are required.' }, { status: 400 });
     }
 
+    const isValidUser =
+      secureCompare(inputUser, configuredUser) ||
+      secureCompare(inputUser, 'admin@gmail.com') ||
+      secureCompare(inputUser, 'admin');
+
+    const isValidPass = configuredPass ? secureCompare(inputPass, configuredPass) : false;
+
+    if (!isValidUser || !isValidPass) {
+      // Record failed attempt
+      const currentCount = (rateRecord?.count || 0) + 1;
+      const lockedUntil = currentCount >= MAX_ATTEMPTS ? now + LOCKOUT_MS : 0;
+      loginAttempts.set(clientId, { count: currentCount, lockedUntil });
+
+      const attemptsRemaining = Math.max(0, MAX_ATTEMPTS - currentCount);
+      const attemptWarning =
+        attemptsRemaining > 0
+          ? ` (${attemptsRemaining} attempt(s) remaining)`
+          : ' (Account temporarily locked for 15 minutes)';
+
+      return NextResponse.json(
+        { error: `Invalid admin credentials.${attemptWarning}` },
+        { status: 401 }
+      );
+    }
+
+    // Success: Clear failed attempts
+    loginAttempts.delete(clientId);
+
+    // Create cryptographically signed HMAC-SHA256 session token
+    const token = createAdminSessionToken();
+
     const res = NextResponse.json({ ok: true });
-    res.cookies.set('rk_admin', secret, {
+    res.cookies.set('rk_admin', token, {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
@@ -35,6 +85,6 @@ export async function POST(req: NextRequest) {
 
     return res;
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid login request payload.' }, { status: 400 });
   }
 }

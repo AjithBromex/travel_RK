@@ -16,7 +16,18 @@ export async function setSessionCookie() {
     const maxAge = 60 * 60 * 24 * 7
     document.cookie = `firebase_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`
     try {
-      await fetch('/api/auth/session', { method: 'POST', keepalive: true })
+      const currentUser = auth.currentUser
+      const idToken = currentUser ? await currentUser.getIdToken().catch(() => '') : ''
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: currentUser?.uid || '',
+          email: currentUser?.email || '',
+          idToken,
+        }),
+        keepalive: true,
+      })
     } catch {
       // Fallback in document.cookie
     }

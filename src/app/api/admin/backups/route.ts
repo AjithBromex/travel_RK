@@ -1,9 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getBackupHistory, createBackup, pruneExpiredBackups, BACKUP_RETENTION_DAYS } from '@/services/backup.service'
+import { verifyAdminAuth } from '@/lib/admin/auth-check'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = verifyAdminAuth(req)
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.reason || 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const list = await getBackupHistory(50)
     return NextResponse.json({
@@ -19,6 +25,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = verifyAdminAuth(req)
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.reason || 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const body = await req.json().catch(() => ({}))
 
@@ -41,4 +52,3 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-

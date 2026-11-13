@@ -47,6 +47,11 @@ const ACTION_CONFIG: Record<
     badge: 'bg-amber-50 text-amber-700 border-amber-200',
     icon: Trash2,
   },
+  DELETE: {
+    label: 'Delete',
+    badge: 'bg-rose-50 text-rose-700 border-rose-200',
+    icon: Trash2,
+  },
   RESTORE: {
     label: 'Restore',
     badge: 'bg-teal-50 text-teal-700 border-teal-200',

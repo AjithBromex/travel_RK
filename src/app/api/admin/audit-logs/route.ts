@@ -1,14 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getAuditLogs } from '@/services/audit.service'
+import { verifyAdminAuth } from '@/lib/admin/auth-check'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  try {
-    const limitCount = parseInt(req.nextUrl.searchParams.get('limit') || '100', 10)
-    const action = req.nextUrl.searchParams.get('action') || undefined
+  const auth = verifyAdminAuth(req)
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.reason || 'Unauthorized' }, { status: 401 })
+  }
 
-    const logs = await getAuditLogs(limitCount, action)
+  try {
+    const limitParam = parseInt(req.nextUrl.searchParams.get('limit') || '150', 10)
+    const action = req.nextUrl.searchParams.get('action') || undefined
+    const logs = await getAuditLogs(limitParam, action)
     return NextResponse.json(logs)
   } catch (err: unknown) {
     return NextResponse.json(
@@ -17,4 +22,3 @@ export async function GET(req: NextRequest) {
     )
   }
 }
-

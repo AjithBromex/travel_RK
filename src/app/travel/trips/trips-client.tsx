@@ -53,6 +53,7 @@ import {
   getStoredTrips,
   subscribeDataChanged,
   isRecordConfirmed,
+  isDeleted,
 } from "@/lib/storage-sync";
 
 interface TripsClientProps {

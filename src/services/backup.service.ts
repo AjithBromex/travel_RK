@@ -182,11 +182,26 @@ export async function createBackup(
     const metaRecord = { ...record }
     delete (metaRecord as any).payload
 
-    await setDoc(doc(db, BACKUPS_COLLECTION, backupId), {
-      ...metaRecord,
-      // Store payload in backup doc for recovery
-      payload,
-    })
+    if (sizeBytes < 900_000) {
+      await setDoc(doc(db, BACKUPS_COLLECTION, backupId), {
+        ...metaRecord,
+        payload,
+      })
+    } else {
+      // Chunk collections to subcollection documents to strictly stay under Firestore's 1MB doc limit
+      await setDoc(doc(db, BACKUPS_COLLECTION, backupId), {
+        ...metaRecord,
+        isChunked: true,
+      })
+      for (const [col, docs] of Object.entries(collectionsData)) {
+        if (docs.length > 0) {
+          await setDoc(doc(db, BACKUPS_COLLECTION, backupId, 'chunks', col), {
+            collection: col,
+            docs,
+          }).catch(() => {})
+        }
+      }
+    }
   } catch (err) {
     console.warn('[BackupService] Cloud write error for backup record:', err)
   }
@@ -291,7 +306,34 @@ export async function getBackupById(id: string): Promise<BackupRecord | null> {
   try {
     const snap = await getDoc(doc(db, BACKUPS_COLLECTION, id))
     if (snap.exists()) {
-      return { id: snap.id, ...snap.data() } as BackupRecord
+      const data = snap.data() as BackupRecord
+      if (data.payload) {
+        return { ...data, id: snap.id }
+      }
+      if ((data as any).isChunked) {
+        // Reassemble payload from subcollections
+        const chunkSnap = await getDocs(collection(db, BACKUPS_COLLECTION, id, 'chunks'))
+        const reassembled: Record<string, any[]> = {}
+        chunkSnap.docs.forEach((cd) => {
+          const cData = cd.data()
+          reassembled[cData.collection || cd.id] = cData.docs || []
+        })
+        const payload: BackupPayload = {
+          version: '2.0.0',
+          timestamp: data.createdAt,
+          backupId: id,
+          type: data.type,
+          databaseId: 'rk-travels-default',
+          summary: {
+            totalCollections: Object.keys(reassembled).length,
+            totalDocuments: data.totalRecords,
+            collectionCounts: data.collectionCounts,
+          },
+          collections: reassembled,
+        }
+        return { ...data, id: snap.id, payload }
+      }
+      return { ...data, id: snap.id }
     }
   } catch (err) {
     console.warn(`[BackupService] Error loading backup ${id}:`, err)

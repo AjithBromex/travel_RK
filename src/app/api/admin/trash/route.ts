@@ -6,10 +6,16 @@ import {
   permanentDeleteFromTrash,
   emptyTrash,
 } from '@/services/trash.service'
+import { verifyAdminAuth } from '@/lib/admin/auth-check'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
+  const auth = verifyAdminAuth(req)
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.reason || 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const col = req.nextUrl.searchParams.get('collection') || undefined
     const items = await getTrashItems(col)
@@ -23,6 +29,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = verifyAdminAuth(req)
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.reason || 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const body = await req.json()
     const { action, trashId, trashIds, user } = body
@@ -47,6 +58,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const auth = verifyAdminAuth(req)
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.reason || 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const body = await req.json().catch(() => ({}))
     const trashId = req.nextUrl.searchParams.get('id') || body.trashId
@@ -76,4 +92,3 @@ export async function DELETE(req: NextRequest) {
     )
   }
 }
-

@@ -32,6 +32,7 @@ import {
   Clock,
 } from "lucide-react";
 import { capitalizeWords } from "@/lib/utils";
+import { getLocalData } from "@/lib/storage-sync";
 import type { Trip, Vehicle, Payment, Expense, Reminder } from "@/types";
 
 interface SettingsClientProps {
@@ -64,10 +65,10 @@ export default function SettingsClient({
   // Export Data JSON snapshot
   const handleExportData = () => {
     try {
-      const activeTrips = trips?.length ? trips : (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("rk_trips") || "[]") : []);
-      const activeVehicles = vehicles?.length ? vehicles : (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("rk_vehicles") || "[]") : []);
-      const activePayments = payments?.length ? payments : (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("rk_payments") || "[]") : []);
-      const activeExpenses = expenses?.length ? expenses : (typeof window !== "undefined" ? JSON.parse(localStorage.getItem("rk_expenses") || "[]") : []);
+      const activeTrips = trips?.length ? trips : getLocalData<Trip[]>("trips", []);
+      const activeVehicles = vehicles?.length ? vehicles : getLocalData<Vehicle[]>("vehicles", []);
+      const activePayments = payments?.length ? payments : getLocalData<Payment[]>("payments", []);
+      const activeExpenses = expenses?.length ? expenses : getLocalData<Expense[]>("expenses", []);
 
       const backupPayload = {
         agency: "RK Travel Hub",

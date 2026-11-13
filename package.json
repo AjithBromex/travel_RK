@@ -6,7 +6,9 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node scripts/run-tests.mjs",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "firebase": "^13.1.0",

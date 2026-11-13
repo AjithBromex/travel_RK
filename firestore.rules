@@ -24,10 +24,10 @@ service cloud.firestore {
     }
 
     // 1. Users collection:
-    // - Public READ is allowed only for username resolution during login
+    // - Authenticated staff and admins can read user profiles
     // - WRITES are strictly restricted to authenticated users modifying their own profile or admins
     match /users/{userId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }

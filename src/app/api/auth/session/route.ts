@@ -2,6 +2,17 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
+    const body = await req.json().catch(() => ({}));
+    const { uid, email, idToken } = body;
+
+    // Validate that the session payload contains legitimate user identifier
+    if (!uid && !email && !idToken) {
+      return NextResponse.json(
+        { error: "Authentication credentials or user identification required to initialize session." },
+        { status: 400 }
+      );
+    }
+
     const res = NextResponse.json({ ok: true });
     // 7 days expiration
     const maxAge = 60 * 60 * 24 * 7;

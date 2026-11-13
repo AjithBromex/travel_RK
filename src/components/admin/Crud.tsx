@@ -627,7 +627,7 @@ export default function Crud({
                       </div>
 
                       {/* WhatsApp Actions (Strictly Admin Trips Only) */}
-                      {slug === 'trips' && r.isConfirmed && String(r.status || '').toLowerCase() !== 'cancelled' && (
+                      {slug === 'trips' && Boolean(r.isConfirmed) && String(r.status || '').toLowerCase() !== 'cancelled' && (
                         <div className="inline-flex items-center gap-1 pt-0.5">
                           <button
                             type="button"

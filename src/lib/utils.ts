@@ -99,8 +99,12 @@ export function calculateTripFare(params: {
   const extraKm = Math.max(0, distanceTraveled - params.includedKm)
   const extraKmCharge = extraKm * params.extraKmRate
   const totalFare = params.baseFare + extraKmCharge
-  const customerBalance = Math.max(0, totalFare - params.advanceReceived - params.customerPaid)
-  const driverBalance = Math.max(0, params.driverAgreedPay - params.driverPaid)
+  const totalPaid =
+    (Number(params.customerPaid) || 0) >= (Number(params.advanceReceived) || 0)
+      ? Number(params.customerPaid) || 0
+      : Number(params.advanceReceived) || 0
+  const customerBalance = Math.max(0, totalFare - totalPaid)
+  const driverBalance = Math.max(0, (Number(params.driverAgreedPay) || 0) - (Number(params.driverPaid) || 0))
 
   return {
     distanceTraveled,
@@ -151,11 +155,13 @@ export function isDocumentExpired(expiryDate: string): boolean {
 
 // ─── CSV Export ───
 export function escapeCsvField(field: string | number): string {
-  const str = String(field)
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`
+  const str = String(field ?? '')
+  // Neutralize CSV Formula Injection (CWE-1236) for Excel / Sheets
+  const sanitized = /^[=+\-@]/.test(str) ? `'${str}` : str
+  if (sanitized.includes(',') || sanitized.includes('"') || sanitized.includes('\n')) {
+    return `"${sanitized.replace(/"/g, '""')}"`
   }
-  return str
+  return sanitized
 }
 
 export function downloadCsv(data: Record<string, unknown>[], filename: string) {

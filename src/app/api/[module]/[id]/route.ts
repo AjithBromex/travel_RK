@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SLUGS } from '@/lib/admin/modules';
 import { updateRow, deleteRow } from '@/lib/admin/store';
+import { verifyAdminAuth } from '@/lib/admin/auth-check';
 
 export const dynamic = 'force-dynamic';
 const nf = (m: string) => NextResponse.json({ error: m }, { status: 404 });
@@ -10,6 +11,11 @@ interface RouteContext {
 }
 
 export async function PUT(req: NextRequest, { params }: RouteContext) {
+  const auth = verifyAdminAuth(req);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.reason || 'Unauthorized' }, { status: 401 });
+  }
+
   const { module: slug, id } = await params;
   if (!SLUGS.includes(slug)) return nf('Unknown module');
   try {
@@ -21,7 +27,12 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: RouteContext) {
+export async function DELETE(req: NextRequest, { params }: RouteContext) {
+  const auth = verifyAdminAuth(req);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.reason || 'Unauthorized' }, { status: 401 });
+  }
+
   const { module: slug, id } = await params;
   if (!SLUGS.includes(slug)) return nf('Unknown module');
   const ok = await deleteRow(slug, id);

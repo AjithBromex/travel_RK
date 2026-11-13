@@ -424,7 +424,7 @@ export async function getTrashItems(collectionFilter?: string): Promise<TrashIte
         if (isPermanentlyPurged(origCol, origId) || isPermanentlyPurged('trash', d.id)) continue
         const canonicalKey = `${origCol}_${origId}`
         if (!itemsMap.has(canonicalKey)) {
-          itemsMap.set(canonicalKey, { id: d.id, ...data })
+          itemsMap.set(canonicalKey, { ...data, id: d.id })
         }
       }
     }
