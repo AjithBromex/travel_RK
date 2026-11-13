@@ -315,6 +315,8 @@ export interface BackupRecord {
   payload?: BackupPayload
   retentionDays?: number
   expiresAt?: string
+  isChunked?: boolean
+  isPayloadMissing?: boolean
 }
 
 export interface BackupPayload {

@@ -242,6 +242,13 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
         const full = await getBackupById(record.id)
         if (full) target = full
       }
+      if (!target.payload || Object.keys(target.payload.collections || {}).length === 0) {
+        showToast(
+          `Snapshot "${record.name}" has no data payload to export. Please create a new backup snapshot.`,
+          'error'
+        )
+        return
+      }
       triggerBackupDownload(target)
       showToast(`Downloaded backup snapshot: ${target.name}`)
     } catch (err: any) {
@@ -804,106 +811,150 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
               </button>
             </div>
 
-            <div className="mt-4 space-y-4">
-              {/* Warning Box */}
-              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-900">
-                  <p className="font-bold">Caution: Database Recovery</p>
-                  <p className="mt-0.5">
-                    Restoring from this snapshot will update documents in selected collections to match this snapshot.
-                    Original document IDs and structures will be preserved.
-                  </p>
-                </div>
-              </div>
+            {(() => {
+              const hasCollections =
+                restoreDetails?.payload?.collections &&
+                Object.keys(restoreDetails.payload.collections).length > 0
+              const isPayloadMissing =
+                !restoreLoading &&
+                (restoreDetails?.isPayloadMissing || (!hasCollections && !restoreModalItem.payload))
 
-              {/* Collections Selection */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Select Collections to Restore ({selectedCollections.length})
-                  </label>
-                  <button
-                    type="button"
-                    onClick={toggleSelectAllCollections}
-                    className="text-xs font-semibold text-blue-600 hover:underline"
-                  >
-                    {selectedCollections.length === (restoreDetails?.collections?.length || BACKUP_COLLECTIONS.length)
-                      ? 'Deselect All'
-                      : 'Select All'}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 max-h-48 overflow-y-auto">
-                  {(restoreDetails?.collections || BACKUP_COLLECTIONS).map((col) => {
-                    const count = restoreDetails?.collectionCounts?.[col] ?? '?'
-                    const checked = selectedCollections.includes(col)
-                    return (
-                      <label
-                        key={col}
-                        className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                          checked
-                            ? 'bg-blue-50/80 border-blue-300 text-blue-900 font-medium'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
-                        }`}
+              if (isPayloadMissing) {
+                return (
+                  <div className="mt-4 p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-3">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-rose-900">Snapshot Incomplete (No Data Payload)</p>
+                        <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                          This snapshot archive (<code className="font-mono">{restoreModalItem.id}</code>) has no stored collection data payload. It was created before Firestore subcollection permissions were configured.
+                        </p>
+                        <p className="text-xs text-rose-700 mt-2">
+                          Restoration is unavailable for this snapshot. Please delete this record and click <strong>&quot;+ Create Backup Now&quot;</strong> to take a complete snapshot.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const item = restoreModalItem
+                          setRestoreModalItem(null)
+                          setDeleteModalItem(item)
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-100 hover:bg-rose-200 rounded-lg transition-colors"
                       >
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleSelectCollection(col)}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="capitalize font-medium text-slate-800">
-                            {col === 'trash'
-                              ? 'Trash & Soft-Deleted'
-                              : col === 'audit_logs'
-                              ? 'Audit & Activity Logs'
-                              : col}
-                          </span>
-                        </div>
-                        <span className="text-[11px] font-mono text-slate-500">({count})</span>
-                      </label>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Safety Snapshot Checkbox */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <label className="flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={performSafetyBackup}
-                    onChange={(e) => setPerformSafetyBackup(e.target.checked)}
-                    className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <div>
-                    <p className="text-xs font-bold text-slate-900">
-                      Create Pre-Restore Safety Snapshot (Recommended)
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      Automatically saves an exact copy of the current database before restoring, so you can revert at
-                      any time if needed.
-                    </p>
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete Corrupted Snapshot
+                      </button>
+                    </div>
                   </div>
-                </label>
-              </div>
+                )
+              }
 
-              {/* Strict Confirmation Phrase */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Type <span className="text-rose-600 font-mono">RESTORE</span> to confirm:
-                </label>
-                <input
-                  type="text"
-                  value={confirmPhrase}
-                  onChange={(e) => setConfirmPhrase(e.target.value)}
-                  placeholder="Type RESTORE in capital letters"
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-mono"
-                />
-              </div>
-            </div>
+              return (
+                <div className="mt-4 space-y-4">
+                  {/* Warning Box */}
+                  <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-amber-900">
+                      <p className="font-bold">Caution: Database Recovery</p>
+                      <p className="mt-0.5">
+                        Restoring from this snapshot will update documents in selected collections to match this snapshot.
+                        Original document IDs and structures will be preserved.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Collections Selection */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                        Select Collections to Restore ({selectedCollections.length})
+                      </label>
+                      <button
+                        type="button"
+                        onClick={toggleSelectAllCollections}
+                        className="text-xs font-semibold text-blue-600 hover:underline"
+                      >
+                        {selectedCollections.length === (restoreDetails?.collections?.length || BACKUP_COLLECTIONS.length)
+                          ? 'Deselect All'
+                          : 'Select All'}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 max-h-48 overflow-y-auto">
+                      {(restoreDetails?.collections || BACKUP_COLLECTIONS).map((col) => {
+                        const count = restoreDetails?.collectionCounts?.[col] ?? '?'
+                        const checked = selectedCollections.includes(col)
+                        return (
+                          <label
+                            key={col}
+                            className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                              checked
+                                ? 'bg-blue-50/80 border-blue-300 text-blue-900 font-medium'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleSelectCollection(col)}
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="capitalize font-medium text-slate-800">
+                                {col === 'trash'
+                                  ? 'Trash & Soft-Deleted'
+                                  : col === 'audit_logs'
+                                  ? 'Audit & Activity Logs'
+                                  : col}
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-mono text-slate-500">({count})</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Safety Snapshot Checkbox */}
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={performSafetyBackup}
+                        onChange={(e) => setPerformSafetyBackup(e.target.checked)}
+                        className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <p className="text-xs font-bold text-slate-900">
+                          Create Pre-Restore Safety Snapshot (Recommended)
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Automatically saves an exact copy of the current database before restoring, so you can revert at
+                          any time if needed.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Strict Confirmation Phrase */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                      Type <span className="text-rose-600 font-mono">RESTORE</span> to confirm:
+                    </label>
+                    <input
+                      type="text"
+                      value={confirmPhrase}
+                      onChange={(e) => setConfirmPhrase(e.target.value)}
+                      placeholder="Type RESTORE in capital letters"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-mono"
+                    />
+                  </div>
+                </div>
+              )
+            })()}
 
             <div className="mt-6 flex items-center justify-end gap-2.5">
               <button
@@ -915,7 +966,14 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
               </button>
               <button
                 onClick={handleExecuteRestore}
-                disabled={restoreLoading || confirmPhrase.trim().toUpperCase() !== 'RESTORE' || selectedCollections.length === 0}
+                disabled={
+                  restoreLoading ||
+                  confirmPhrase.trim().toUpperCase() !== 'RESTORE' ||
+                  selectedCollections.length === 0 ||
+                  restoreDetails?.isPayloadMissing ||
+                  (!restoreDetails?.payload && !restoreModalItem.payload) ||
+                  Object.keys(restoreDetails?.payload?.collections || {}).length === 0
+                }
                 className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 active:bg-amber-800 rounded-lg shadow-md shadow-amber-600/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {restoreLoading ? (

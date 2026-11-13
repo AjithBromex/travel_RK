@@ -12,6 +12,7 @@ import {
 import { db } from '@/lib/firebase/config'
 import type { BackupRecord, BackupPayload, BackupType } from '@/types'
 import { waitForAuthReady, getLocalData, setLocalData, notifyDataChanged } from '@/lib/storage-sync'
+import { saveBackupPayload, getBackupPayload, deleteBackupPayload } from '@/lib/storage/backup-db'
 import { logAuditEvent, getAuditLogs } from './audit.service'
 import { getTrashItems } from './trash.service'
 import { invalidateCache } from '@/lib/cache'
@@ -195,10 +196,20 @@ export async function createBackup(
       })
       for (const [col, docs] of Object.entries(collectionsData)) {
         if (docs.length > 0) {
-          await setDoc(doc(db, BACKUPS_COLLECTION, backupId, 'chunks', col), {
-            collection: col,
-            docs,
-          }).catch(() => {})
+          const CHUNK_SIZE = 100
+          for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+            const chunkDocs = docs.slice(i, i + CHUNK_SIZE)
+            const chunkDocId = docs.length <= CHUNK_SIZE ? col : `${col}_chunk${Math.floor(i / CHUNK_SIZE)}`
+            try {
+              await setDoc(doc(db, BACKUPS_COLLECTION, backupId, 'chunks', chunkDocId), {
+                collection: col,
+                docs: chunkDocs,
+                chunkIndex: Math.floor(i / CHUNK_SIZE),
+              })
+            } catch (chunkErr) {
+              console.warn(`[BackupService] Warning: Chunk write failed for ${col} in ${backupId}:`, chunkErr)
+            }
+          }
         }
       }
     }
@@ -206,7 +217,10 @@ export async function createBackup(
     console.warn('[BackupService] Cloud write error for backup record:', err)
   }
 
-  // 4. Update local storage history
+  // 4. Cache full payload in client IndexedDB (bulletproof offline store)
+  await saveBackupPayload(backupId, payload).catch(() => {})
+
+  // 5. Update local storage history
   try {
     const local = getLocalData<BackupRecord[]>(LOCAL_STORAGE_KEY, [])
     const shallow = { ...record }
@@ -215,7 +229,7 @@ export async function createBackup(
     setLocalData(LOCAL_STORAGE_KEY, local.slice(0, 50))
   } catch {}
 
-  // 5. Log audit event
+  // 6. Log audit event
   logAuditEvent({
     action: 'BACKUP_CREATE',
     collectionName: 'backups',
@@ -307,40 +321,82 @@ export async function getBackupById(id: string): Promise<BackupRecord | null> {
     const snap = await getDoc(doc(db, BACKUPS_COLLECTION, id))
     if (snap.exists()) {
       const data = snap.data() as BackupRecord
-      if (data.payload) {
+      if (data.payload && Object.keys(data.payload.collections || {}).length > 0) {
+        saveBackupPayload(id, data.payload).catch(() => {})
         return { ...data, id: snap.id }
       }
       if ((data as any).isChunked) {
-        // Reassemble payload from subcollections
-        const chunkSnap = await getDocs(collection(db, BACKUPS_COLLECTION, id, 'chunks'))
-        const reassembled: Record<string, any[]> = {}
-        chunkSnap.docs.forEach((cd) => {
-          const cData = cd.data()
-          reassembled[cData.collection || cd.id] = cData.docs || []
-        })
-        const payload: BackupPayload = {
-          version: '2.0.0',
-          timestamp: data.createdAt,
-          backupId: id,
-          type: data.type,
-          databaseId: 'rk-travels-default',
-          summary: {
-            totalCollections: Object.keys(reassembled).length,
-            totalDocuments: data.totalRecords,
-            collectionCounts: data.collectionCounts,
-          },
-          collections: reassembled,
+        try {
+          // Reassemble payload from subcollections
+          const chunkSnap = await getDocs(collection(db, BACKUPS_COLLECTION, id, 'chunks'))
+          if (!chunkSnap.empty) {
+            const reassembled: Record<string, any[]> = {}
+            chunkSnap.docs.forEach((cd) => {
+              const cData = cd.data()
+              const cName = cData.collection || cd.id.replace(/_chunk\d+$/, '')
+              reassembled[cName] = (reassembled[cName] || []).concat(cData.docs || [])
+            })
+            if (Object.keys(reassembled).length > 0) {
+              const payload: BackupPayload = {
+                version: '2.0.0',
+                timestamp: data.createdAt,
+                backupId: id,
+                type: data.type,
+                databaseId: 'rk-travels-default',
+                summary: {
+                  totalCollections: Object.keys(reassembled).length,
+                  totalDocuments: data.totalRecords,
+                  collectionCounts: data.collectionCounts,
+                },
+                collections: reassembled,
+              }
+              saveBackupPayload(id, payload).catch(() => {})
+              return { ...data, id: snap.id, payload }
+            }
+          }
+        } catch (chunkErr) {
+          console.warn(`[BackupService] Could not read chunks from cloud for ${id}:`, chunkErr)
         }
-        return { ...data, id: snap.id, payload }
       }
-      return { ...data, id: snap.id }
+
+      // Check IndexedDB
+      const idbPayload = await getBackupPayload(id).catch(() => null)
+      if (idbPayload && Object.keys(idbPayload.collections || {}).length > 0) {
+        return { ...data, id: snap.id, payload: idbPayload }
+      }
+
+      // Check server API fallback if in browser
+      if (typeof window !== 'undefined') {
+        try {
+          const res = await fetch(`/api/admin/backups/${encodeURIComponent(id)}`, { cache: 'no-store' })
+          if (res.ok) {
+            const serverData = await res.json()
+            if (serverData?.payload && Object.keys(serverData.payload.collections || {}).length > 0) {
+              saveBackupPayload(id, serverData.payload).catch(() => {})
+              return { ...data, id: snap.id, payload: serverData.payload }
+            }
+          }
+        } catch {}
+      }
+
+      return { ...data, id: snap.id, isPayloadMissing: true }
     }
   } catch (err) {
     console.warn(`[BackupService] Error loading backup ${id}:`, err)
   }
 
+  // Check IndexedDB before local storage
+  const idbPayload = await getBackupPayload(id).catch(() => null)
   const local = getLocalData<BackupRecord[]>(LOCAL_STORAGE_KEY, [])
-  return local.find((b) => b.id === id) || null
+  const found = local.find((b) => b.id === id)
+  if (found) {
+    if (idbPayload && Object.keys(idbPayload.collections || {}).length > 0) {
+      return { ...found, payload: idbPayload }
+    }
+    return { ...found, isPayloadMissing: !found.payload }
+  }
+
+  return null
 }
 
 /**
@@ -352,10 +408,23 @@ export async function deleteBackup(
 ): Promise<boolean> {
   await waitForAuthReady()
   try {
+    // Delete chunks subcollection documents if chunked
+    try {
+      const chunkSnap = await getDocs(collection(db, BACKUPS_COLLECTION, id, 'chunks'))
+      if (!chunkSnap.empty) {
+        for (const cDoc of chunkSnap.docs) {
+          await deleteDoc(doc(db, BACKUPS_COLLECTION, id, 'chunks', cDoc.id)).catch(() => {})
+        }
+      }
+    } catch {}
+
     await deleteDoc(doc(db, BACKUPS_COLLECTION, id))
   } catch (err) {
     console.warn(`[BackupService] Cloud deleteBackup error on ${id}:`, err)
   }
+
+  // Also clean IndexedDB payload
+  await deleteBackupPayload(id).catch(() => {})
 
   const local = getLocalData<BackupRecord[]>(LOCAL_STORAGE_KEY, [])
   setLocalData(

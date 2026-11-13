@@ -39,12 +39,20 @@ export async function restoreFromBackup(
 
   // 1. Fetch the target backup record
   const backupRecord = await getBackupById(backupId)
-  if (!backupRecord || !backupRecord.payload) {
-    throw new Error(`Backup snapshot with ID ${backupId} not found or has no data payload.`)
+  if (!backupRecord) {
+    throw new Error(`Backup snapshot with ID "${backupId}" was not found.`)
+  }
+
+  const collections = backupRecord.payload?.collections || {}
+  const availableCollections = Object.keys(collections)
+
+  if (!backupRecord.payload || availableCollections.length === 0) {
+    throw new Error(
+      `Backup snapshot "${backupRecord.name || backupId}" has no stored data payload. This snapshot was created before chunked storage rules were deployed. Please delete this record and click "+ Create Backup Now" to create a fresh, restorable backup.`
+    )
   }
 
   const payload: BackupPayload = backupRecord.payload
-  const availableCollections = Object.keys(payload.collections || {})
 
   // Determine target collections to restore
   const targetCollections = (options.selectedCollections && options.selectedCollections.length > 0)
