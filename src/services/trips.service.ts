@@ -58,10 +58,29 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
     `trips:list:${limitCount}`,
     async () => {
       await waitForAuthReady()
-      const q = query(collection(db, COLLECTION), orderBy('createdAt', 'desc'), limit(limitCount))
-      const snap = await getDocs(q)
+      const baseCol = collection(db, COLLECTION)
+      let snap
+      try {
+        const q = query(baseCol, orderBy('createdAt', 'desc'), limit(limitCount))
+        snap = await getDocs(q)
+      } catch {
+        snap = await getDocs(query(baseCol, limit(limitCount)))
+      }
       const list = snap.docs
-        .map(d => ({ id: d.id, ...d.data() } as Trip))
+        .map(d => {
+          const data = d.data() as Trip
+          return {
+            ...data,
+            id: d.id,
+            createdAt: data.createdAt || data.updatedAt || (data as any).restoredAt || new Date().toISOString(),
+            status: data.status || 'scheduled',
+            customerName: data.customerName || (data as any).customer || data.tripNumber || d.id,
+            tripDate: data.tripDate || (data as any).startDate || new Date().toISOString().slice(0, 10),
+            totalFare: Number(data.totalFare || (data as any).amount || 0),
+            from: data.from || 'Tirur',
+            to: data.to || 'Chennai',
+          } as Trip
+        })
         .filter(t => {
           if (t.isDeleted) return false
           if (isDeleted('trips', t.id)) {
@@ -70,6 +89,7 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
           }
           return true
         })
+      list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
 
       let paymentsList = getStoredPayments()
       try {
@@ -123,8 +143,14 @@ export async function getRecentTrips(count = 5): Promise<Trip[]> {
     `trips:recent:${count}`,
     async () => {
       await waitForAuthReady()
-      const q = query(collection(db, COLLECTION), orderBy('createdAt', 'desc'), limit(count))
-      const snap = await getDocs(q)
+      const baseCol = collection(db, COLLECTION)
+      let snap
+      try {
+        const q = query(baseCol, orderBy('createdAt', 'desc'), limit(count))
+        snap = await getDocs(q)
+      } catch {
+        snap = await getDocs(query(baseCol, limit(count)))
+      }
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Trip))
         .filter(t => {
