@@ -185,11 +185,28 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
     setActionLoadingId(item.id)
     setPermDeleteModal(null)
     try {
-      await permanentDeleteFromTrash(item.id)
-      setItems((prev) => prev.filter((i) => i.id !== item.id))
+      // 1. Call server API route first
+      await fetch(
+        `/api/admin/trash?id=${encodeURIComponent(item.id)}&col=${encodeURIComponent(item.originalCollection || '')}&origId=${encodeURIComponent(item.originalId || '')}`,
+        {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            trashId: item.id,
+            col: item.originalCollection,
+            origId: item.originalId,
+          }),
+        }
+      ).catch(() => {})
+
+      // 2. Execute full client-side permanent purge with complete item context
+      await permanentDeleteFromTrash(item.id, undefined, item)
+
+      setItems((prev) => prev.filter((i) => i.id !== item.id && (!item.originalId || i.originalId !== item.originalId)))
       setSelectedIds((prev) => {
         const next = new Set(prev)
         next.delete(item.id)
+        if (item.originalId) next.delete(item.originalId)
         return next
       })
       if (inspectItem?.id === item.id) setInspectItem(null)
@@ -206,6 +223,12 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
     setLoading(true)
     setEmptyTrashModal(false)
     try {
+      await fetch('/api/admin/trash?action=empty_all', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'empty_all' }),
+      }).catch(() => {})
+
       const count = await emptyTrash()
       setItems([])
       setSelectedIds(new Set())

@@ -50,6 +50,8 @@ export async function DELETE(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
     const trashId = req.nextUrl.searchParams.get('id') || body.trashId
+    const col = req.nextUrl.searchParams.get('col') || body.col
+    const origId = req.nextUrl.searchParams.get('origId') || body.origId
     const action = req.nextUrl.searchParams.get('action') || body.action
 
     if (action === 'empty_all') {
@@ -58,7 +60,11 @@ export async function DELETE(req: NextRequest) {
     }
 
     if (trashId) {
-      await permanentDeleteFromTrash(trashId)
+      const syntheticItem =
+        col && origId
+          ? ({ originalCollection: col, originalId: origId, id: trashId } as any)
+          : undefined
+      await permanentDeleteFromTrash(trashId, undefined, syntheticItem)
       return NextResponse.json({ ok: true, message: 'Record permanently deleted' })
     }
 

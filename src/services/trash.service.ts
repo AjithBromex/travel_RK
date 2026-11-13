@@ -40,7 +40,84 @@ import { logAuditEvent } from './audit.service'
 import { invalidateCache } from '@/lib/cache'
 
 const TRASH_COLLECTION = 'trash'
-const LOCAL_STORAGE_KEY = 'rk_trash_items'
+const LOCAL_STORAGE_KEY = 'trash_items'
+const PURGED_STORAGE_KEY = 'permanently_purged_ids'
+
+export function markAsPermanentlyPurged(collectionName: string, id: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(`rk_${PURGED_STORAGE_KEY}`) || localStorage.getItem(PURGED_STORAGE_KEY)
+    const list: string[] = raw ? JSON.parse(raw) : []
+    const key = `${collectionName}_${id}`
+    if (!list.includes(key)) list.push(key)
+    if (!list.includes(id)) list.push(id)
+    const val = JSON.stringify(list.slice(-500))
+    localStorage.setItem(`rk_${PURGED_STORAGE_KEY}`, val)
+    localStorage.setItem(PURGED_STORAGE_KEY, val)
+  } catch {}
+}
+
+export function unmarkPermanentlyPurged(collectionName: string, id: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(`rk_${PURGED_STORAGE_KEY}`) || localStorage.getItem(PURGED_STORAGE_KEY)
+    if (!raw) return
+    const list: string[] = JSON.parse(raw)
+    const filtered = list.filter((x) => x !== `${collectionName}_${id}` && x !== id)
+    const val = JSON.stringify(filtered)
+    localStorage.setItem(`rk_${PURGED_STORAGE_KEY}`, val)
+    localStorage.setItem(PURGED_STORAGE_KEY, val)
+  } catch {}
+}
+
+export function isPermanentlyPurged(collectionName: string, id: string): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const raw = localStorage.getItem(`rk_${PURGED_STORAGE_KEY}`) || localStorage.getItem(PURGED_STORAGE_KEY)
+    if (!raw) return false
+    const list: string[] = JSON.parse(raw)
+    return list.includes(`${collectionName}_${id}`) || list.includes(id)
+  } catch {
+    return false
+  }
+}
+
+export function parseTrashIdentifier(
+  trashId: string,
+  itemParam?: TrashItem | null
+): { origCol: string; origId: string } {
+  if (itemParam?.originalCollection && itemParam?.originalId) {
+    return { origCol: itemParam.originalCollection, origId: itemParam.originalId }
+  }
+
+  let clean = trashId
+  if (clean.startsWith('trash_')) {
+    clean = clean.replace(/^trash_/, '')
+  }
+
+  const KNOWN_COLLECTIONS = ['payments', 'expenses', 'trips', 'vehicles', 'reminders', 'cashbook', 'users', 'settings']
+  for (const col of KNOWN_COLLECTIONS) {
+    if (clean.startsWith(`${col}_`)) {
+      return {
+        origCol: col,
+        origId: clean.slice(col.length + 1),
+      }
+    }
+  }
+
+  const parts = clean.split('_')
+  if (parts.length >= 2) {
+    return {
+      origCol: parts[0],
+      origId: parts.slice(1).join('_'),
+    }
+  }
+
+  return {
+    origCol: itemParam?.originalCollection || 'expenses',
+    origId: clean,
+  }
+}
 
 export function getRecordDisplayName(collectionName: string, data: Record<string, any>): string {
   if (!data) return `${collectionName} record`
@@ -289,7 +366,13 @@ export async function getTrashItems(collectionFilter?: string): Promise<TrashIte
   const localItems = getLocalData<TrashItem[]>(LOCAL_STORAGE_KEY, [])
   for (const item of localItems) {
     if (item && !item.restored && item.isDeleted !== false) {
-      itemsMap.set(item.id, item)
+      const origCol = item.originalCollection || 'expenses'
+      const origId = item.originalId || item.id
+      if (isPermanentlyPurged(origCol, origId) || isPermanentlyPurged('trash', item.id)) continue
+      const canonicalKey = `${origCol}_${origId}`
+      if (!itemsMap.has(canonicalKey)) {
+        itemsMap.set(canonicalKey, item)
+      }
     }
   }
 
@@ -303,10 +386,11 @@ export async function getTrashItems(collectionFilter?: string): Promise<TrashIte
         const rawEntities = getLocalData<any[]>(col, [])
         for (const entity of rawEntities) {
           if (entity && (entity.isDeleted === true || deletedIds.includes(entity.id))) {
-            const trashId = `${col}_${entity.id}`
-            if (!itemsMap.has(trashId)) {
-              itemsMap.set(trashId, {
-                id: trashId,
+            if (isPermanentlyPurged(col, entity.id)) continue
+            const canonicalKey = `${col}_${entity.id}`
+            if (!itemsMap.has(canonicalKey)) {
+              itemsMap.set(canonicalKey, {
+                id: `${col}_${entity.id}`,
                 originalId: entity.id,
                 originalCollection: col,
                 recordName: getRecordDisplayName(col, entity),
@@ -335,7 +419,13 @@ export async function getTrashItems(collectionFilter?: string): Promise<TrashIte
     for (const d of snap.docs) {
       const data = d.data() as TrashItem
       if (data && !data.restored && data.isDeleted !== false) {
-        itemsMap.set(d.id, { id: d.id, ...data })
+        const origCol = data.originalCollection || 'expenses'
+        const origId = data.originalId || d.id
+        if (isPermanentlyPurged(origCol, origId) || isPermanentlyPurged('trash', d.id)) continue
+        const canonicalKey = `${origCol}_${origId}`
+        if (!itemsMap.has(canonicalKey)) {
+          itemsMap.set(canonicalKey, { id: d.id, ...data })
+        }
       }
     }
   } catch (err) {
@@ -353,10 +443,12 @@ export async function getTrashItems(collectionFilter?: string): Promise<TrashIte
       const delSnap = await getDocs(delQuery)
       for (const d of delSnap.docs) {
         const docData = d.data()
-        const trashId = `${col}_${d.id}`
-        if (!itemsMap.has(trashId)) {
+        if (docData.isPermanentlyDeleted === true) continue
+        if (isPermanentlyPurged(col, d.id)) continue
+        const canonicalKey = `${col}_${d.id}`
+        if (!itemsMap.has(canonicalKey)) {
           const item: TrashItem = {
-            id: trashId,
+            id: `${col}_${d.id}`,
             originalId: d.id,
             originalCollection: col,
             recordName: getRecordDisplayName(col, { id: d.id, ...docData }),
@@ -370,7 +462,7 @@ export async function getTrashItems(collectionFilter?: string): Promise<TrashIte
             createdAt: docData.createdAt || new Date().toISOString(),
             updatedAt: docData.updatedAt || new Date().toISOString(),
           }
-          itemsMap.set(trashId, item)
+          itemsMap.set(canonicalKey, item)
         }
       }
     } catch {}
@@ -392,13 +484,17 @@ export async function getTrashItems(collectionFilter?: string): Promise<TrashIte
             fields[k] = (v as any).stringValue || (v as any).booleanValue || (v as any).integerValue || null
           }
           if (docId && !fields.restored && fields.isDeleted !== false) {
-            if (!itemsMap.has(docId)) {
-              itemsMap.set(docId, {
+            const origCol = fields.originalCollection || 'expenses'
+            const origId = fields.originalId || docId
+            if (isPermanentlyPurged(origCol, origId) || isPermanentlyPurged('trash', docId)) continue
+            const canonicalKey = `${origCol}_${origId}`
+            if (!itemsMap.has(canonicalKey)) {
+              itemsMap.set(canonicalKey, {
                 id: docId,
-                originalId: fields.originalId || docId,
-                originalCollection: fields.originalCollection || 'expenses',
+                originalId: origId,
+                originalCollection: origCol,
                 recordName: fields.recordName || `Record #${docId}`,
-                recordType: fields.recordType || 'expenses',
+                recordType: fields.recordType || origCol,
                 data: fields,
                 isDeleted: true,
                 deletedAt: fields.deletedAt || new Date().toISOString(),
@@ -494,8 +590,15 @@ export async function restoreFromTrash(
 
   // 4. Update local storage: unmark deleted and restore local cache
   unmarkDeleted(originalCollection, originalId)
-  if (data.tripNumber) unmarkDeleted(originalCollection, data.tripNumber)
-  if (data.registrationNumber) unmarkDeleted(originalCollection, data.registrationNumber)
+  unmarkPermanentlyPurged(originalCollection, originalId)
+  if (data.tripNumber) {
+    unmarkDeleted(originalCollection, data.tripNumber)
+    unmarkPermanentlyPurged(originalCollection, data.tripNumber)
+  }
+  if (data.registrationNumber) {
+    unmarkDeleted(originalCollection, data.registrationNumber)
+    unmarkPermanentlyPurged(originalCollection, data.registrationNumber)
+  }
 
   if (originalCollection === 'trips') upsertStoredTrip(restoredPayload as any)
   else if (originalCollection === 'vehicles') upsertStoredVehicle(restoredPayload as any)
@@ -561,47 +664,109 @@ export async function restoreMultipleFromTrash(
  */
 export async function permanentDeleteFromTrash(
   trashId: string,
-  user?: { uid?: string; email?: string }
+  user?: { uid?: string; email?: string },
+  itemParam?: TrashItem | null
 ): Promise<boolean> {
   await waitForAuthReady()
 
-  // 1. Fetch item
-  let item: TrashItem | null = null
+  // 1. Resolve item and canonical collection + ID
+  let item: TrashItem | null = itemParam || null
   const localTrash = getLocalData<TrashItem[]>(LOCAL_STORAGE_KEY, [])
-  item = localTrash.find((t) => t.id === trashId || t.originalId === trashId) || null
+  if (!item) {
+    item = localTrash.find((t) => t.id === trashId || t.originalId === trashId) || null
+  }
 
-  try {
-    const snap = await getDoc(doc(db, TRASH_COLLECTION, trashId))
-    if (snap.exists()) {
-      item = { id: snap.id, ...snap.data() } as TrashItem
-    }
-  } catch {}
+  if (!item) {
+    try {
+      const snap = await getDoc(doc(db, TRASH_COLLECTION, trashId))
+      if (snap.exists()) {
+        item = { id: snap.id, ...snap.data() } as TrashItem
+      }
+    } catch {}
+  }
 
-  const origCol = item?.originalCollection
-  const origId = item?.originalId || trashId.split('_').slice(1).join('_')
+  const { origCol, origId } = parseTrashIdentifier(trashId, item)
   const recordName = item?.recordName || `${origCol} #${origId}`
 
-  // 2. Permanently delete from original collection
+  // Mark in blacklist immediately so no concurrent query revives it
+  markAsPermanentlyPurged(origCol, origId)
+  markAsPermanentlyPurged('trash', trashId)
+
+  // 2. Permanently delete from original collection in Cloud Firestore
   if (origCol && origId) {
     try {
       await deleteDoc(doc(db, origCol, origId))
     } catch (err) {
       console.warn(`[TrashService] Cloud perm-delete on /${origCol}/${origId}:`, err)
     }
+
+    // Also update document with isDeleted: false, isPermanentlyDeleted: true
+    // so any soft-delete queries (where('isDeleted', '==', true)) will never return it again
+    try {
+      await updateDoc(doc(db, origCol, origId), {
+        isDeleted: false,
+        isPermanentlyDeleted: true,
+        deletedAt: null,
+      })
+    } catch {}
   }
 
-  // 3. Permanently delete from 'trash' collection
+  // 3. Permanently delete from 'trash' collection (try all ID permutations)
+  const trashIdsToDelete = Array.from(
+    new Set(
+      [
+        trashId,
+        `trash_${origCol}_${origId}`,
+        `${origCol}_${origId}`,
+        origId,
+        item?.id,
+      ].filter(Boolean)
+    )
+  ) as string[]
+
+  for (const tid of trashIdsToDelete) {
+    try {
+      await deleteDoc(doc(db, TRASH_COLLECTION, tid))
+    } catch (err) {
+      console.warn(`[TrashService] Cloud perm-delete on /trash/${tid}:`, err)
+    }
+  }
+
+  // 4. Direct REST API deletion fallback (ensures deletion on server & all auth modes)
   try {
-    await deleteDoc(doc(db, TRASH_COLLECTION, trashId))
-  } catch (err) {
-    console.warn(`[TrashService] Cloud perm-delete on /trash/${trashId}:`, err)
-  }
+    const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'rk-travels-1f4f3'
+    const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+    const baseRest = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`
 
-  // 4. Update local storage
-  const updatedTrash = localTrash.filter((t) => t.id !== trashId && t.originalId !== origId)
+    for (const tid of trashIdsToDelete) {
+      const restTrashUrl = `${baseRest}/trash/${tid}${API_KEY ? `?key=${API_KEY}` : ''}`
+      fetch(restTrashUrl, { method: 'DELETE' }).catch(() => {})
+    }
+
+    if (origCol && origId) {
+      const restOrigUrl = `${baseRest}/${origCol}/${origId}${API_KEY ? `?key=${API_KEY}` : ''}`
+      fetch(restOrigUrl, { method: 'DELETE' }).catch(() => {})
+    }
+  } catch {}
+
+  // 5. Clean up local storage caches completely
+  unmarkDeleted(origCol, origId)
+  if (item?.data?.tripNumber) unmarkDeleted(origCol, item.data.tripNumber)
+  if (item?.data?.registrationNumber) unmarkDeleted(origCol, item.data.registrationNumber)
+
+  if (origCol === 'trips') removeStoredTrip(origId)
+  else if (origCol === 'vehicles') removeStoredVehicle(origId)
+  else if (origCol === 'payments') removeStoredPayment(origId)
+  else if (origCol === 'expenses') removeStoredExpense(origId)
+  else if (origCol === 'reminders') removeStoredReminder(origId)
+
+  // Remove from local trash cache
+  const updatedTrash = localTrash.filter(
+    (t) => t.id !== trashId && t.originalId !== origId && !trashIdsToDelete.includes(t.id)
+  )
   setLocalData(LOCAL_STORAGE_KEY, updatedTrash)
 
-  // 5. Log audit event
+  // 6. Log audit event
   logAuditEvent({
     action: 'PERMANENT_DELETE',
     collectionName: origCol || 'trash',
@@ -613,6 +778,7 @@ export async function permanentDeleteFromTrash(
   }).catch(() => {})
 
   invalidateCache('trash')
+  invalidateCache(origCol)
   notifyDataChanged('trash')
   notifyDataChanged('audit_logs')
   notifyDataChanged('backups')
@@ -630,10 +796,17 @@ export async function emptyTrash(user?: { uid?: string; email?: string }): Promi
 
   for (const item of items) {
     try {
-      await permanentDeleteFromTrash(item.id, user)
+      await permanentDeleteFromTrash(item.id, user, item)
       count++
     } catch {}
   }
+
+  // Clear local trash cache completely
+  setLocalData(LOCAL_STORAGE_KEY, [])
+  notifyDataChanged('trash')
+  notifyDataChanged('audit_logs')
+  notifyDataChanged('backups')
+  notifyDataChanged('all')
 
   return count
 }
