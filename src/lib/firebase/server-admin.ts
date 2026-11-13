@@ -140,6 +140,71 @@ export async function deleteAdminBackup(backupId: string): Promise<{ ok: boolean
   return { ok: true, deletedChunks }
 }
 
+/**
+ * Permanently deletes a single trash item and its underlying original document from Cloud Firestore.
+ */
+export async function deleteAdminTrashItem(
+  trashId: string,
+  origCol?: string,
+  origId?: string
+): Promise<{ ok: boolean }> {
+  const deletePaths = [`trash/${encodeURIComponent(trashId)}`]
+  if (origCol && origId) {
+    deletePaths.push(`trash/trash_${encodeURIComponent(origCol)}_${encodeURIComponent(origId)}`)
+    deletePaths.push(`trash/${encodeURIComponent(origCol)}_${encodeURIComponent(origId)}`)
+    deletePaths.push(`${encodeURIComponent(origCol)}/${encodeURIComponent(origId)}`)
+  }
+  for (const path of deletePaths) {
+    try {
+      await firestoreRest(path, 'DELETE')
+    } catch {}
+  }
+  return { ok: true }
+}
+
+/**
+ * Permanently deletes multiple trash items from Cloud Firestore.
+ */
+export async function deleteMultipleAdminTrash(trashIds: string[]): Promise<number> {
+  let count = 0
+  for (const tid of trashIds) {
+    try {
+      await deleteAdminTrashItem(tid)
+      count++
+    } catch {}
+  }
+  return count
+}
+
+/**
+ * Permanently purges all items from Cloud Firestore /trash collection.
+ */
+export async function emptyAdminTrash(): Promise<number> {
+  let deletedCount = 0
+  const res = await firestoreRest('trash?pageSize=100', 'GET')
+  if (res.status === 200 && res.data?.documents) {
+    for (const doc of res.data.documents) {
+      const tid = doc.name.split('/').pop()
+      if (tid) {
+        const origCol = doc.fields?.originalCollection?.stringValue
+        const origId = doc.fields?.originalId?.stringValue
+        if (origCol && origId) {
+          try {
+            await firestoreRest(`${encodeURIComponent(origCol)}/${encodeURIComponent(origId)}`, 'DELETE')
+          } catch {}
+        }
+        try {
+          const delRes = await firestoreRest(`trash/${encodeURIComponent(tid)}`, 'DELETE')
+          if (delRes.status === 200 || delRes.status === 404) {
+            deletedCount++
+          }
+        } catch {}
+      }
+    }
+  }
+  return deletedCount
+}
+
 const BACKUP_METADATA_MASK = [
   'mask.fieldPaths=name',
   'mask.fieldPaths=type',

@@ -56,6 +56,7 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
   const [permDeleteModal, setPermDeleteModal] = useState<TrashItem | null>(null)
   const [emptyTrashModal, setEmptyTrashModal] = useState(false)
   const [bulkRestoreModal, setBulkRestoreModal] = useState(false)
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false)
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -216,6 +217,32 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
     }
   }
 
+  // Bulk Permanent Delete
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    const idsToDelete = Array.from(selectedIds)
+    const count = idsToDelete.length
+    setBulkDeleteModal(false)
+
+    // 1. Optimistic UI update instantly (0ms response time!)
+    setItems((prev) => prev.filter((i) => !selectedIds.has(i.id)))
+    setSelectedIds(new Set())
+    showToast(`Permanently purged ${count} selected records.`)
+
+    // 2. Perform backend & cloud cleanup concurrently in background
+    try {
+      await fetch('/api/admin/trash', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_multiple', trashIds: idsToDelete }),
+      })
+      await reloadTrash()
+    } catch (err: any) {
+      console.warn('Bulk delete background sync:', err)
+      await reloadTrash()
+    }
+  }
+
   // Empty Trash
   const handleEmptyTrash = async () => {
     // 1. Optimistic UI update instantly (0ms response time!)
@@ -223,7 +250,7 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
     const count = items.length
     setItems([])
     setSelectedIds(new Set())
-    showToast(`Trash emptied: ${count} records permanently removed.`)
+    showToast(`Trash emptied: all ${count} records permanently removed.`)
 
     // 2. Perform backend & cloud cleanup concurrently in background
     try {
@@ -235,8 +262,10 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
         }),
         emptyTrash(),
       ])
+      await reloadTrash()
     } catch (err: any) {
       console.warn('Empty trash background sync:', err)
+      await reloadTrash()
     }
   }
 
@@ -296,7 +325,7 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Empty Trash</span>
+                <span>Delete All Trash ({items.length})</span>
               </button>
             )}
           </div>
@@ -372,15 +401,38 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
             <option value="cashbook">Cash Book Only</option>
           </select>
 
-          {/* Bulk restore button */}
+          {/* Bulk Action Buttons */}
           {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2 shrink-0 animate-in fade-in">
+              <button
+                type="button"
+                onClick={() => setBulkRestoreModal(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors shrink-0 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Restore Selected ({selectedIds.size})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBulkDeleteModal(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition-colors shrink-0 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isAllSelected ? `Delete All (${selectedIds.size})` : `Delete Selected (${selectedIds.size})`}</span>
+              </button>
+            </div>
+          )}
+
+          {/* Delete All Trash button if items exist and none selected */}
+          {items.length > 0 && selectedIds.size === 0 && (
             <button
               type="button"
-              onClick={() => setBulkRestoreModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors shrink-0 cursor-pointer animate-in fade-in"
+              onClick={() => setEmptyTrashModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition-colors shrink-0 cursor-pointer"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Restore Selected ({selectedIds.size})</span>
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete All Trash ({items.length})</span>
             </button>
           )}
         </div>
@@ -668,12 +720,12 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
             <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 mx-auto flex items-center justify-center mb-3">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-black text-slate-900">Empty Entire Trash?</h3>
+            <h3 className="text-base font-black text-slate-900">Delete All Trash Records?</h3>
             <p className="text-xs text-slate-600 mt-1 leading-relaxed">
               This will permanently purge all <strong className="text-slate-900">{items.length} records</strong> currently in the Trash from Cloud Firestore.
             </p>
             <div className="p-3 my-3 rounded-xl bg-rose-50 border border-rose-200/80 text-[11px] text-rose-700 font-semibold text-left">
-              CAUTION: None of these {items.length} items can be restored after emptying.
+              CAUTION: None of these {items.length} items can be restored after deleting.
             </div>
 
             <div className="flex items-center justify-end gap-2 mt-4">
@@ -689,7 +741,7 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
                 onClick={handleEmptyTrash}
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer"
               >
-                Empty Everything
+                Delete All Trash Now
               </button>
             </div>
           </div>
@@ -724,6 +776,45 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer"
               >
                 Restore {selectedIds.size} Records
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          8. BULK DELETE CONFIRMATION DIALOG
+          ───────────────────────────────────────────────────────────── */}
+      {bulkDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-5 sm:p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 mx-auto flex items-center justify-center mb-3">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-black text-slate-900">
+              {isAllSelected ? 'Permanently Delete All Trash?' : `Permanently Delete ${selectedIds.size} Records?`}
+            </h3>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              This will permanently purge <strong className="text-slate-900">{selectedIds.size} records</strong> from Cloud Firestore.
+            </p>
+            <div className="p-3 my-3 rounded-xl bg-rose-50 border border-rose-200/80 text-[11px] text-rose-700 font-semibold text-left">
+              WARNING: Permanently deleted records cannot be recovered from Trash afterward.
+            </div>
+
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                type="button"
+                onClick={() => setBulkDeleteModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer"
+              >
+                Permanently Delete {selectedIds.size} Records
               </button>
             </div>
           </div>

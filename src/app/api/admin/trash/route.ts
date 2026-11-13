@@ -7,6 +7,11 @@ import {
   emptyTrash,
 } from '@/services/trash.service'
 import { verifyAdminAuth } from '@/lib/admin/auth-check'
+import {
+  emptyAdminTrash,
+  deleteAdminTrashItem,
+  deleteMultipleAdminTrash,
+} from '@/lib/firebase/server-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,17 +75,18 @@ export async function DELETE(req: NextRequest) {
     const origId = req.nextUrl.searchParams.get('origId') || body.origId
     const action = req.nextUrl.searchParams.get('action') || body.action
 
-    if (action === 'empty_all') {
-      const count = await emptyTrash()
+    if (action === 'empty_all' || action === 'delete_all') {
+      const count = await emptyAdminTrash()
       return NextResponse.json({ ok: true, count, message: `Permanently removed ${count} items` })
     }
 
+    if (action === 'delete_multiple' && Array.isArray(body.trashIds)) {
+      const count = await deleteMultipleAdminTrash(body.trashIds)
+      return NextResponse.json({ ok: true, count, message: `Permanently deleted ${count} items` })
+    }
+
     if (trashId) {
-      const syntheticItem =
-        col && origId
-          ? ({ originalCollection: col, originalId: origId, id: trashId } as any)
-          : undefined
-      await permanentDeleteFromTrash(trashId, undefined, syntheticItem)
+      await deleteAdminTrashItem(trashId, col, origId)
       return NextResponse.json({ ok: true, message: 'Record permanently deleted' })
     }
 
