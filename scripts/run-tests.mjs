@@ -442,6 +442,60 @@ test('CSV Sanitization: quotes strings with commas, quotes, and newlines', () =>
   assert.strictEqual(escapeCsvField('Trip "Special" Discount'), '"Trip ""Special"" Discount"');
 });
 
+// ─── 9. PAYMENT TRIP LINKAGE & SETTLEMENT VALIDATION TESTS ──────────────────
+console.log('\n[SUITE 9: Payment Trip Linkage & Settlement Validation]');
+
+function validatePaymentSubmission({ tripId, selectedTrip, type, stage, amount, maxBalance }) {
+  if (!tripId || tripId === 'general' || !selectedTrip) {
+    return { ok: false, error: 'Please select a trip booking. Payments can only be recorded after selecting a trip.' };
+  }
+  const num = Number(amount);
+  if (!num || num <= 0) {
+    return { ok: false, error: 'Please enter a valid payment amount' };
+  }
+  if (selectedTrip && type === 'customer_received' && stage === 'balance' && maxBalance !== null) {
+    if (maxBalance <= 0) {
+      return { ok: false, error: 'This trip is already fully settled. There is no pending balance due.' };
+    }
+    if (num > maxBalance) {
+      return { ok: false, error: `Cannot enter more than the remaining balance of ₹${maxBalance}.` };
+    }
+  }
+  return { ok: true };
+}
+
+test('Payment Trip Linkage: payment without linked trip (empty or general) is strictly rejected', () => {
+  const trip = { id: 'TRP-1', tripNumber: 'TRP-1', totalFare: 5000, customerBalance: 2000 };
+  
+  const resEmpty = validatePaymentSubmission({ tripId: '', selectedTrip: null, type: 'customer_received', stage: 'advance', amount: 1000, maxBalance: 2000 });
+  assert.strictEqual(resEmpty.ok, false);
+  assert.match(resEmpty.error, /Please select a trip booking/);
+
+  const resGeneral = validatePaymentSubmission({ tripId: 'general', selectedTrip: null, type: 'customer_received', stage: 'advance', amount: 1000, maxBalance: 2000 });
+  assert.strictEqual(resGeneral.ok, false);
+  assert.match(resGeneral.error, /Please select a trip booking/);
+});
+
+test('Payment Trip Linkage: valid linked trip succeeds', () => {
+  const trip = { id: 'TRP-1', tripNumber: 'TRP-1', totalFare: 5000, customerBalance: 2000 };
+  const res = validatePaymentSubmission({ tripId: 'TRP-1', selectedTrip: trip, type: 'customer_received', stage: 'balance', amount: 2000, maxBalance: 2000 });
+  assert.strictEqual(res.ok, true);
+});
+
+test('Payment Settlement: balance payment exceeding remaining due is strictly rejected', () => {
+  const trip = { id: 'TRP-1', tripNumber: 'TRP-1', totalFare: 5000, customerBalance: 1500 };
+  const res = validatePaymentSubmission({ tripId: 'TRP-1', selectedTrip: trip, type: 'customer_received', stage: 'balance', amount: 2000, maxBalance: 1500 });
+  assert.strictEqual(res.ok, false);
+  assert.match(res.error, /Cannot enter more than the remaining balance/);
+});
+
+test('Payment Settlement: balance payment for fully settled trip (due = 0) is rejected', () => {
+  const trip = { id: 'TRP-1', tripNumber: 'TRP-1', totalFare: 5000, customerBalance: 0 };
+  const res = validatePaymentSubmission({ tripId: 'TRP-1', selectedTrip: trip, type: 'customer_received', stage: 'balance', amount: 500, maxBalance: 0 });
+  assert.strictEqual(res.ok, false);
+  assert.match(res.error, /This trip is already fully settled/);
+});
+
 // ─── TEST SUMMARY ─────────────────────────────────────────────────────────────
 console.log('\n=============================================================================');
 console.log(`  TEST RESULTS: ${passedTests} / ${totalTests} PASSED (${Math.round((passedTests / totalTests) * 100)}%)`);
@@ -453,3 +507,4 @@ if (failedTests > 0) {
   console.log('  ALL TESTS COMPLETED SUCCESSFULLY! ZERO DEFECTS DETECTED.');
   console.log('=============================================================================');
 }
+

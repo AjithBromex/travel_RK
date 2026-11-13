@@ -10,6 +10,7 @@ import {
   MapPin,
   User,
   CreditCard,
+  AlertCircle,
 } from "lucide-react";
 import type { Trip } from "@/types";
 import { formatINR } from "@/lib/utils";
@@ -22,6 +23,7 @@ interface SearchableTripSelectProps {
   unlinkedLabel?: string;
   showDueBadge?: boolean;
   className?: string;
+  requiredTrip?: boolean;
 }
 
 export default function SearchableTripSelect({
@@ -32,6 +34,7 @@ export default function SearchableTripSelect({
   unlinkedLabel = "🔍 General / Unlinked (No Trip Linked)",
   showDueBadge = true,
   className = "",
+  requiredTrip = false,
 }: SearchableTripSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -124,13 +127,19 @@ export default function SearchableTripSelect({
         className={`w-full px-3 py-2 bg-slate-50 hover:bg-slate-100/80 border rounded-xl text-xs transition-all cursor-pointer flex items-center justify-between gap-2 select-none ${
           isOpen
             ? "border-blue-500 ring-2 ring-blue-500/10 bg-white"
-            : value
+            : selectedTrip
             ? "border-blue-200 bg-blue-50/20 text-slate-900"
+            : requiredTrip
+            ? "border-amber-300/80 bg-amber-50/40 hover:bg-amber-50/70 text-amber-900 shadow-2xs"
             : "border-slate-200 text-slate-700"
         }`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <Bus className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+          {requiredTrip && !selectedTrip ? (
+            <Bus className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+          ) : (
+            <Bus className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+          )}
           {selectedTrip ? (
             <div className="truncate text-left flex items-center gap-1.5 flex-wrap">
               <span className="font-bold text-blue-700 font-mono">
@@ -166,6 +175,11 @@ export default function SearchableTripSelect({
                   return null;
                 })()
               )}
+            </div>
+          ) : requiredTrip ? (
+            <div className="flex items-center gap-1.5 text-amber-800 font-semibold truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <span className="truncate">{placeholder || "Select a Trip Booking (Required) *"}</span>
             </div>
           ) : (
             <span className="text-slate-600 font-medium truncate">
@@ -222,29 +236,37 @@ export default function SearchableTripSelect({
 
           {/* Trips List Container */}
           <div className="max-h-60 overflow-y-auto divide-y divide-slate-100 text-xs">
-            {/* General / Unlinked Option */}
-            <div
-              onClick={() => handleSelect("", undefined)}
-              className={`p-2.5 hover:bg-blue-50/60 transition-colors cursor-pointer flex items-center justify-between ${
-                !value || value === "general" ? "bg-blue-50 text-blue-700 font-bold" : "text-slate-700"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
-                  🔍
-                </span>
-                <div>
-                  <p className="font-semibold text-xs leading-tight">{unlinkedLabel}</p>
-                  <p className="text-[10px] text-slate-400">Record without linking to any specific trip</p>
+            {/* General / Unlinked Option (only allowed when trip is not strictly required) */}
+            {!requiredTrip && (
+              <div
+                onClick={() => handleSelect("", undefined)}
+                className={`p-2.5 hover:bg-blue-50/60 transition-colors cursor-pointer flex items-center justify-between ${
+                  !value || value === "general" ? "bg-blue-50 text-blue-700 font-bold" : "text-slate-700"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                    🔍
+                  </span>
+                  <div>
+                    <p className="font-semibold text-xs leading-tight">{unlinkedLabel}</p>
+                    <p className="text-[10px] text-slate-400">Record without linking to any specific trip</p>
+                  </div>
                 </div>
+                {(!value || value === "general") && (
+                  <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                )}
               </div>
-              {(!value || value === "general") && (
-                <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              )}
-            </div>
+            )}
 
             {/* Matching Trips */}
-            {filteredTrips.length === 0 ? (
+            {trips.length === 0 ? (
+              <div className="p-4 text-center text-amber-700 bg-amber-50/50 space-y-1">
+                <AlertCircle className="w-4 h-4 text-amber-600 mx-auto" />
+                <p className="text-xs font-bold">No active trip bookings found</p>
+                <p className="text-[10px] text-amber-600">Please create a trip first before linking payments.</p>
+              </div>
+            ) : filteredTrips.length === 0 ? (
               <div className="p-4 text-center text-slate-400 space-y-1">
                 <p className="text-xs font-semibold">No trips matching &ldquo;{search}&rdquo;</p>
                 <p className="text-[10px] text-slate-400">Try searching by receipt number, customer, route, or vehicle</p>

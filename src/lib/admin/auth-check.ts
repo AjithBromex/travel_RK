@@ -107,3 +107,4 @@ export function verifyAdminAuth(req: NextRequest): { authorized: boolean; reason
 
   return { authorized: false, reason: 'Invalid or expired administrative authorization.' };
 }
+

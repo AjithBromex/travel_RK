@@ -31,6 +31,7 @@ import {
   Printer,
   Eye,
   Lock,
+  AlertCircle,
 } from "lucide-react";
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Payment, Trip, Vehicle, PaymentType, PaymentMode, PaymentStage } from "@/types";
@@ -228,9 +229,9 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
 
   const handleTripSelect = (selectedId: string) => {
     const trip = reconciledTripList.find((t) => t.id === selectedId || t.tripNumber === selectedId);
-    let autoAmount = form.amount;
+    let autoAmount = "";
     let autoStage: PaymentStage = form.paymentStage;
-    let autoNotes = form.notes;
+    let autoNotes = "";
 
     if (trip) {
       const adv = Number(trip.advanceReceived) || 0;
@@ -250,6 +251,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
         }
       } else if (form.type === "driver_payment" && Number(trip.driverBalance) > 0) {
         autoAmount = String(trip.driverBalance);
+        autoNotes = `Driver payout voucher - Trip #${trip.tripNumber || trip.id.slice(0, 6)} (${trip.driverName || "Driver"})`;
       }
     }
 
@@ -257,8 +259,8 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       ...prev,
       tripId: selectedId,
       paymentStage: autoStage,
-      amount: autoAmount || prev.amount,
-      notes: autoNotes || prev.notes,
+      amount: trip ? (autoAmount || prev.amount) : "",
+      notes: trip ? (autoNotes || prev.notes) : "",
     }));
   };
 
@@ -330,6 +332,16 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
     setLoading(true);
     setFeedback(null);
 
+    // Enforce trip selection before allowing any payment
+    if (!form.tripId || form.tripId === "general" || !selectedTrip) {
+      setFeedback({
+        message: "Please select a trip booking. Payments can only be recorded after selecting a trip.",
+        type: "error",
+      });
+      setLoading(false);
+      return;
+    }
+
     const amountNum = Number(form.amount);
     if (!amountNum || amountNum <= 0) {
       setFeedback({ message: "Please enter a valid payment amount", type: "error" });
@@ -363,8 +375,9 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
     }
 
     try {
+      const targetTripId = selectedTrip.tripNumber || selectedTrip.id || form.tripId;
       const newId = await createPayment({
-        tripId: form.tripId || "general",
+        tripId: targetTripId,
         type: form.type,
         paymentStage: form.type === "customer_received" ? form.paymentStage : undefined,
         amount: amountNum,
@@ -375,7 +388,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
 
       const newPayment: Payment = {
         id: newId,
-        tripId: form.tripId || "general",
+        tripId: targetTripId,
         type: form.type,
         paymentStage: form.type === "customer_received" ? form.paymentStage : undefined,
         amount: amountNum,
@@ -959,10 +972,21 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                   trips={reconciledTripList}
                   value={form.tripId}
                   onChange={(selectedId) => handleTripSelect(selectedId)}
-                  placeholder="Search trip #, receipt, customer, route, vehicle, phone..."
-                  unlinkedLabel="🔍 General / Unlinked Payment"
+                  placeholder="🔍 Search & select a trip booking (Required)..."
+                  requiredTrip={true}
                   showDueBadge={true}
                 />
+                {!selectedTrip && (
+                  <div className="mt-2.5 p-3 bg-amber-50/80 border border-amber-200/90 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 shadow-2xs">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-amber-950 text-xs">Trip Booking Required</p>
+                      <p className="text-[11px] text-amber-800 leading-relaxed">
+                        Please search and select a trip booking above before making a payment. Customer advance, balance settlement, and driver payouts must be linked to a specific trip.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {reconciledTripList.length === 0 && (
                   <p className="text-[10px] text-amber-600 mt-1">
                     No trips found. <Link href="/travel/trips" className="font-bold underline text-blue-600">Create a trip here</Link>.
@@ -1057,13 +1081,16 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                       ref={amountInputRef}
                       type="number"
                       min={1}
+                      disabled={!selectedTrip}
                       max={
                         selectedTrip && form.type === "customer_received" && form.paymentStage === "balance" && maxCustomerBalance !== null && maxCustomerBalance > 0
                           ? maxCustomerBalance
                           : undefined
                       }
                       placeholder={
-                        selectedTrip && form.type === "customer_received" && form.paymentStage === "balance" && maxCustomerBalance !== null && maxCustomerBalance > 0
+                        !selectedTrip
+                          ? "Select trip booking first..."
+                          : selectedTrip && form.type === "customer_received" && form.paymentStage === "balance" && maxCustomerBalance !== null && maxCustomerBalance > 0
                           ? String(maxCustomerBalance)
                           : "e.g. 5000"
                       }
@@ -1089,18 +1116,24 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                         setForm({ ...form, amount: val });
                       }}
                       required
-                      className={`w-full pl-7 pr-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white transition-all ${
-                        selectedTrip &&
-                        form.type === "customer_received" &&
-                        form.paymentStage === "balance" &&
-                        maxCustomerBalance !== null &&
-                        Number(form.amount) > maxCustomerBalance
-                          ? "border-rose-400 focus:border-rose-500"
-                          : "border-slate-200 focus:border-blue-500"
+                      className={`w-full pl-7 pr-3 py-2 border rounded-xl text-xs font-bold outline-none transition-all ${
+                        !selectedTrip
+                          ? "bg-slate-100/90 text-slate-400 border-slate-200 cursor-not-allowed placeholder:text-slate-400"
+                          : selectedTrip &&
+                            form.type === "customer_received" &&
+                            form.paymentStage === "balance" &&
+                            maxCustomerBalance !== null &&
+                            Number(form.amount) > maxCustomerBalance
+                          ? "bg-slate-50 border-rose-400 focus:border-rose-500 text-slate-900"
+                          : "bg-slate-50 border-slate-200 focus:border-blue-500 focus:bg-white text-slate-900"
                       }`}
                     />
                   </div>
-                  {selectedTrip &&
+                  {!selectedTrip ? (
+                    <p className="mt-1 text-[10px] text-slate-400 italic">
+                      Amount unlocks after selecting a trip booking.
+                    </p>
+                  ) : selectedTrip &&
                     form.type === "customer_received" &&
                     form.paymentStage === "balance" &&
                     maxCustomerBalance !== null && (
@@ -1214,6 +1247,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                 type="submit"
                 disabled={
                   loading ||
+                  !selectedTrip ||
                   Boolean(
                     selectedTrip &&
                       form.type === "customer_received" &&
@@ -1222,8 +1256,10 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                       (maxCustomerBalance <= 0 || Number(form.amount) > maxCustomerBalance)
                   )
                 }
-                className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                  form.type === "customer_received"
+                className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                  !selectedTrip
+                    ? "bg-slate-400 hover:bg-slate-400 shadow-none cursor-not-allowed"
+                    : form.type === "customer_received"
                     ? form.paymentStage === "advance"
                       ? "bg-sky-600 hover:bg-sky-700 shadow-sky-500/25"
                       : maxCustomerBalance !== null && maxCustomerBalance <= 0
@@ -1234,6 +1270,11 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
               >
                 {loading ? (
                   <span>Recording...</span>
+                ) : !selectedTrip ? (
+                  <>
+                    <AlertCircle className="w-4 h-4 stroke-[2.5]" />
+                    <span>Select a Trip Booking to Pay</span>
+                  </>
                 ) : form.type === "customer_received" ? (
                   form.paymentStage === "advance" ? (
                     <>
