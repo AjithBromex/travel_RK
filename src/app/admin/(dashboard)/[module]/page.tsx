@@ -10,11 +10,29 @@ interface PageProps {
 }
 
 export default async function ModulePage({ params }: PageProps) {
-  const { module: slug } = await params;
+  const { module: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug).toLowerCase().trim();
+
   if (slug === 'settings') {
     redirect('/admin/settings');
   }
-  const m = MODULES[slug];
+  if (slug === 'trash') {
+    redirect('/admin/trash');
+  }
+  if (slug === 'backups' || slug === 'backup') {
+    redirect('/admin/backups');
+  }
+  if (
+    slug === 'audit-logs' ||
+    slug === 'audit logs' ||
+    slug === 'audit_logs' ||
+    slug === 'auditlog' ||
+    slug === 'auditlogs'
+  ) {
+    redirect('/admin/audit-logs');
+  }
+
+  const m = MODULES[rawSlug] || MODULES[slug];
   if (!m) notFound();
 
   return (
