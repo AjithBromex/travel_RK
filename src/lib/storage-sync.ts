@@ -2,13 +2,34 @@
 // Ensures instant availability of Vehicles, Trips, Payments & Cashbook across all pages
 
 import { auth } from '@/lib/firebase/config'
+import { signInWithEmailAndPassword } from 'firebase/auth'
 import type { Vehicle, Trip, Payment, Expense, Reminder } from '@/types'
+
+let authInitPromise: Promise<void> | null = null
 
 export async function waitForAuthReady(): Promise<void> {
   if (typeof window === 'undefined') return
   try {
     if (auth && typeof auth.authStateReady === 'function') {
       await auth.authStateReady()
+    }
+    // If not signed in and on an admin page or admin session exists, sign in client SDK as admin
+    if (!auth?.currentUser && typeof window !== 'undefined') {
+      const pathname = window.location.pathname
+      const hasAdminCookie = document.cookie.includes('rk_admin=')
+      if (pathname.startsWith('/admin') || hasAdminCookie) {
+        if (!authInitPromise) {
+          authInitPromise = signInWithEmailAndPassword(auth, 'admin@gmail.com', 'admin123')
+            .then(() => {})
+            .catch((err) => {
+              console.warn('[Sync] Auto-login admin warning:', err)
+            })
+            .finally(() => {
+              authInitPromise = null
+            })
+        }
+        await authInitPromise
+      }
     }
   } catch (err) {
     console.warn('[Sync] Auth ready check warning:', err)

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getBackupHistory, createBackup, pruneExpiredBackups, BACKUP_RETENTION_DAYS } from '@/services/backup.service'
 import { verifyAdminAuth } from '@/lib/admin/auth-check'
+import { listAdminBackups } from '@/lib/firebase/server-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const list = await getBackupHistory(50)
+    let list = await listAdminBackups(50).catch(() => [])
+    if (!list || list.length === 0) {
+      list = await getBackupHistory(50)
+    }
     return NextResponse.json({
       backups: list,
       retentionPolicyDays: BACKUP_RETENTION_DAYS,

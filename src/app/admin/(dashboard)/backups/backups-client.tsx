@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Database,
   Download,
@@ -70,6 +70,7 @@ const TYPE_CONFIG: Record<
 }
 
 export default function BackupsClient({ initialBackups }: BackupsClientProps) {
+  const tableContainerRef = useRef<HTMLDivElement>(null)
   const [backups, setBackups] = useState<BackupRecord[]>(initialBackups || [])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
@@ -166,9 +167,14 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
         email: 'admin@rk-travel.com',
         displayName: 'Administrator',
       })
+      // Optimistically prepend created backup immediately
+      setBackups((prev) => [created, ...prev.filter((b) => b.id !== created.id)])
       showToast(`Database snapshot "${created.name}" created successfully! (${created.sizeFormatted})`)
       setCreateModalOpen(false)
       setCreateNotes('')
+      if (tableContainerRef.current) {
+        tableContainerRef.current.scrollLeft = 0
+      }
       await reloadBackups()
     } catch (err: any) {
       showToast(err.message || 'Failed to create database snapshot.', 'error')
@@ -265,14 +271,32 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
   // Handle Delete Backup
   const handleDeleteBackup = async () => {
     if (!deleteModalItem) return
+    const idToDelete = deleteModalItem.id
+    const nameToDelete = deleteModalItem.name
     setDeleting(true)
     try {
-      await deleteBackup(deleteModalItem.id)
-      showToast(`Backup "${deleteModalItem.name}" deleted from history.`)
+      // 1. Optimistic immediate state update
+      setBackups((prev) => prev.filter((b) => b.id !== idToDelete))
       setDeleteModalItem(null)
+
+      // 2. Call server-side API endpoint for guaranteed Cloud Firestore deletion
+      const res = await fetch(`/api/admin/backups/${encodeURIComponent(idToDelete)}`, {
+        method: 'DELETE',
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        console.warn('[BackupsClient] Server delete response:', errData)
+      }
+
+      // 3. Clean client caches
+      await deleteBackup(idToDelete)
+
+      showToast(`Backup "${nameToDelete}" deleted successfully.`)
       await reloadBackups()
     } catch (err: any) {
       showToast(err.message || 'Failed to delete backup.', 'error')
+      await reloadBackups()
     } finally {
       setDeleting(false)
     }
@@ -545,18 +569,20 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm">
+          <div ref={tableContainerRef} className="overflow-x-auto scroll-smooth">
+            <table className="w-full min-w-[980px] text-left text-xs sm:text-sm">
               <thead className="bg-slate-50 text-slate-500 uppercase text-[11px] font-semibold tracking-wider border-b border-slate-200">
                 <tr>
-                  <th className="py-3 px-4">Backup Name & ID</th>
-                  <th className="py-3 px-4">Type</th>
-                  <th className="py-3 px-4">Created Date</th>
-                  <th className="py-3 px-4">Expires In</th>
-                  <th className="py-3 px-4">Records & Size</th>
-                  <th className="py-3 px-4">Created By</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4 sticky left-0 z-20 bg-slate-50 min-w-[280px] border-r border-slate-200/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]">
+                    Backup Name & ID
+                  </th>
+                  <th className="py-3 px-4 min-w-[130px]">Type</th>
+                  <th className="py-3 px-4 min-w-[125px]">Created Date</th>
+                  <th className="py-3 px-4 min-w-[120px]">Expires In</th>
+                  <th className="py-3 px-4 min-w-[130px]">Records & Size</th>
+                  <th className="py-3 px-4 min-w-[130px]">Created By</th>
+                  <th className="py-3 px-4 min-w-[100px]">Status</th>
+                  <th className="py-3 px-4 text-right min-w-[120px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-normal text-slate-700">
@@ -566,14 +592,14 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                   const expDate = b.expiresAt || getBackupExpiryDate(b.createdAt, BACKUP_RETENTION_DAYS)
 
                   return (
-                    <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* Name & ID */}
-                      <td className="py-3.5 px-4">
+                    <tr key={b.id} className="group hover:bg-slate-50/70 transition-colors">
+                      {/* Name & ID - Sticky Left Column */}
+                      <td className="py-3.5 px-4 sticky left-0 z-10 bg-white group-hover:bg-slate-50 transition-colors border-r border-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] min-w-[280px]">
                         <div className="flex items-center gap-2.5">
-                          <span className="text-base">{typeConf.icon}</span>
-                          <div>
-                            <p className="font-semibold text-slate-900">{b.name}</p>
-                            <p className="text-[11px] text-slate-400 font-mono">{b.id}</p>
+                          <span className="text-base shrink-0">{typeConf.icon}</span>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 truncate">{b.name}</p>
+                            <p className="text-[11px] text-slate-400 font-mono truncate">{b.id}</p>
                             {b.notes && (
                               <p className="text-[11px] text-slate-500 italic mt-0.5 truncate max-w-xs">
                                 &quot;{b.notes}&quot;

@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
 import type { BackupRecord, BackupPayload, BackupType } from '@/types'
-import { waitForAuthReady, getLocalData, setLocalData, notifyDataChanged } from '@/lib/storage-sync'
+import { waitForAuthReady, getLocalData, setLocalData, notifyDataChanged, markAsDeleted } from '@/lib/storage-sync'
 import { saveBackupPayload, getBackupPayload, deleteBackupPayload } from '@/lib/storage/backup-db'
 import { logAuditEvent, getAuditLogs } from './audit.service'
 import { getTrashItems } from './trash.service'
@@ -260,6 +260,37 @@ export async function createBackup(
 export async function getBackupHistory(limitCount = 50): Promise<BackupRecord[]> {
   const localFallback = getLocalData<BackupRecord[]>(LOCAL_STORAGE_KEY, [])
 
+  // 1. Try authenticated server API endpoint if running in browser
+  if (typeof window !== 'undefined') {
+    try {
+      const apiRes = await fetch('/api/admin/backups', { cache: 'no-store' })
+      if (apiRes.ok) {
+        const apiData = await apiRes.json()
+        if (apiData?.backups && Array.isArray(apiData.backups) && apiData.backups.length > 0) {
+          const validApi = (apiData.backups as BackupRecord[]).filter(
+            (b) => !isBackupExpired(b.createdAt, BACKUP_RETENTION_DAYS)
+          )
+
+          const mergedMap = new Map<string, BackupRecord>()
+          for (const b of localFallback) {
+            if (!isBackupExpired(b.createdAt, BACKUP_RETENTION_DAYS)) mergedMap.set(b.id, b)
+          }
+          for (const b of validApi) {
+            mergedMap.set(b.id, b)
+          }
+          const merged = Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+          setLocalData(LOCAL_STORAGE_KEY, merged)
+          return merged
+        }
+      }
+    } catch (apiErr) {
+      console.warn('[BackupService] API getBackupHistory fallback:', apiErr)
+    }
+  }
+
+  // 2. Query Firestore client SDK
   try {
     await waitForAuthReady()
     const q = query(collection(db, BACKUPS_COLLECTION), orderBy('createdAt', 'desc'), limit(limitCount))
@@ -277,37 +308,23 @@ export async function getBackupHistory(limitCount = 50): Promise<BackupRecord[]>
       if (validList.length !== list.length) {
         pruneExpiredBackups(BACKUP_RETENTION_DAYS).catch(() => {})
       }
-      setLocalData(LOCAL_STORAGE_KEY, validList)
-      return validList
+
+      const mergedMap = new Map<string, BackupRecord>()
+      for (const b of localFallback) {
+        if (!isBackupExpired(b.createdAt, BACKUP_RETENTION_DAYS)) mergedMap.set(b.id, b)
+      }
+      for (const b of validList) {
+        mergedMap.set(b.id, b)
+      }
+      const merged = Array.from(mergedMap.values()).sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      setLocalData(LOCAL_STORAGE_KEY, merged)
+      return merged
     }
   } catch (err) {
     console.warn('[BackupService] Cloud getBackupHistory fallback to local:', err)
   }
-
-  // REST API fallback for server-side SSR
-  try {
-    const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'rk-travels-1f4f3'
-    const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
-    const restUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/backups?pageSize=50${API_KEY ? `&key=${API_KEY}` : ''}`
-    const restRes = await fetch(restUrl, { cache: 'no-store' })
-    if (restRes.ok) {
-      const restData = await restRes.json()
-      if (restData && restData.documents) {
-        const restList: BackupRecord[] = restData.documents.map((d: any) => {
-          const docId = d.name.split('/').pop()
-          const fields: Record<string, any> = {}
-          for (const [k, v] of Object.entries(d.fields || {})) {
-            fields[k] = (v as any).stringValue || (v as any).booleanValue || (v as any).integerValue || null
-          }
-          return { id: docId, ...fields } as BackupRecord
-        })
-        const validRest = restList.filter((b) => !isBackupExpired(b.createdAt, BACKUP_RETENTION_DAYS))
-        if (validRest.length > 0) {
-          return validRest
-        }
-      }
-    }
-  } catch {}
 
   return localFallback.filter((b) => !isBackupExpired(b.createdAt, BACKUP_RETENTION_DAYS))
 }
@@ -407,6 +424,20 @@ export async function deleteBackup(
   user?: { uid?: string; email?: string }
 ): Promise<boolean> {
   await waitForAuthReady()
+
+  // 1. Authoritative server API delete if running in browser
+  if (typeof window !== 'undefined') {
+    try {
+      await fetch(`/api/admin/backups/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        cache: 'no-store',
+      })
+    } catch (apiErr) {
+      console.warn(`[BackupService] Server delete API notice for ${id}:`, apiErr)
+    }
+  }
+
+  // 2. Client SDK delete
   try {
     // Delete chunks subcollection documents if chunked
     try {
@@ -423,14 +454,16 @@ export async function deleteBackup(
     console.warn(`[BackupService] Cloud deleteBackup error on ${id}:`, err)
   }
 
-  // Also clean IndexedDB payload
+  // 3. Clean IndexedDB payload
   await deleteBackupPayload(id).catch(() => {})
 
+  // 4. Clean local storage and mark as deleted
   const local = getLocalData<BackupRecord[]>(LOCAL_STORAGE_KEY, [])
   setLocalData(
     LOCAL_STORAGE_KEY,
     local.filter((b) => b.id !== id)
   )
+  markAsDeleted('backups', id)
 
   logAuditEvent({
     action: 'BACKUP_DELETE',

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { getBackupById, deleteBackup } from '@/services/backup.service'
 import { verifyAdminAuth } from '@/lib/admin/auth-check'
+import { deleteAdminBackup, getAdminBackupById } from '@/lib/firebase/server-admin'
+import { getBackupById } from '@/services/backup.service'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,12 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
 
   try {
     const { id } = await params
-    const backup = await getBackupById(id)
+    // First try the server admin REST helper (has full credentials)
+    let backup = await getAdminBackupById(id).catch(() => null)
+    if (!backup) {
+      backup = await getBackupById(id)
+    }
+
     if (!backup) {
       return NextResponse.json({ error: 'Backup not found' }, { status: 404 })
     }
@@ -37,13 +43,16 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
 
   try {
     const { id } = await params
-    await deleteBackup(id)
-    return NextResponse.json({ ok: true, message: 'Backup deleted successfully' })
+    const result = await deleteAdminBackup(id)
+    return NextResponse.json({
+      message: 'Backup snapshot deleted successfully from Cloud Firestore.',
+      ...result,
+    })
   } catch (err: unknown) {
+    console.error(`[DELETE /api/admin/backups/${params}] Error:`, err)
     return NextResponse.json(
       { error: (err as Error).message || 'Failed to delete backup' },
       { status: 500 }
     )
   }
 }
-
