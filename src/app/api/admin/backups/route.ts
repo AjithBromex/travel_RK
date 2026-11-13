@@ -12,10 +12,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    let list = await listAdminBackups(50).catch(() => [])
-    if (!list || list.length === 0) {
-      list = await getBackupHistory(50)
-    }
+    const list = await listAdminBackups(50).catch(() => [])
     return NextResponse.json({
       backups: list,
       retentionPolicyDays: BACKUP_RETENTION_DAYS,

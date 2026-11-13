@@ -37,7 +37,7 @@ import {
   pruneExpiredBackups,
 } from '@/services/backup.service'
 import { restoreFromBackup } from '@/services/restore.service'
-import { subscribeDataChanged } from '@/lib/storage-sync'
+import { subscribeDataChanged, getLocalData } from '@/lib/storage-sync'
 
 interface BackupsClientProps {
   initialBackups: BackupRecord[]
@@ -99,29 +99,39 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
     setTimeout(() => setFeedback(null), 4500)
   }
 
-  const reloadBackups = useCallback(async () => {
-    setLoading(true)
+  const reloadBackups = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true)
     try {
       const list = await getBackupHistory(50)
-      setBackups(list)
+      if (list && list.length > 0) {
+        setBackups(list)
+      }
     } catch {
       // keep current
     } finally {
-      setLoading(false)
+      if (showSpinner) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    // Automatically load backups on client mount
-    reloadBackups()
+    // 1. Instant hydration from client storage if SSR came empty
+    if (backups.length === 0) {
+      const cached = getLocalData<BackupRecord[]>('rk_backups_list', [])
+      if (cached && cached.length > 0) {
+        setBackups(cached)
+      }
+    }
+
+    // 2. Background sync (zero flicker, no blocking spinner)
+    reloadBackups(false)
 
     const unsub = subscribeDataChanged((entity) => {
       if (entity === 'backups' || entity === 'trash' || entity === 'all') {
-        reloadBackups()
+        reloadBackups(false)
       }
     })
     return () => unsub()
-  }, [reloadBackups])
+  }, [reloadBackups, backups.length])
 
   // Key metrics
   const metrics = useMemo(() => {
@@ -373,7 +383,7 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
 
         <div className="flex items-center gap-2.5">
           <button
-            onClick={reloadBackups}
+            onClick={() => reloadBackups(true)}
             disabled={loading}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-sm transition-all"
             title="Refresh backups list"

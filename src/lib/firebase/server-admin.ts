@@ -56,7 +56,7 @@ export async function getAdminToken(): Promise<string> {
 }
 
 /**
- * Executes an authenticated Firestore REST call.
+ * Executes an authenticated Firestore REST call with timeout protection.
  */
 async function firestoreRest(
   path: string,
@@ -71,25 +71,35 @@ async function firestoreRest(
     'Content-Type': 'application/json',
   }
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 4500)
+
   const options: RequestInit = {
     method,
     headers,
     cache: 'no-store',
+    signal: controller.signal,
   }
 
   if (body) {
     options.body = typeof body === 'string' ? body : JSON.stringify(body)
   }
 
-  const res = await fetch(url, options)
-  let data: any = null
   try {
-    data = await res.json()
-  } catch {
-    data = null
-  }
+    const res = await fetch(url, options)
+    clearTimeout(timeoutId)
+    let data: any = null
+    try {
+      data = await res.json()
+    } catch {
+      data = null
+    }
 
-  return { status: res.status, data }
+    return { status: res.status, data }
+  } catch (err) {
+    clearTimeout(timeoutId)
+    throw err
+  }
 }
 
 /**
@@ -130,11 +140,28 @@ export async function deleteAdminBackup(backupId: string): Promise<{ ok: boolean
   return { ok: true, deletedChunks }
 }
 
+const BACKUP_METADATA_MASK = [
+  'mask.fieldPaths=name',
+  'mask.fieldPaths=type',
+  'mask.fieldPaths=createdAt',
+  'mask.fieldPaths=expiresAt',
+  'mask.fieldPaths=sizeBytes',
+  'mask.fieldPaths=sizeFormatted',
+  'mask.fieldPaths=totalRecords',
+  'mask.fieldPaths=collectionCounts',
+  'mask.fieldPaths=collections',
+  'mask.fieldPaths=createdBy',
+  'mask.fieldPaths=status',
+  'mask.fieldPaths=notes',
+  'mask.fieldPaths=isChunked',
+].join('&')
+
 /**
  * Lists all backups from Firestore with admin authority.
+ * Uses field mask projection for blazing-fast lightweight transfer (skips heavy payloads).
  */
 export async function listAdminBackups(pageSize = 50): Promise<BackupRecord[]> {
-  const res = await firestoreRest(`backups?pageSize=${pageSize}`, 'GET')
+  const res = await firestoreRest(`backups?pageSize=${pageSize}&${BACKUP_METADATA_MASK}`, 'GET')
   if (res.status !== 200 || !res.data?.documents) {
     return []
   }

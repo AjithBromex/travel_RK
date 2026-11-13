@@ -263,7 +263,10 @@ export async function getBackupHistory(limitCount = 50): Promise<BackupRecord[]>
   // 1. Try authenticated server API endpoint if running in browser
   if (typeof window !== 'undefined') {
     try {
-      const apiRes = await fetch('/api/admin/backups', { cache: 'no-store' })
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 2000)
+      const apiRes = await fetch('/api/admin/backups', { cache: 'no-store', signal: controller.signal })
+      clearTimeout(timeoutId)
       if (apiRes.ok) {
         const apiData = await apiRes.json()
         if (apiData?.backups && Array.isArray(apiData.backups) && apiData.backups.length > 0) {
