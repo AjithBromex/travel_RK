@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import {
   Database,
   Download,
@@ -70,7 +70,6 @@ const TYPE_CONFIG: Record<
 }
 
 export default function BackupsClient({ initialBackups }: BackupsClientProps) {
-  const tableContainerRef = useRef<HTMLDivElement>(null)
   const [backups, setBackups] = useState<BackupRecord[]>(initialBackups || [])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
@@ -182,9 +181,6 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
       showToast(`Database snapshot "${created.name}" created successfully! (${created.sizeFormatted})`)
       setCreateModalOpen(false)
       setCreateNotes('')
-      if (tableContainerRef.current) {
-        tableContainerRef.current.scrollLeft = 0
-      }
       await reloadBackups()
     } catch (err: any) {
       showToast(err.message || 'Failed to create database snapshot.', 'error')
@@ -579,20 +575,18 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
             )}
           </div>
         ) : (
-          <div ref={tableContainerRef} className="overflow-x-auto scroll-smooth">
-            <table className="w-full min-w-[980px] text-left text-xs sm:text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs sm:text-sm">
               <thead className="bg-slate-50 text-slate-500 uppercase text-[11px] font-semibold tracking-wider border-b border-slate-200">
                 <tr>
-                  <th className="py-3 px-4 sticky left-0 z-20 bg-slate-50 min-w-[280px] border-r border-slate-200/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]">
-                    Backup Name & ID
-                  </th>
-                  <th className="py-3 px-4 min-w-[130px]">Type</th>
-                  <th className="py-3 px-4 min-w-[125px]">Created Date</th>
-                  <th className="py-3 px-4 min-w-[120px]">Expires In</th>
-                  <th className="py-3 px-4 min-w-[130px]">Records & Size</th>
-                  <th className="py-3 px-4 min-w-[130px]">Created By</th>
-                  <th className="py-3 px-4 min-w-[100px]">Status</th>
-                  <th className="py-3 px-4 text-right min-w-[120px]">Actions</th>
+                  <th className="py-3 px-3 sm:px-4">Backup Name & ID</th>
+                  <th className="py-3 px-2 sm:px-3">Type</th>
+                  <th className="py-3 px-2 sm:px-3">Created Date</th>
+                  <th className="py-3 px-2 sm:px-3">Expires In</th>
+                  <th className="py-3 px-2 sm:px-3">Records & Size</th>
+                  <th className="py-3 px-2 sm:px-3">Created By</th>
+                  <th className="py-3 px-2 sm:px-3">Status</th>
+                  <th className="py-3 px-3 sm:px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-normal text-slate-700">
@@ -602,16 +596,16 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                   const expDate = b.expiresAt || getBackupExpiryDate(b.createdAt, BACKUP_RETENTION_DAYS)
 
                   return (
-                    <tr key={b.id} className="group hover:bg-slate-50/70 transition-colors">
-                      {/* Name & ID - Sticky Left Column */}
-                      <td className="py-3.5 px-4 sticky left-0 z-10 bg-white group-hover:bg-slate-50 transition-colors border-r border-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] min-w-[280px]">
+                    <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
+                      {/* Name & ID */}
+                      <td className="py-3 px-3 sm:px-4">
                         <div className="flex items-center gap-2.5">
                           <span className="text-base shrink-0">{typeConf.icon}</span>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-slate-900 truncate">{b.name}</p>
+                          <div className="min-w-0 max-w-xs sm:max-w-sm">
+                            <p className="font-semibold text-slate-900 truncate" title={b.name}>{b.name}</p>
                             <p className="text-[11px] text-slate-400 font-mono truncate">{b.id}</p>
                             {b.notes && (
-                              <p className="text-[11px] text-slate-500 italic mt-0.5 truncate max-w-xs">
+                              <p className="text-[11px] text-slate-500 italic mt-0.5 truncate max-w-xs" title={b.notes}>
                                 &quot;{b.notes}&quot;
                               </p>
                             )}
@@ -620,18 +614,18 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                       </td>
 
                       {/* Type Badge */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3 px-2 sm:px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${typeConf.badge}`}
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${typeConf.badge}`}
                         >
                           {typeConf.label}
                         </span>
                       </td>
 
                       {/* Created Date */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-slate-600">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      <td className="py-3 px-2 sm:px-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span>
                             {new Date(b.createdAt).toLocaleDateString('en-GB', {
                               day: '2-digit',
@@ -650,32 +644,30 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                       </td>
 
                       {/* Expires In (30-day retention) */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div>
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border ${
-                              daysLeft <= 3
-                                ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                : daysLeft <= 7
-                                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            }`}
-                          >
-                            <Clock className="w-3 h-3" />
-                            <span>{daysLeft === 0 ? 'Expires today' : `${daysLeft} days left`}</span>
-                          </span>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            {new Date(expDate).toLocaleDateString('en-GB', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </p>
-                        </div>
+                      <td className="py-3 px-2 sm:px-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
+                            daysLeft <= 3
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : daysLeft <= 7
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}
+                        >
+                          <Clock className="w-3 h-3 shrink-0" />
+                          <span>{daysLeft === 0 ? 'Expires today' : `${daysLeft} days left`}</span>
+                        </span>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          {new Date(expDate).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </p>
                       </td>
 
                       {/* Records & Size */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3 px-2 sm:px-3 whitespace-nowrap">
                         <p className="font-semibold text-slate-900">{b.totalRecords} records</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-[11px] text-slate-500 font-medium">{b.sizeFormatted}</span>
@@ -688,25 +680,27 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                       </td>
 
                       {/* Created By */}
-                      <td className="py-3.5 px-4 whitespace-nowrap text-xs text-slate-500">
-                        {b.createdBy?.email || 'admin@gmail.com'}
+                      <td className="py-3 px-2 sm:px-3 whitespace-nowrap text-xs text-slate-500">
+                        <span className="truncate max-w-[130px] inline-block" title={b.createdBy?.email || 'admin@gmail.com'}>
+                          {b.createdBy?.email || 'admin@gmail.com'}
+                        </span>
                       </td>
 
                       {/* Status */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3 px-2 sm:px-3 whitespace-nowrap">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <Check className="w-3 h-3" />
+                          <Check className="w-3 h-3 shrink-0" />
                           <span>Completed</span>
                         </span>
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      <td className="py-3 px-3 sm:px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           {/* Download JSON */}
                           <button
                             onClick={() => handleDownload(b)}
-                            className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="Download JSON Snapshot"
                           >
                             <Download className="w-4 h-4" />
@@ -715,7 +709,7 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                           {/* Restore */}
                           <button
                             onClick={() => openRestoreModal(b)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors shadow-sm"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors shadow-xs cursor-pointer"
                             title="Restore Data from this Snapshot"
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
@@ -725,7 +719,7 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                           {/* Delete */}
                           <button
                             onClick={() => setDeleteModalItem(b)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                             title="Delete this backup"
                           >
                             <Trash2 className="w-4 h-4" />
