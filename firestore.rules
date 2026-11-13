@@ -10,31 +10,42 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.admin == true ||
-        (request.auth.token.email != null && (
-          request.auth.token.email == 'admin@gmail.com' ||
-          request.auth.token.email.matches('(?i)^admin@.*')
-        )) ||
+        (request.auth.token.email != null && request.auth.token.email == 'admin@gmail.com') ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin')) ||
+         'role' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower() == 'admin') ||
         (exists(/databases/$(database)/documents/staff/$(request.auth.uid)) &&
-         (get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role == 'admin' ||
-          get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role == 'Admin'))
+         'role' in get(/databases/$(database)/documents/staff/$(request.auth.uid)).data &&
+         get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role.lower() == 'admin')
       );
     }
 
     // 1. Users collection:
     // - Authenticated staff and admins can read user profiles
-    // - WRITES are strictly restricted to authenticated users modifying their own profile or admins
+    // - Self-signup allowed, but non-admins cannot set or escalate role to 'admin'
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        (request.auth.uid == userId && (!('role' in request.resource.data) || request.resource.data.role.lower() != 'admin'))
+      );
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (request.auth.uid == userId && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role))
+      );
       allow delete: if isAdmin();
     }
 
     match /staff/{staffId} {
       allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && (request.auth.uid == staffId || isAdmin());
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        (request.auth.uid == staffId && (!('role' in request.resource.data) || request.resource.data.role.lower() != 'admin'))
+      );
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (request.auth.uid == staffId && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role))
+      );
       allow delete: if isAdmin();
     }
 
@@ -77,12 +88,17 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 4. Backup & Disaster Recovery System (30-day retention)
+    // 4. Backup & Disaster Recovery System (Includes chunked backups subcollection)
     // - Authenticated users can read and create backup snapshots
     // - Only authorized administrators can update or delete backups
     match /backups/{id} {
       allow read, create: if isAuthenticated();
       allow update, delete: if isAdmin();
+
+      match /chunks/{chunkId} {
+        allow read, create: if isAuthenticated();
+        allow update, delete: if isAdmin();
+      }
     }
 
     // 5. System & Audit Logs (Immutable activity trail)
