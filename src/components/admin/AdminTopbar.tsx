@@ -180,6 +180,7 @@ export default function AdminTopbar() {
                     <div className="hidden sm:block py-1 border-b border-slate-100">
                       <Link
                         href="/admin/trash"
+                        prefetch={true}
                         onClick={() => setProfileOpen(false)}
                         className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
                       >
@@ -188,6 +189,7 @@ export default function AdminTopbar() {
                       </Link>
                       <Link
                         href="/admin/backups"
+                        prefetch={true}
                         onClick={() => setProfileOpen(false)}
                         className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
                       >
@@ -196,6 +198,7 @@ export default function AdminTopbar() {
                       </Link>
                       <Link
                         href="/admin/audit-logs"
+                        prefetch={true}
                         onClick={() => setProfileOpen(false)}
                         className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
                       >
@@ -204,6 +207,7 @@ export default function AdminTopbar() {
                       </Link>
                       <Link
                         href="/admin/settings"
+                        prefetch={true}
                         onClick={() => setProfileOpen(false)}
                         className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
                       >

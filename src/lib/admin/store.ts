@@ -224,19 +224,52 @@ function normalize(slug: string, d: Record<string, any>): Record<string, any> {
   return d;
 }
 
-// Memory cache to eliminate redundant network roundtrips during tab switching
+// High-performance Stale-While-Revalidate memory cache for instantaneous admin navigation
 const rowsCache = new Map<string, { time: number; data: Record<string, unknown>[] }>();
-const CACHE_TTL_MS = 15000; // 15 seconds fast cache
+const FRESH_CACHE_TTL_MS = 60_000; // 1 minute fresh cache
+const STALE_CACHE_TTL_MS = 600_000; // 10 minutes stale-while-revalidate
+
+async function backgroundRevalidateRows(slug: string): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const url = getEndpoint(slug) + (API_KEY ? '&pageSize=200' : '?pageSize=200');
+    const res = await fetch(url, {
+      cache: 'no-store',
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeoutId));
+
+    if (!res.ok) return;
+    const json = await res.json();
+    const docs = (json.documents || [])
+      .map(decodeDoc)
+      .filter((d: any) => !d.isDeleted);
+    const normalized = docs.map((d: Record<string, any>) => normalize(slug, d));
+    rowsCache.set(slug, { time: Date.now(), data: normalized });
+  } catch {
+    // Ignore background revalidation errors
+  }
+}
 
 export async function listRows(slug: string): Promise<Record<string, unknown>[]> {
   const cached = rowsCache.get(slug);
-  if (cached && Date.now() - cached.time < CACHE_TTL_MS) {
+  const now = Date.now();
+
+  // 1. Instant cache hit: returns in 0ms
+  if (cached && now - cached.time < FRESH_CACHE_TTL_MS) {
     return cached.data;
   }
 
+  // 2. Stale-While-Revalidate: return cached data in 0ms and refresh in background
+  if (cached && now - cached.time < STALE_CACHE_TTL_MS) {
+    backgroundRevalidateRows(slug).catch(() => {});
+    return cached.data;
+  }
+
+  // 3. Cold start: fast fetch with 450ms strict timeout so SSR never blocks navigation
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 450);
 
     const url = getEndpoint(slug) + (API_KEY ? '&pageSize=200' : '?pageSize=200');
     const res = await fetch(url, {
@@ -255,7 +288,8 @@ export async function listRows(slug: string): Promise<Record<string, unknown>[]>
     rowsCache.set(slug, { time: Date.now(), data: normalized });
     return normalized;
   } catch (err) {
-    console.warn(`[AdminStore] Error fetching Firestore collection ${slug}:`, err);
+    // If timed out, kick off background fetch and return cached or empty
+    backgroundRevalidateRows(slug).catch(() => {});
     return cached?.data || [];
   }
 }
