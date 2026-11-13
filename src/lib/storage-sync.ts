@@ -18,7 +18,11 @@ export async function waitForAuthReady(): Promise<void> {
 export function getLocalData<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback
   try {
-    const raw = localStorage.getItem(`rk_${key}`)
+    const normalizedKey = key.startsWith('rk_') ? key : `rk_${key}`
+    const raw =
+      localStorage.getItem(normalizedKey) ??
+      localStorage.getItem(key) ??
+      (key.startsWith('rk_') ? localStorage.getItem(key.replace(/^rk_/, '')) : null)
     if (raw !== null) {
       const parsed = JSON.parse(raw)
       if (Array.isArray(parsed)) return parsed as T
@@ -33,14 +37,34 @@ export function getLocalData<T>(key: string, fallback: T): T {
 export function setLocalData<T>(key: string, value: T): void {
   if (typeof window === 'undefined') return
   try {
-    localStorage.setItem(`rk_${key}`, JSON.stringify(value))
+    const normalizedKey = key.startsWith('rk_') ? key : `rk_${key}`
+    const jsonVal = JSON.stringify(value)
+    localStorage.setItem(normalizedKey, jsonVal)
+    // Also set alternate key so both rk_key and key are populated
+    if (key.startsWith('rk_')) {
+      localStorage.setItem(key.replace(/^rk_/, ''), jsonVal)
+    } else {
+      localStorage.setItem(key, jsonVal)
+    }
   } catch (err) {
     console.warn(`[Sync] Write error for "${key}":`, err)
   }
 }
 
 export function notifyDataChanged(
-  entity: 'vehicles' | 'trips' | 'payments' | 'expenses' | 'reminders' | 'cashbook' | 'dashboard' | 'all'
+  entity:
+    | 'vehicles'
+    | 'trips'
+    | 'payments'
+    | 'expenses'
+    | 'reminders'
+    | 'cashbook'
+    | 'dashboard'
+    | 'trash'
+    | 'backups'
+    | 'audit_logs'
+    | 'all'
+    | string
 ): void {
   if (typeof window === 'undefined') return
   try {

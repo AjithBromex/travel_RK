@@ -558,6 +558,38 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
           },
         }),
       });
+
+      // Also record in audit_logs collection
+      const auditId = `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const auditMask = [
+        'updateMask.fieldPaths=id',
+        'updateMask.fieldPaths=action',
+        'updateMask.fieldPaths=collectionName',
+        'updateMask.fieldPaths=recordId',
+        'updateMask.fieldPaths=userId',
+        'updateMask.fieldPaths=userEmail',
+        'updateMask.fieldPaths=userRole',
+        'updateMask.fieldPaths=timestamp',
+        'updateMask.fieldPaths=details',
+      ].join('&');
+      const auditUrl = `${getEndpoint('audit_logs', auditId)}${API_KEY ? '&' : '?'}${auditMask}`;
+      await fetch(auditUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            id: encodeFirestoreValue(auditId),
+            action: encodeFirestoreValue('SOFT_DELETE'),
+            collectionName: encodeFirestoreValue(slug),
+            recordId: encodeFirestoreValue(id),
+            userId: encodeFirestoreValue('admin'),
+            userEmail: encodeFirestoreValue('admin@gmail.com'),
+            userRole: encodeFirestoreValue('admin'),
+            timestamp: encodeFirestoreValue(now),
+            details: encodeFirestoreValue(`Deleted ${recordName} from ${slug}.`),
+          },
+        }),
+      }).catch(() => {});
     } catch (trashErr) {
       console.warn('[AdminStore] Record in trash collection error:', trashErr);
     }

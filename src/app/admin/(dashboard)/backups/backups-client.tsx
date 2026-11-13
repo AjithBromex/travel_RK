@@ -111,8 +111,11 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
   }, [])
 
   useEffect(() => {
+    // Automatically load backups on client mount
+    reloadBackups()
+
     const unsub = subscribeDataChanged((entity) => {
-      if (entity === 'backups' || entity === 'all') {
+      if (entity === 'backups' || entity === 'trash' || entity === 'all') {
         reloadBackups()
       }
     })
@@ -625,7 +628,14 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                       {/* Records & Size */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <p className="font-semibold text-slate-900">{b.totalRecords} records</p>
-                        <p className="text-[11px] text-slate-500 font-medium">{b.sizeFormatted}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[11px] text-slate-500 font-medium">{b.sizeFormatted}</span>
+                          {b.collectionCounts?.trash !== undefined && b.collectionCounts.trash > 0 && (
+                            <span className="text-[10px] bg-amber-50 text-amber-700 font-semibold px-1.5 py-0.5 rounded border border-amber-200">
+                              {b.collectionCounts.trash} in trash
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Created By */}
@@ -713,7 +723,9 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                   {BACKUP_COLLECTIONS.map((c) => (
                     <div key={c} className="flex items-center gap-1.5">
                       <Check className="w-3.5 h-3.5 text-blue-600" />
-                      <span className="capitalize">{c}</span>
+                      <span className="capitalize font-medium text-slate-700">
+                        {c === 'trash' ? 'Trash & Soft-Deleted' : c === 'audit_logs' ? 'Audit & Activity Logs' : c}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -842,7 +854,13 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                             onChange={() => toggleSelectCollection(col)}
                             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                           />
-                          <span className="capitalize">{col}</span>
+                          <span className="capitalize font-medium text-slate-800">
+                            {col === 'trash'
+                              ? 'Trash & Soft-Deleted'
+                              : col === 'audit_logs'
+                              ? 'Audit & Activity Logs'
+                              : col}
+                          </span>
                         </div>
                         <span className="text-[11px] font-mono text-slate-500">({count})</span>
                       </label>

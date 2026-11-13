@@ -267,6 +267,9 @@ export async function moveToTrash(
   invalidateCache('dashboard')
   invalidateCache('reports')
   notifyDataChanged(collectionName as any)
+  notifyDataChanged('trash')
+  notifyDataChanged('audit_logs')
+  notifyDataChanged('backups')
   notifyDataChanged('all')
 
   return trashDocId
@@ -522,6 +525,9 @@ export async function restoreFromTrash(
   invalidateCache('dashboard')
   invalidateCache('reports')
   notifyDataChanged(originalCollection as any)
+  notifyDataChanged('trash')
+  notifyDataChanged('audit_logs')
+  notifyDataChanged('backups')
   notifyDataChanged('all')
 
   return true
@@ -607,6 +613,9 @@ export async function permanentDeleteFromTrash(
   }).catch(() => {})
 
   invalidateCache('trash')
+  notifyDataChanged('trash')
+  notifyDataChanged('audit_logs')
+  notifyDataChanged('backups')
   notifyDataChanged('all')
 
   return true

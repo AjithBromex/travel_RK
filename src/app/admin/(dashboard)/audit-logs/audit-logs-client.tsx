@@ -100,8 +100,17 @@ export default function AuditLogsClient({ initialLogs }: AuditLogsClientProps) {
   }, [])
 
   useEffect(() => {
+    // Automatically load logs on client mount
+    reloadLogs()
+
     const unsub = subscribeDataChanged((entity) => {
-      if (entity === 'audit_logs' || entity === 'all') {
+      if (
+        entity === 'audit_logs' ||
+        entity === 'trash' ||
+        entity === 'backups' ||
+        entity === 'expenses' ||
+        entity === 'all'
+      ) {
         reloadLogs()
       }
     })

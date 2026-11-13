@@ -12,7 +12,8 @@ import {
 import { db } from '@/lib/firebase/config'
 import type { BackupRecord, BackupPayload, BackupType } from '@/types'
 import { waitForAuthReady, getLocalData, setLocalData, notifyDataChanged } from '@/lib/storage-sync'
-import { logAuditEvent } from './audit.service'
+import { logAuditEvent, getAuditLogs } from './audit.service'
+import { getTrashItems } from './trash.service'
 import { invalidateCache } from '@/lib/cache'
 
 const BACKUPS_COLLECTION = 'backups'
@@ -88,20 +89,41 @@ export async function createBackup(
 
   // 1. Fetch all documents from each collection
   for (const colName of BACKUP_COLLECTIONS) {
+    let docs: Record<string, any>[] = []
     try {
       const snap = await getDocs(collection(db, colName))
-      const docs = snap.docs.map((d) => ({ _docId: d.id, ...d.data() }))
-      collectionsData[colName] = docs
-      collectionCounts[colName] = docs.length
-      totalDocs += docs.length
+      docs = snap.docs.map((d) => ({ _docId: d.id, ...d.data() }))
     } catch (err) {
       console.warn(`[BackupService] Error reading collection ${colName}:`, err)
-      // Check local cache fallback
       const local = getLocalData<any[]>(colName, [])
-      collectionsData[colName] = local
-      collectionCounts[colName] = local.length
-      totalDocs += local.length
+      docs = local.map((d) => ({ _docId: d.id || d._docId, ...d }))
     }
+
+    if (colName === 'trash') {
+      try {
+        const trashItems = await getTrashItems()
+        const existingIds = new Set(docs.map((d: any) => d.id || d._docId))
+        for (const t of trashItems) {
+          if (!existingIds.has(t.id)) {
+            docs.push({ _docId: t.id, ...t })
+          }
+        }
+      } catch {}
+    } else if (colName === 'audit_logs') {
+      try {
+        const auditLogs = await getAuditLogs(200)
+        const existingIds = new Set(docs.map((d: any) => d.id || d._docId))
+        for (const a of auditLogs) {
+          if (!existingIds.has(a.id)) {
+            docs.push({ _docId: a.id, ...a })
+          }
+        }
+      } catch {}
+    }
+
+    collectionsData[colName] = docs
+    collectionCounts[colName] = docs.length
+    totalDocs += docs.length
   }
 
   // 2. Build full payload
@@ -190,6 +212,9 @@ export async function createBackup(
   }).catch(() => {})
 
   invalidateCache('backups')
+  notifyDataChanged('backups')
+  notifyDataChanged('audit_logs')
+  notifyDataChanged('trash')
   notifyDataChanged('all')
 
   // Auto-prune any backups older than 30 days
@@ -229,6 +254,31 @@ export async function getBackupHistory(limitCount = 50): Promise<BackupRecord[]>
   } catch (err) {
     console.warn('[BackupService] Cloud getBackupHistory fallback to local:', err)
   }
+
+  // REST API fallback for server-side SSR
+  try {
+    const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'rk-travels-1f4f3'
+    const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+    const restUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/backups?pageSize=50${API_KEY ? `&key=${API_KEY}` : ''}`
+    const restRes = await fetch(restUrl, { cache: 'no-store' })
+    if (restRes.ok) {
+      const restData = await restRes.json()
+      if (restData && restData.documents) {
+        const restList: BackupRecord[] = restData.documents.map((d: any) => {
+          const docId = d.name.split('/').pop()
+          const fields: Record<string, any> = {}
+          for (const [k, v] of Object.entries(d.fields || {})) {
+            fields[k] = (v as any).stringValue || (v as any).booleanValue || (v as any).integerValue || null
+          }
+          return { id: docId, ...fields } as BackupRecord
+        })
+        const validRest = restList.filter((b) => !isBackupExpired(b.createdAt, BACKUP_RETENTION_DAYS))
+        if (validRest.length > 0) {
+          return validRest
+        }
+      }
+    }
+  } catch {}
 
   return localFallback.filter((b) => !isBackupExpired(b.createdAt, BACKUP_RETENTION_DAYS))
 }
@@ -281,6 +331,9 @@ export async function deleteBackup(
   }).catch(() => {})
 
   invalidateCache('backups')
+  notifyDataChanged('backups')
+  notifyDataChanged('audit_logs')
+  notifyDataChanged('trash')
   notifyDataChanged('all')
 
   return true
