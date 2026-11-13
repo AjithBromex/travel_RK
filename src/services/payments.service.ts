@@ -17,6 +17,7 @@ import {
   isDeleted,
   markAsDeleted,
 } from '@/lib/storage-sync'
+import { moveToTrash } from './trash.service'
 
 const COLLECTION = 'payments'
 
@@ -115,6 +116,7 @@ export async function getPayments(limitCount = 100): Promise<Payment[]> {
         .map(d => ({ id: d.id, ...d.data() } as Payment))
         .filter(
           p =>
+            !p.isDeleted &&
             !isDeleted('payments', p.id) &&
             (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
         )
@@ -275,9 +277,9 @@ export async function deletePayment(id: string): Promise<void> {
   }
 
   try {
-    await deleteDoc(doc(db, COLLECTION, id))
+    await moveToTrash('payments', id, 'Payment deleted')
   } catch (err) {
-    console.warn('[PaymentsService] Firestore delete fallback to local:', err)
+    console.warn('[PaymentsService] moveToTrash fallback to local:', err)
   }
 
   removeStoredPayment(id)

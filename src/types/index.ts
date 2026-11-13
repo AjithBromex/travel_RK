@@ -1,6 +1,26 @@
 // Types for the entire application
+
+// ─── Soft Delete & Recovery System Metadata ───
+export interface SoftDeleteMetadata {
+  isDeleted?: boolean
+  deletedAt?: string | null
+  deletedBy?: {
+    uid?: string
+    email?: string
+    displayName?: string
+    role?: string
+  } | null
+  originalCollection?: string
+  deletionReason?: string
+  restoredAt?: string | null
+  restoredBy?: {
+    uid?: string
+    email?: string
+  } | null
+}
+
 // ─── Vehicle ───
-export interface Vehicle {
+export interface Vehicle extends SoftDeleteMetadata {
   id: string
   registrationNumber: string
   registrationNumberNormalized: string
@@ -26,7 +46,7 @@ export interface Vehicle {
 // ─── Trip ───
 export type TripStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
 
-export interface Trip {
+export interface Trip extends SoftDeleteMetadata {
   id: string
   tripNumber: string
   receiptNumber?: string
@@ -71,7 +91,7 @@ export type PaymentType = 'customer_received' | 'driver_payment'
 export type PaymentStage = 'advance' | 'balance' | 'full'
 export type PaymentMode = 'cash' | 'bank_transfer' | 'upi' | 'card' | 'other'
 
-export interface Payment {
+export interface Payment extends SoftDeleteMetadata {
   id: string
   tripId: string
   type: PaymentType
@@ -100,7 +120,7 @@ export type ExpenseCategory =
   | (string & {})
 
 
-export interface Expense {
+export interface Expense extends SoftDeleteMetadata {
   id: string
   expenseDate: string
   category: ExpenseCategory
@@ -124,7 +144,7 @@ export interface Expense {
 export type ReminderCategory = 'trip' | 'vehicle_service' | 'documents' | 'driver' | 'general'
 export type ReminderStatus = 'pending' | 'upcoming' | 'overdue' | 'completed'
 
-export interface Reminder {
+export interface Reminder extends SoftDeleteMetadata {
   id: string
   title: string
   dueDate: string
@@ -166,7 +186,7 @@ export interface DashboardMetrics {
 }
 
 // ─── Cash Book ───
-export interface CashBookEntry {
+export interface CashBookEntry extends SoftDeleteMetadata {
   id: string
   date: string
   tripId?: string
@@ -197,7 +217,7 @@ export interface TripReport {
 // ─── User Profile ───
 export type UserRole = 'admin' | 'manager' | 'staff'
 
-export interface UserProfile {
+export interface UserProfile extends SoftDeleteMetadata {
   uid: string
   email: string
   displayName: string
@@ -222,4 +242,117 @@ export interface Staff {
   isActive: boolean
   createdAt: string
   updatedAt: string
+}
+
+// ─── Soft Delete & Recovery System ───
+export interface SoftDeleteMetadata {
+  isDeleted?: boolean
+  deletedAt?: string | null
+  deletedBy?: {
+    uid?: string
+    email?: string
+    displayName?: string
+    role?: string
+  } | null
+  originalCollection?: string
+  deletionReason?: string
+  restoredAt?: string | null
+  restoredBy?: {
+    uid?: string
+    email?: string
+  } | null
+}
+
+export interface TrashItem {
+  id: string
+  originalId: string
+  originalCollection: string
+  recordName: string
+  recordType: string
+  data: Record<string, any>
+  isDeleted: boolean
+  deletedAt: string
+  deletedBy: {
+    uid?: string
+    email?: string
+    displayName?: string
+    role?: string
+  }
+  deletionReason?: string
+  restored?: boolean
+  restoredAt?: string | null
+  restoredBy?: {
+    uid?: string
+    email?: string
+  } | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+// ─── Backup & Recovery System ───
+export type BackupType = 'manual' | 'scheduled_daily' | 'scheduled_weekly' | 'pre_restore_safety'
+export type BackupStatus = 'success' | 'failed' | 'in_progress'
+
+export interface BackupRecord {
+  id: string
+  name: string
+  createdAt: string
+  type: BackupType
+  status: BackupStatus
+  sizeBytes: number
+  sizeFormatted: string
+  totalRecords: number
+  collections: string[]
+  collectionCounts: Record<string, number>
+  createdBy: {
+    uid?: string
+    email?: string
+    displayName?: string
+  }
+  notes?: string
+  downloadUrl?: string
+  error?: string
+  payload?: BackupPayload
+}
+
+export interface BackupPayload {
+  version: string
+  timestamp: string
+  backupId: string
+  type: BackupType
+  databaseId: string
+  summary: {
+    totalCollections: number
+    totalDocuments: number
+    collectionCounts: Record<string, number>
+  }
+  collections: Record<string, Record<string, any>[]>
+}
+
+// ─── Audit Logging System ───
+export type AuditAction =
+  | 'CREATE'
+  | 'UPDATE'
+  | 'DELETE'
+  | 'SOFT_DELETE'
+  | 'RESTORE'
+  | 'PERMANENT_DELETE'
+  | 'BACKUP_CREATE'
+  | 'BACKUP_DOWNLOAD'
+  | 'BACKUP_RESTORE'
+  | 'BACKUP_DELETE'
+
+export interface AuditLogEntry {
+  id: string
+  action: AuditAction
+  collectionName: string
+  recordId: string
+  userId?: string
+  userEmail?: string
+  userRole?: string
+  timestamp: string
+  details?: string
+  previousState?: Record<string, any>
+  newState?: Record<string, any>
+  metadata?: Record<string, any>
 }

@@ -61,6 +61,7 @@ import {
   unmarkConfirmed,
   isRecordConfirmed,
 } from '@/lib/storage-sync';
+import { moveToTrash } from '@/services/trash.service';
 import type { Trip, Vehicle, Payment, Expense, Reminder, UserProfile } from '@/types';
 
 // Normalizers: convert domain models into flat table records matching MODULES[slug].columns
@@ -640,6 +641,10 @@ export async function deleteAdminRow(slug: string, id: string): Promise<void> {
     await deleteReminder(id);
   } else if (slug === 'users') {
     await deleteUserProfile(id);
+  } else if (slug === 'cashbook') {
+    await moveToTrash('cashbook', id, 'Deleted from Cash Book');
+  } else {
+    await moveToTrash(slug, id, `Deleted from ${slug}`);
   }
   markAsDeleted(slug, id);
   notifyDataChanged(slug as any);

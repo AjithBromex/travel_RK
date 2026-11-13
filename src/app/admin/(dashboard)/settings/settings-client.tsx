@@ -24,6 +24,8 @@ import {
   Users,
   Activity,
   Globe,
+  Trash2,
+  RotateCcw,
 } from "lucide-react";
 
 interface AdminSettingsClientProps {
@@ -98,6 +100,8 @@ export default function AdminSettingsClient({
     { name: "Payments & Ledger", href: "/admin/payments", icon: Wallet, count: counts.payments },
     { name: "Operating Expenses", href: "/admin/expenses", icon: Receipt, count: counts.expenses },
     { name: "Reminders & Alerts", href: "/admin/reminders", icon: Bell, count: counts.reminders },
+    { name: "Trash & Recovery", href: "/admin/trash", icon: Trash2, count: "Trash" },
+    { name: "Database Backups", href: "/admin/backups", icon: Database, count: "Snapshots" },
   ];
 
   return (
@@ -314,15 +318,21 @@ export default function AdminSettingsClient({
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={handleExportBackup}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[#0D62FE] hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row gap-2">
+            <Link
+              href="/admin/backups"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download System Backup JSON</span>
-            </button>
+              <Database className="w-3.5 h-3.5" />
+              <span>Manage Backups & Recovery</span>
+            </Link>
+            <Link
+              href="/admin/trash"
+              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-slate-500" />
+              <span>Trash</span>
+            </Link>
           </div>
         </div>
 

@@ -248,7 +248,9 @@ export async function listRows(slug: string): Promise<Record<string, unknown>[]>
       return cached?.data || [];
     }
     const json = await res.json();
-    const docs = (json.documents || []).map(decodeDoc);
+    const docs = (json.documents || [])
+      .map(decodeDoc)
+      .filter((d: any) => !d.isDeleted);
     const normalized = docs.map((d: Record<string, any>) => normalize(slug, d));
     rowsCache.set(slug, { time: Date.now(), data: normalized });
     return normalized;
@@ -491,9 +493,47 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
       }
     }
 
-    const res = await fetch(getEndpoint(slug, id), {
-      method: 'DELETE',
+    const now = new Date().toISOString();
+    const patchUrl =
+      getEndpoint(slug, id) +
+      (API_KEY ? '&' : '?') +
+      'updateMask.fieldPaths=isDeleted&updateMask.fieldPaths=deletedAt&updateMask.fieldPaths=updatedAt';
+
+    const res = await fetch(patchUrl, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          isDeleted: encodeFirestoreValue(true),
+          deletedAt: encodeFirestoreValue(now),
+          updatedAt: encodeFirestoreValue(now),
+        },
+      }),
     });
+
+    // Also record in trash collection
+    try {
+      const trashId = `${slug}_${id}`;
+      const trashUrl = getEndpoint('trash', trashId);
+      await fetch(trashUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            id: encodeFirestoreValue(trashId),
+            originalId: encodeFirestoreValue(id),
+            originalCollection: encodeFirestoreValue(slug),
+            recordName: encodeFirestoreValue(`${slug.toUpperCase()} #${id}`),
+            recordType: encodeFirestoreValue(slug),
+            isDeleted: encodeFirestoreValue(true),
+            deletedAt: encodeFirestoreValue(now),
+            restored: encodeFirestoreValue(false),
+            updatedAt: encodeFirestoreValue(now),
+          },
+        }),
+      });
+    } catch {}
+
     rowsCache.delete(slug);
     if (slug === 'trips') {
       rowsCache.delete('payments');

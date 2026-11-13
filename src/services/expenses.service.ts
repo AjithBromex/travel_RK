@@ -21,7 +21,9 @@ import {
   removeStoredExpense,
   notifyDataChanged,
   isDeleted,
+  markAsDeleted,
 } from '@/lib/storage-sync'
+import { moveToTrash } from './trash.service'
 
 const COLLECTION = 'expenses'
 
@@ -37,6 +39,7 @@ export async function getExpenses(limitCount = 100): Promise<Expense[]> {
         .map(d => ({ id: d.id, ...d.data() } as Expense))
         .filter(
           e =>
+            !e.isDeleted &&
             !isDeleted('expenses', e.id) &&
             (!e.tripId || !isDeleted('trips', e.tripId)) &&
             (!e.tripNumber || !isDeleted('trips', e.tripNumber))
@@ -139,11 +142,12 @@ export async function updateExpense(id: string, data: Partial<Expense>): Promise
 export async function deleteExpense(id: string): Promise<void> {
   await waitForAuthReady()
   try {
-    await deleteDoc(doc(db, COLLECTION, id))
+    await moveToTrash('expenses', id, 'Expense deleted')
   } catch (err) {
-    console.warn('[Expenses] Cloud delete failed, removing locally:', err)
+    console.warn('[Expenses] moveToTrash failed, removing locally:', err)
   }
   removeStoredExpense(id)
+  markAsDeleted('expenses', id)
 
   invalidateCache('expenses')
   invalidateCache('dashboard')

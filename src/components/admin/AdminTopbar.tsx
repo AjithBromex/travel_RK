@@ -20,6 +20,8 @@ import {
   Menu,
   X,
   ChevronDown,
+  Trash2,
+  Database,
 } from 'lucide-react';
 
 const navItems = [
@@ -28,8 +30,8 @@ const navItems = [
   { name: 'Vehicles', href: '/admin/vehicles', icon: Car },
   { name: 'Payments', href: '/admin/payments', icon: Wallet },
   { name: 'Expenses', href: '/admin/expenses', icon: Receipt },
-  { name: 'Cash Book', href: '/admin/cashbook', icon: BookOpen },
-  { name: 'Reminders', href: '/admin/reminders', icon: Bell },
+  { name: 'Trash', href: '/admin/trash', icon: Trash2 },
+  { name: 'Backups', href: '/admin/backups', icon: Database },
   { name: 'Users', href: '/admin/users', icon: Users },
 ];
 
@@ -176,6 +178,30 @@ export default function AdminTopbar() {
                     </div>
 
                     <div className="hidden sm:block py-1 border-b border-slate-100">
+                      <Link
+                        href="/admin/trash"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Trash & Recovery</span>
+                      </Link>
+                      <Link
+                        href="/admin/backups"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                      >
+                        <Database className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Backup & Recovery</span>
+                      </Link>
+                      <Link
+                        href="/admin/audit-logs"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Audit Logs</span>
+                      </Link>
                       <Link
                         href="/admin/settings"
                         onClick={() => setProfileOpen(false)}

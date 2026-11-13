@@ -21,7 +21,9 @@ import {
   removeStoredReminder,
   notifyDataChanged,
   isDeleted,
+  markAsDeleted,
 } from '@/lib/storage-sync'
+import { moveToTrash } from './trash.service'
 
 const COLLECTION = 'reminders'
 
@@ -38,6 +40,7 @@ export async function getReminders(limitCount = 100): Promise<Reminder[]> {
         .map(d => ({ id: d.id, ...d.data() } as Reminder))
         .filter(
           r =>
+            !r.isDeleted &&
             !isDeleted('reminders', r.id) &&
             !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id)
         )
@@ -66,6 +69,7 @@ export async function getActiveReminders(): Promise<Reminder[]> {
         .map(d => ({ id: d.id, ...d.data() } as Reminder))
         .filter(
           r =>
+            !r.isDeleted &&
             !isDeleted('reminders', r.id) &&
             !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id)
         )
@@ -145,11 +149,12 @@ export async function toggleReminderStatus(id: string, currentStatus: ReminderSt
 
 export async function deleteReminder(id: string): Promise<void> {
   removeStoredReminder(id)
+  markAsDeleted('reminders', id)
   try {
     await waitForAuthReady()
-    await deleteDoc(doc(db, COLLECTION, id))
+    await moveToTrash('reminders', id, 'Reminder deleted')
   } catch (err) {
-    console.warn('[RemindersService] Firestore deleteDoc failed, removed locally:', err)
+    console.warn('[RemindersService] moveToTrash failed, removed locally:', err)
   }
   invalidateCache('reminders')
   notifyDataChanged('all')

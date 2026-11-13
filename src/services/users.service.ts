@@ -12,6 +12,8 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
 import type { UserProfile } from '@/types'
+import { isDeleted, markAsDeleted } from '@/lib/storage-sync'
+import { moveToTrash } from './trash.service'
 
 const COLLECTION = 'users'
 
@@ -151,27 +153,32 @@ export async function findUserByUsername(username: string): Promise<UserProfile 
 export async function getAllUsers(): Promise<UserProfile[]> {
   try {
     const snap = await getDocs(collection(db, COLLECTION))
-    return snap.docs.map(d => {
-      const data = d.data() as Partial<UserProfile>
-      const rawEmail = String(data.email || '').trim()
-      const cleanUser = String(data.userId || data.displayName || (data as any).name || (data as any).username || d.id || '')
-        .trim()
-        .replace(/@gmail\.com$/i, '')
-        .replace(/@.*$/, '')
-        .toLowerCase()
-      const fallbackEmail = cleanUser && !cleanUser.startsWith('usr_') ? `${cleanUser}@gmail.com` : ''
-      const email = rawEmail || fallbackEmail
+    return snap.docs
+      .filter((d) => {
+        const data = d.data() as Partial<UserProfile>
+        return !data.isDeleted && !isDeleted('users', d.id)
+      })
+      .map(d => {
+        const data = d.data() as Partial<UserProfile>
+        const rawEmail = String(data.email || '').trim()
+        const cleanUser = String(data.userId || data.displayName || (data as any).name || (data as any).username || d.id || '')
+          .trim()
+          .replace(/@gmail\.com$/i, '')
+          .replace(/@.*$/, '')
+          .toLowerCase()
+        const fallbackEmail = cleanUser && !cleanUser.startsWith('usr_') ? `${cleanUser}@gmail.com` : ''
+        const email = rawEmail || fallbackEmail
 
-      if (!rawEmail && fallbackEmail && d.id) {
-        updateDoc(d.ref, { email: fallbackEmail }).catch(() => {})
-      }
+        if (!rawEmail && fallbackEmail && d.id) {
+          updateDoc(d.ref, { email: fallbackEmail }).catch(() => {})
+        }
 
-      return {
-        uid: d.id,
-        ...data,
-        email,
-      } as UserProfile
-    })
+        return {
+          uid: d.id,
+          ...data,
+          email,
+        } as UserProfile
+      })
   } catch (err) {
     console.warn('[Users] Error listing users:', err)
     return []
@@ -179,26 +186,11 @@ export async function getAllUsers(): Promise<UserProfile[]> {
 }
 
 export async function deleteUserProfile(uid: string): Promise<void> {
+  markAsDeleted('users', uid)
   try {
-    const docRef = doc(db, COLLECTION, uid)
-    await deleteDoc(docRef)
+    await moveToTrash('users', uid, 'User profile deleted')
   } catch (err) {
-    console.warn(`[Users] Error deleting user profile for ${uid}:`, err)
+    console.warn(`[Users] Error soft-deleting user profile for ${uid}:`, err)
   }
-
-  // Also remove from staff collection if present
-  try {
-    const staffDocRef = doc(db, 'staff', uid)
-    await deleteDoc(staffDocRef)
-  } catch {}
-
-  // If uid might be an email or username, also check by query
-  try {
-    const q = query(collection(db, COLLECTION), where('email', '==', uid))
-    const snap = await getDocs(q)
-    for (const d of snap.docs) {
-      await deleteDoc(d.ref)
-    }
-  } catch {}
 }
 

@@ -24,9 +24,19 @@ export function middleware(req: NextRequest) {
   }
 
   // 3. Admin APIs protection
-  if (pathname.startsWith('/api/') && pathname !== '/api/login' && pathname !== '/api/logout') {
+  if (
+    pathname.startsWith('/api/') &&
+    pathname !== '/api/login' &&
+    pathname !== '/api/logout' &&
+    pathname !== '/api/auth/session'
+  ) {
+    const isCron =
+      pathname === '/api/admin/backups/cron' &&
+      (Boolean(process.env.CRON_SECRET) &&
+        req.headers.get('authorization') === `Bearer ${process.env.CRON_SECRET}`);
+
     const isAdmin = req.cookies.get('rk_admin')?.value === ADMIN_SECRET;
-    if (!isAdmin) {
+    if (!isAdmin && !isCron) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
     return NextResponse.next();

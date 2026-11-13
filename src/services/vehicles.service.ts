@@ -15,6 +15,7 @@ import {
   notifyDataChanged,
   isDeleted,
 } from '@/lib/storage-sync'
+import { moveToTrash } from './trash.service'
 
 const COLLECTION = 'vehicles'
 
@@ -32,7 +33,7 @@ export async function getVehicles(limitCount?: number): Promise<Vehicle[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Vehicle))
-        .filter(v => !isDeleted('vehicles', v.id))
+        .filter(v => !v.isDeleted && !isDeleted('vehicles', v.id))
 
       saveStoredVehicles(list)
       return list
@@ -43,7 +44,7 @@ export async function getVehicles(limitCount?: number): Promise<Vehicle[]> {
 
 
 export async function getActiveVehicles(): Promise<Vehicle[]> {
-  const localFallback = getStoredVehicles().filter(v => v.status === 'active')
+  const localFallback = getStoredVehicles().filter(v => !v.isDeleted && v.status === 'active')
 
   return withCache(
     'vehicles:active',
@@ -51,7 +52,9 @@ export async function getActiveVehicles(): Promise<Vehicle[]> {
       await waitForAuthReady()
       const q = query(collection(db, COLLECTION), where('status', '==', 'active'))
       const snap = await getDocs(q)
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Vehicle))
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Vehicle))
+        .filter(v => !v.isDeleted && !isDeleted('vehicles', v.id))
       list.sort((a, b) => (a.name || a.registrationNumber).localeCompare(b.name || b.registrationNumber))
       return list
     },
@@ -140,25 +143,7 @@ export async function updateVehicle(id: string, data: Partial<Vehicle>): Promise
 
 export async function deleteVehicle(id: string): Promise<void> {
   await waitForAuthReady()
-  try {
-    await deleteDoc(doc(db, COLLECTION, id))
-  } catch (err) {
-    console.warn('[VehiclesService] Firestore delete by ID fallback:', err)
-  }
-
-  try {
-    const q = query(collection(db, COLLECTION), where('registrationNumber', '==', id))
-    const snap = await getDocs(q)
-    for (const d of snap.docs) {
-      await deleteDoc(d.ref)
-    }
-  } catch {}
-
-  removeStoredVehicle(id)
-  invalidateCache('vehicles')
-  invalidateCache('trips')
-  invalidateCache('dashboard')
-  notifyDataChanged('vehicles')
-  notifyDataChanged('all')
+  // Soft-delete to Trash
+  await moveToTrash('vehicles', id, 'Deleted from Vehicles fleet')
 }
 

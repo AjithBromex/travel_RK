@@ -32,11 +32,19 @@ import {
   notifyDataChanged,
   isDeleted,
 } from '@/lib/storage-sync'
+import { moveToTrash } from './trash.service'
 import {
   reconcileTripsWithPayments,
+  reconcileTripWithPayments,
   createPayment,
   updatePayment,
   deletePayment,
+  isPaymentLinkedToTrip,
+} from './payments.service'
+
+export {
+  reconcileTripsWithPayments,
+  reconcileTripWithPayments,
   isPaymentLinkedToTrip,
 } from './payments.service'
 
@@ -53,14 +61,14 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Trip))
-        .filter(t => !isDeleted('trips', t.id) && (!t.tripNumber || !isDeleted('trips', t.tripNumber)))
+        .filter(t => !t.isDeleted && !isDeleted('trips', t.id) && (!t.tripNumber || !isDeleted('trips', t.tripNumber)))
 
       let paymentsList = getStoredPayments()
       try {
         const paySnap = await getDocs(query(collection(db, 'payments'), limit(200)))
         const cloudPayments = paySnap.docs
           .map(d => ({ id: d.id, ...d.data() } as Payment))
-          .filter(p => !isDeleted('payments', p.id))
+          .filter(p => !p.isDeleted && !isDeleted('payments', p.id))
         saveStoredPayments(cloudPayments)
         paymentsList = cloudPayments
       } catch {}
@@ -361,7 +369,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
 
   const idArray = Array.from(tripIdentifiers)
 
-  // 2. Cascade delete PAYMENTS in Firestore & local
+  // 2. Cascade soft-delete PAYMENTS in Firestore & local
   try {
     for (const ident of idArray) {
       try {
@@ -369,7 +377,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
         const snapTripId = await getDocs(qTripId)
         for (const d of snapTripId.docs) {
           markAsDeleted('payments', d.id)
-          await deleteDoc(d.ref)
+          await moveToTrash('payments', d.id, `Cascade soft-delete from Trip #${ident}`)
         }
       } catch (err) {
         console.warn('[TripsService] Error querying payments by tripId:', err)
@@ -380,7 +388,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
         const snapTripNum = await getDocs(qTripNum)
         for (const d of snapTripNum.docs) {
           markAsDeleted('payments', d.id)
-          await deleteDoc(d.ref)
+          await moveToTrash('payments', d.id, `Cascade soft-delete from Trip #${ident}`)
         }
       } catch {}
 
@@ -389,7 +397,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
         const snapTripRef = await getDocs(qTripRef)
         for (const d of snapTripRef.docs) {
           markAsDeleted('payments', d.id)
-          await deleteDoc(d.ref)
+          await moveToTrash('payments', d.id, `Cascade soft-delete from Trip #${ident}`)
         }
       } catch {}
     }
@@ -405,7 +413,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
           ((p as any).tripRef && tripIdentifiers.has((p as any).tripRef))
         if (isLinked) {
           markAsDeleted('payments', d.id)
-          await deleteDoc(d.ref)
+          await moveToTrash('payments', d.id, `Cascade soft-delete from Trip #${id}`)
         }
       }
     } catch (err) {
@@ -428,7 +436,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
     console.warn('[TripsService] Cascade delete payments error:', err)
   }
 
-  // 3. Cascade delete EXPENSES in Firestore & local
+  // 3. Cascade soft-delete EXPENSES in Firestore & local
   try {
     for (const ident of idArray) {
       try {
@@ -436,7 +444,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
         const snapExpId = await getDocs(qExpId)
         for (const d of snapExpId.docs) {
           markAsDeleted('expenses', d.id)
-          await deleteDoc(d.ref)
+          await moveToTrash('expenses', d.id, `Cascade soft-delete from Trip #${ident}`)
         }
       } catch (err) {
         console.warn('[TripsService] Error querying expenses by tripId:', err)
@@ -447,7 +455,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
         const snapExpNum = await getDocs(qExpNum)
         for (const d of snapExpNum.docs) {
           markAsDeleted('expenses', d.id)
-          await deleteDoc(d.ref)
+          await moveToTrash('expenses', d.id, `Cascade soft-delete from Trip #${ident}`)
         }
       } catch {}
     }
@@ -462,7 +470,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
           ((e as any).tripNumber && tripIdentifiers.has((e as any).tripNumber))
         if (isLinked) {
           markAsDeleted('expenses', d.id)
-          await deleteDoc(d.ref)
+          await moveToTrash('expenses', d.id, `Cascade soft-delete from Trip #${id}`)
         }
       }
     } catch (err) {
@@ -484,7 +492,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
     console.warn('[TripsService] Cascade delete expenses error:', err)
   }
 
-  // 4. Cascade delete REMINDERS linked to this trip
+  // 4. Cascade soft-delete REMINDERS linked to this trip
   try {
     for (const ident of idArray) {
       try {
@@ -492,7 +500,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
         const snapRem = await getDocs(qRem)
         for (const d of snapRem.docs) {
           markAsDeleted('reminders', d.id)
-          await deleteDoc(d.ref)
+          await moveToTrash('reminders', d.id, `Cascade soft-delete from Trip #${ident}`)
         }
       } catch {}
 
@@ -501,7 +509,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
         const snapRemTrip = await getDocs(qRemTrip)
         for (const d of snapRemTrip.docs) {
           markAsDeleted('reminders', d.id)
-          await deleteDoc(d.ref)
+          await moveToTrash('reminders', d.id, `Cascade soft-delete from Trip #${ident}`)
         }
       } catch {}
     }
@@ -517,7 +525,7 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
         const snapCb = await getDocs(qCb)
         for (const d of snapCb.docs) {
           markAsDeleted('cashbook', d.id)
-          await deleteDoc(d.ref)
+          await moveToTrash('cashbook', d.id, `Cascade soft-delete from Trip #${ident}`)
         }
       } catch {}
     }
@@ -530,29 +538,13 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
     }
   } catch {}
 
-  // 6. Delete TRIP itself from Firestore
+  // 6. Soft-delete TRIP itself to Trash
   for (const ident of idArray) {
     try {
-      await deleteDoc(doc(db, COLLECTION, ident))
+      await moveToTrash('trips', ident, 'Trip deleted')
     } catch (err) {
-      console.warn(`[TripsService] Firestore deleteDoc /trips/${ident}:`, err)
+      console.warn(`[TripsService] Firestore moveToTrash /trips/${ident}:`, err)
     }
-
-    try {
-      const qNum = query(collection(db, COLLECTION), where('tripNumber', '==', ident))
-      const snapNum = await getDocs(qNum)
-      for (const d of snapNum.docs) {
-        await deleteDoc(d.ref)
-      }
-    } catch {}
-
-    try {
-      const qRec = query(collection(db, COLLECTION), where('receiptNumber', '==', ident))
-      const snapRec = await getDocs(qRec)
-      for (const d of snapRec.docs) {
-        await deleteDoc(d.ref)
-      }
-    } catch {}
   }
 
   // Remove trip from local storage & mark as deleted

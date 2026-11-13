@@ -18,6 +18,8 @@ import {
   ShieldCheck,
   ChevronRight,
   X,
+  Trash2,
+  Database,
 } from "lucide-react";
 
 export default function MobileBottomNav({ isAdmin = false }: { isAdmin?: boolean }) {
@@ -58,6 +60,10 @@ export default function MobileBottomNav({ isAdmin = false }: { isAdmin?: boolean
     { name: "Cash Book", href: "/admin/cashbook", icon: BookOpen, desc: "Master cashbook & registers" },
     { name: "Reminders", href: "/admin/reminders", icon: Bell, desc: "Compliance & vehicle documents" },
     { name: "Users", href: "/admin/users", icon: Users, desc: "Staff & user role permissions" },
+    { name: "Trash & Recovery", href: "/admin/trash", icon: Trash2, desc: "Restore soft-deleted records" },
+    { name: "Backup & Recovery", href: "/admin/backups", icon: Database, desc: "Snapshots & disaster recovery" },
+    { name: "Audit Logs", href: "/admin/audit-logs", icon: ShieldCheck, desc: "Security trail & change history" },
+    { name: "Settings", href: "/admin/settings", icon: Settings, desc: "Global admin preferences" },
   ];
 
   const primaryTabs = isAdmin ? primaryAdminTabs : primaryUserTabs;
