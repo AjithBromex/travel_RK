@@ -496,6 +496,47 @@ test('Payment Settlement: balance payment for fully settled trip (due = 0) is re
   assert.match(res.error, /This trip is already fully settled/);
 });
 
+// ─── 10. EXPENSE TRIP LINKAGE VALIDATION TESTS ───────────────────────────────
+console.log('\n[SUITE 10: Expense Trip Linkage Validation]');
+
+function validateExpenseSubmission({ tripId, selectedTrip, amount }) {
+  if (!tripId || tripId === 'general' || !selectedTrip) {
+    return { ok: false, error: 'Please select a trip booking. Expenses can only be recorded after selecting a trip.' };
+  }
+  const num = Number(amount);
+  if (!num || num <= 0) {
+    return { ok: false, error: 'Please enter a valid expense amount.' };
+  }
+  return { ok: true };
+}
+
+test('Expense Trip Linkage: expense without linked trip (empty or general) is strictly rejected', () => {
+  const resEmpty = validateExpenseSubmission({ tripId: '', selectedTrip: null, amount: 500 });
+  assert.strictEqual(resEmpty.ok, false);
+  assert.match(resEmpty.error, /Please select a trip booking/);
+
+  const resGeneral = validateExpenseSubmission({ tripId: 'general', selectedTrip: null, amount: 500 });
+  assert.strictEqual(resGeneral.ok, false);
+  assert.match(resGeneral.error, /Please select a trip booking/);
+});
+
+test('Expense Trip Linkage: valid linked trip and amount succeeds', () => {
+  const trip = { id: 'TRP-99', tripNumber: 'TRP-99', vehicleName: 'Innova' };
+  const res = validateExpenseSubmission({ tripId: 'TRP-99', selectedTrip: trip, amount: 1500 });
+  assert.strictEqual(res.ok, true);
+});
+
+test('Expense Trip Linkage: invalid or zero amount is rejected', () => {
+  const trip = { id: 'TRP-99', tripNumber: 'TRP-99', vehicleName: 'Innova' };
+  const resZero = validateExpenseSubmission({ tripId: 'TRP-99', selectedTrip: trip, amount: 0 });
+  assert.strictEqual(resZero.ok, false);
+  assert.match(resZero.error, /Please enter a valid expense amount/);
+
+  const resNegative = validateExpenseSubmission({ tripId: 'TRP-99', selectedTrip: trip, amount: -100 });
+  assert.strictEqual(resNegative.ok, false);
+  assert.match(resNegative.error, /Please enter a valid expense amount/);
+});
+
 // ─── TEST SUMMARY ─────────────────────────────────────────────────────────────
 console.log('\n=============================================================================');
 console.log(`  TEST RESULTS: ${passedTests} / ${totalTests} PASSED (${Math.round((passedTests / totalTests) * 100)}%)`);

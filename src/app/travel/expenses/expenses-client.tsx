@@ -25,6 +25,7 @@ import {
   CreditCard,
   Edit2,
   Lock,
+  AlertCircle,
 } from "lucide-react";
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Expense, ExpenseCategory, PaymentMode, Trip } from "@/types";
@@ -130,6 +131,15 @@ export default function ExpensesClient({
       tripId: queryTripId,
     };
   });
+
+  const selectedTrip = useMemo(() => {
+    if (!form.tripId || form.tripId === "general") return null;
+    return (
+      tripList.find(
+        (t) => t.id === form.tripId || t.tripNumber === form.tripId
+      ) || null
+    );
+  }, [form.tripId, tripList]);
 
   const [customCategories, setCustomCategories] = useState<{ id: string; label: string }[]>(() => {
     if (typeof window === "undefined") return [];
@@ -400,6 +410,17 @@ export default function ExpensesClient({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Enforce trip selection before allowing any expense to be recorded
+    if (!form.tripId || form.tripId === "general" || !selectedTrip) {
+      setFeedback({
+        message: "Please select a trip booking. Expenses can only be recorded after selecting a trip.",
+        type: "error",
+      });
+      setTimeout(() => setFeedback(null), 3500);
+      return;
+    }
+
     const parsedAmount = Number(form.amount);
     if (!parsedAmount || parsedAmount <= 0) {
       setFeedback({
@@ -414,14 +435,14 @@ export default function ExpensesClient({
     setFeedback(null);
 
     try {
-      const selectedTrip = tripList.find((t) => t.id === form.tripId || t.tripNumber === form.tripId);
+      const targetTripId = selectedTrip.tripNumber || selectedTrip.id || form.tripId;
       const descText = form.billRef.trim()
         ? `Bill #${form.billRef.replace(/^Bill\s*#?/i, "").trim()}`
         : form.notes.trim() || `${CATEGORY_META[form.category].label} Expense`;
 
       const payload = {
-        tripId: form.tripId || "",
-        tripNumber: selectedTrip?.tripNumber || form.tripId || "",
+        tripId: targetTripId,
+        tripNumber: targetTripId,
         expenseDate: form.expenseDate,
         category: form.category,
         amount: parsedAmount,
@@ -811,19 +832,34 @@ export default function ExpensesClient({
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
-              {/* Row 1: Trip (Optional) & Date * */}
+              {/* Row 1: Linked Trip Booking * & Date * */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1">
-                    <span>Trip</span>
-                    <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                      <span>Linked Trip Booking</span>
+                      <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <Link
+                      href="/travel/trips"
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <span>View Trips</span>
+                      <ChevronDown className="w-3 h-3 -rotate-90" />
+                    </Link>
+                  </div>
                   <SearchableTripSelect
                     trips={tripList}
                     value={form.tripId}
-                    onChange={(selectedId) => setForm({ ...form, tripId: selectedId })}
-                    placeholder="Search trip #, customer, route, vehicle..."
-                    unlinkedLabel="Select trip (General Expense)"
+                    onChange={(selectedId) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        tripId: selectedId,
+                        amount: selectedId ? prev.amount : "",
+                      }));
+                    }}
+                    placeholder="🔍 Search & select a trip booking (Required)..."
+                    requiredTrip={true}
                     showDueBadge={false}
                   />
                 </div>
@@ -847,6 +883,36 @@ export default function ExpensesClient({
                   </div>
                 </div>
               </div>
+
+              {/* Informational Guidance Notice when no trip is selected */}
+              {!selectedTrip && (
+                <div className="p-3 bg-amber-50/80 border border-amber-200/90 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 shadow-2xs">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-amber-950 text-xs">Trip Selection Required</p>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      Please search and select a trip booking above before adding an expense amount. All trip operating expenses (fuel, tolls, maintenance, food) must be linked to a specific trip.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Selected Trip Details Badge */}
+              {selectedTrip && (
+                <div className="p-2.5 bg-blue-50/60 border border-blue-200/70 rounded-xl flex items-center justify-between text-xs">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-blue-900 truncate">
+                      Trip #{selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} • {selectedTrip.customerName || "Customer"}
+                    </p>
+                    <p className="text-[11px] text-slate-600 truncate mt-0.5">
+                      {selectedTrip.from || "Start"} → {selectedTrip.to || "End"} {selectedTrip.vehicleName ? `• ${selectedTrip.vehicleName}` : ""}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md shrink-0 ml-2">
+                    Trip Linked ✓
+                  </span>
+                </div>
+              )}
 
               {/* Row 2: Category * & Amount (₹) * */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -919,13 +985,23 @@ export default function ExpensesClient({
                       ref={amountInputRef}
                       type="number"
                       min={1}
-                      placeholder="e.g. 2500"
+                      disabled={!selectedTrip}
+                      placeholder={!selectedTrip ? "Select trip booking first..." : "e.g. 2500"}
                       value={form.amount}
                       onChange={(e) => setForm({ ...form, amount: e.target.value })}
                       required
-                      className="w-full pl-6 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                      className={`w-full pl-6 pr-3 py-2 border rounded-xl text-xs font-bold outline-none transition-all ${
+                        !selectedTrip
+                          ? "bg-slate-100/90 text-slate-400 border-slate-200 cursor-not-allowed placeholder:text-slate-400"
+                          : "bg-slate-50 border-slate-200 focus:border-blue-500 focus:bg-white text-slate-900"
+                      }`}
                     />
                   </div>
+                  {!selectedTrip && (
+                    <p className="mt-1 text-[10px] text-slate-400 italic">
+                      Amount unlocks after selecting a trip booking.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -997,11 +1073,31 @@ export default function ExpensesClient({
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#0D62FE] hover:bg-[#0952DC] text-white text-xs sm:text-sm font-bold shadow-md shadow-blue-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50"
+                disabled={loading || !selectedTrip}
+                className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                  !selectedTrip
+                    ? "bg-slate-400 hover:bg-slate-400 shadow-none cursor-not-allowed"
+                    : "bg-[#0D62FE] hover:bg-[#0952DC] shadow-blue-500/25"
+                }`}
               >
-                <Plus className="w-4 h-4 stroke-[2.75]" />
-                <span>{loading ? "Recording..." : editingExpenseId ? "Update Expense" : "Record Expense"}</span>
+                {loading ? (
+                  <span>Recording...</span>
+                ) : !selectedTrip ? (
+                  <>
+                    <AlertCircle className="w-4 h-4 stroke-[2.5]" />
+                    <span>Select a Trip Booking to Record Expense</span>
+                  </>
+                ) : editingExpenseId ? (
+                  <>
+                    <Plus className="w-4 h-4 stroke-[2.75]" />
+                    <span>Update Expense</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 stroke-[2.75]" />
+                    <span>Record Expense for Trip #{selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)}</span>
+                  </>
+                )}
               </button>
             </form>
           </div>
