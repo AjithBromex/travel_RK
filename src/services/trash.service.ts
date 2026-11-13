@@ -692,26 +692,20 @@ export async function permanentDeleteFromTrash(
   markAsPermanentlyPurged(origCol, origId)
   markAsPermanentlyPurged('trash', trashId)
 
-  // 2. Permanently delete from original collection in Cloud Firestore
-  if (origCol && origId) {
-    try {
-      await deleteDoc(doc(db, origCol, origId))
-    } catch (err) {
-      console.warn(`[TrashService] Cloud perm-delete on /${origCol}/${origId}:`, err)
-    }
+  // 2. Perform all Cloud Firestore SDK & REST deletions in parallel for maximum speed
+  const deleteTasks: Promise<any>[] = []
 
-    // Also update document with isDeleted: false, isPermanentlyDeleted: true
-    // so any soft-delete queries (where('isDeleted', '==', true)) will never return it again
-    try {
-      await updateDoc(doc(db, origCol, origId), {
+  if (origCol && origId) {
+    deleteTasks.push(deleteDoc(doc(db, origCol, origId)).catch(() => {}))
+    deleteTasks.push(
+      updateDoc(doc(db, origCol, origId), {
         isDeleted: false,
         isPermanentlyDeleted: true,
         deletedAt: null,
-      })
-    } catch {}
+      }).catch(() => {})
+    )
   }
 
-  // 3. Permanently delete from 'trash' collection (try all ID permutations)
   const trashIdsToDelete = Array.from(
     new Set(
       [
@@ -725,14 +719,10 @@ export async function permanentDeleteFromTrash(
   ) as string[]
 
   for (const tid of trashIdsToDelete) {
-    try {
-      await deleteDoc(doc(db, TRASH_COLLECTION, tid))
-    } catch (err) {
-      console.warn(`[TrashService] Cloud perm-delete on /trash/${tid}:`, err)
-    }
+    deleteTasks.push(deleteDoc(doc(db, TRASH_COLLECTION, tid)).catch(() => {}))
   }
 
-  // 4. Direct REST API deletion fallback (ensures deletion on server & all auth modes)
+  // REST API deletion tasks (executed in parallel)
   try {
     const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'rk-travels-1f4f3'
     const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
@@ -740,14 +730,17 @@ export async function permanentDeleteFromTrash(
 
     for (const tid of trashIdsToDelete) {
       const restTrashUrl = `${baseRest}/trash/${tid}${API_KEY ? `?key=${API_KEY}` : ''}`
-      fetch(restTrashUrl, { method: 'DELETE' }).catch(() => {})
+      deleteTasks.push(fetch(restTrashUrl, { method: 'DELETE' }).catch(() => {}))
     }
 
     if (origCol && origId) {
       const restOrigUrl = `${baseRest}/${origCol}/${origId}${API_KEY ? `?key=${API_KEY}` : ''}`
-      fetch(restOrigUrl, { method: 'DELETE' }).catch(() => {})
+      deleteTasks.push(fetch(restOrigUrl, { method: 'DELETE' }).catch(() => {}))
     }
   } catch {}
+
+  // Await all network deletions in parallel
+  await Promise.allSettled(deleteTasks)
 
   // 5. Clean up local storage caches completely
   unmarkDeleted(origCol, origId)
@@ -792,17 +785,20 @@ export async function permanentDeleteFromTrash(
  */
 export async function emptyTrash(user?: { uid?: string; email?: string }): Promise<number> {
   const items = await getTrashItems()
-  let count = 0
+  const count = items.length
 
+  // Instantly clear local storage & mark blacklist
+  setLocalData(LOCAL_STORAGE_KEY, [])
   for (const item of items) {
-    try {
-      await permanentDeleteFromTrash(item.id, user, item)
-      count++
-    } catch {}
+    const { origCol, origId } = parseTrashIdentifier(item.id, item)
+    markAsPermanentlyPurged(origCol, origId)
+    markAsPermanentlyPurged('trash', item.id)
   }
 
-  // Clear local trash cache completely
-  setLocalData(LOCAL_STORAGE_KEY, [])
+  // Execute all permanent deletions in parallel
+  await Promise.allSettled(items.map((item) => permanentDeleteFromTrash(item.id, user, item)))
+
+  invalidateCache('trash')
   notifyDataChanged('trash')
   notifyDataChanged('audit_logs')
   notifyDataChanged('backups')

@@ -453,13 +453,14 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       return;
     }
 
-    setDeletingId(payment.id);
+    // Optimistically remove from UI immediately (instant response, zero lag!)
+    const remainingPayments = payments.filter((p) => p.id !== payment.id);
+    setPayments(remainingPayments);
+    setTripList((prev) => reconcileTripsWithPayments(prev, remainingPayments));
+    setFeedback({ message: "Payment entry deleted successfully.", type: "success" });
+
     try {
       await deletePayment(payment.id);
-      const remainingPayments = payments.filter((p) => p.id !== payment.id);
-      setPayments(remainingPayments);
-      setTripList((prev) => reconcileTripsWithPayments(prev, remainingPayments));
-      setFeedback({ message: "Payment entry deleted successfully.", type: "success" });
     } catch {
       setFeedback({ message: "Failed to delete payment.", type: "error" });
     } finally {

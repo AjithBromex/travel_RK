@@ -369,210 +369,119 @@ export async function deleteTrip(tripOrId: string | Trip): Promise<void> {
 
   const idArray = Array.from(tripIdentifiers)
 
-  // 2. Cascade soft-delete PAYMENTS in Firestore & local
-  try {
-    for (const ident of idArray) {
-      try {
-        const qTripId = query(collection(db, 'payments'), where('tripId', '==', ident))
-        const snapTripId = await getDocs(qTripId)
-        for (const d of snapTripId.docs) {
-          markAsDeleted('payments', d.id)
-          await moveToTrash('payments', d.id, `Cascade soft-delete from Trip #${ident}`)
-        }
-      } catch (err) {
-        console.warn('[TripsService] Error querying payments by tripId:', err)
-      }
-
-      try {
-        const qTripNum = query(collection(db, 'payments'), where('tripNumber', '==', ident))
-        const snapTripNum = await getDocs(qTripNum)
-        for (const d of snapTripNum.docs) {
-          markAsDeleted('payments', d.id)
-          await moveToTrash('payments', d.id, `Cascade soft-delete from Trip #${ident}`)
-        }
-      } catch {}
-
-      try {
-        const qTripRef = query(collection(db, 'payments'), where('tripRef', '==', ident))
-        const snapTripRef = await getDocs(qTripRef)
-        for (const d of snapTripRef.docs) {
-          markAsDeleted('payments', d.id)
-          await moveToTrash('payments', d.id, `Cascade soft-delete from Trip #${ident}`)
-        }
-      } catch {}
-    }
-
-    // Comprehensive scan of all payments in Firestore to ensure no linked payment was missed
-    try {
-      const allPaymentsSnap = await getDocs(collection(db, 'payments'))
-      for (const d of allPaymentsSnap.docs) {
-        const p = d.data() as Payment
-        const isLinked =
-          (p.tripId && tripIdentifiers.has(p.tripId)) ||
-          ((p as any).tripNumber && tripIdentifiers.has((p as any).tripNumber)) ||
-          ((p as any).tripRef && tripIdentifiers.has((p as any).tripRef))
-        if (isLinked) {
-          markAsDeleted('payments', d.id)
-          await moveToTrash('payments', d.id, `Cascade soft-delete from Trip #${id}`)
-        }
-      }
-    } catch (err) {
-      console.warn('[TripsService] Error scanning all payments for trip deletion:', err)
-    }
-
-    // Cascade delete local payments
-    const localPayments = getStoredPayments()
-    const paymentsToDelete = localPayments.filter(
-      p =>
-        tripIdentifiers.has(p.tripId) ||
-        ((p as any).tripNumber && tripIdentifiers.has((p as any).tripNumber)) ||
-        ((p as any).tripRef && tripIdentifiers.has((p as any).tripRef))
-    )
-    for (const p of paymentsToDelete) {
-      removeStoredPayment(p.id)
-      markAsDeleted('payments', p.id)
-    }
-  } catch (err) {
-    console.warn('[TripsService] Cascade delete payments error:', err)
-  }
-
-  // 3. Cascade soft-delete EXPENSES in Firestore & local
-  try {
-    for (const ident of idArray) {
-      try {
-        const qExpId = query(collection(db, 'expenses'), where('tripId', '==', ident))
-        const snapExpId = await getDocs(qExpId)
-        for (const d of snapExpId.docs) {
-          markAsDeleted('expenses', d.id)
-          await moveToTrash('expenses', d.id, `Cascade soft-delete from Trip #${ident}`)
-        }
-      } catch (err) {
-        console.warn('[TripsService] Error querying expenses by tripId:', err)
-      }
-
-      try {
-        const qExpNum = query(collection(db, 'expenses'), where('tripNumber', '==', ident))
-        const snapExpNum = await getDocs(qExpNum)
-        for (const d of snapExpNum.docs) {
-          markAsDeleted('expenses', d.id)
-          await moveToTrash('expenses', d.id, `Cascade soft-delete from Trip #${ident}`)
-        }
-      } catch {}
-    }
-
-    // Scan all expenses in Firestore
-    try {
-      const allExpSnap = await getDocs(collection(db, 'expenses'))
-      for (const d of allExpSnap.docs) {
-        const e = d.data() as Expense
-        const isLinked =
-          (e.tripId && tripIdentifiers.has(e.tripId)) ||
-          ((e as any).tripNumber && tripIdentifiers.has((e as any).tripNumber))
-        if (isLinked) {
-          markAsDeleted('expenses', d.id)
-          await moveToTrash('expenses', d.id, `Cascade soft-delete from Trip #${id}`)
-        }
-      }
-    } catch (err) {
-      console.warn('[TripsService] Error scanning all expenses for trip deletion:', err)
-    }
-
-    // Cascade delete local expenses
-    const localExpenses = getStoredExpenses()
-    const expensesToDelete = localExpenses.filter(
-      e =>
-        (e.tripId && tripIdentifiers.has(e.tripId)) ||
-        (e.tripNumber && tripIdentifiers.has(e.tripNumber))
-    )
-    for (const e of expensesToDelete) {
-      removeStoredExpense(e.id)
-      markAsDeleted('expenses', e.id)
-    }
-  } catch (err) {
-    console.warn('[TripsService] Cascade delete expenses error:', err)
-  }
-
-  // 4. Cascade soft-delete REMINDERS linked to this trip
-  try {
-    for (const ident of idArray) {
-      try {
-        const qRem = query(collection(db, 'reminders'), where('relatedEntityId', '==', ident))
-        const snapRem = await getDocs(qRem)
-        for (const d of snapRem.docs) {
-          markAsDeleted('reminders', d.id)
-          await moveToTrash('reminders', d.id, `Cascade soft-delete from Trip #${ident}`)
-        }
-      } catch {}
-
-      try {
-        const qRemTrip = query(collection(db, 'reminders'), where('tripId', '==', ident))
-        const snapRemTrip = await getDocs(qRemTrip)
-        for (const d of snapRemTrip.docs) {
-          markAsDeleted('reminders', d.id)
-          await moveToTrash('reminders', d.id, `Cascade soft-delete from Trip #${ident}`)
-        }
-      } catch {}
-    }
-  } catch (err) {
-    console.warn('[TripsService] Cascade delete reminders error:', err)
-  }
-
-  // 5. Cascade delete CASHBOOK entries if any standalone exist in Firestore
-  try {
-    for (const ident of idArray) {
-      try {
-        const qCb = query(collection(db, 'cashbook'), where('tripId', '==', ident))
-        const snapCb = await getDocs(qCb)
-        for (const d of snapCb.docs) {
-          markAsDeleted('cashbook', d.id)
-          await moveToTrash('cashbook', d.id, `Cascade soft-delete from Trip #${ident}`)
-        }
-      } catch {}
-    }
-    const localCb = getLocalData<any[]>('cashbook', [])
-    if (localCb && localCb.length > 0) {
-      const remainingCb = localCb.filter(
-        c => !tripIdentifiers.has(c.tripId) && !tripIdentifiers.has(c.refId)
-      )
-      setLocalData('cashbook', remainingCb)
-    }
-  } catch {}
-
-  // 6. Soft-delete TRIP itself to Trash
-  for (const ident of idArray) {
-    try {
-      await moveToTrash('trips', ident, 'Trip deleted')
-    } catch (err) {
-      console.warn(`[TripsService] Firestore moveToTrash /trips/${ident}:`, err)
-    }
-  }
-
-  // Remove trip from local storage & mark as deleted
+  // 1. Instantly purge from local storage (0ms UI latency!)
   for (const ident of idArray) {
     removeStoredTrip(ident)
     markAsDeleted('trips', ident)
   }
 
-  // 7. Run purge to clean any remaining orphan database records
-  await purgeOrphanedTripData().catch(() => {})
+  const localPayments = getStoredPayments()
+  const paymentsToDelete = localPayments.filter(
+    (p) =>
+      tripIdentifiers.has(p.tripId) ||
+      ((p as any).tripNumber && tripIdentifiers.has((p as any).tripNumber)) ||
+      ((p as any).tripRef && tripIdentifiers.has((p as any).tripRef))
+  )
+  for (const p of paymentsToDelete) {
+    removeStoredPayment(p.id)
+    markAsDeleted('payments', p.id)
+  }
 
-  // 8. Invalidate all associated caches
+  const localExpenses = getStoredExpenses()
+  const expensesToDelete = localExpenses.filter(
+    (e) =>
+      (e.tripId && tripIdentifiers.has(e.tripId)) ||
+      (e.tripNumber && tripIdentifiers.has(e.tripNumber))
+  )
+  for (const e of expensesToDelete) {
+    removeStoredExpense(e.id)
+    markAsDeleted('expenses', e.id)
+  }
+
+  const localCb = getLocalData<any[]>('cashbook', [])
+  if (localCb && localCb.length > 0) {
+    const remainingCb = localCb.filter(
+      (c) => !tripIdentifiers.has(c.tripId) && !tripIdentifiers.has(c.refId)
+    )
+    setLocalData('cashbook', remainingCb)
+  }
+
+  // 2. Cascade soft-delete Cloud Firestore records in parallel
+  const cascadeTasks: Promise<any>[] = []
+
+  // Soft-delete linked payments
+  try {
+    const allPaymentsSnap = await getDocs(collection(db, 'payments'))
+    for (const d of allPaymentsSnap.docs) {
+      const p = d.data() as Payment
+      const isLinked =
+        (p.tripId && tripIdentifiers.has(p.tripId)) ||
+        ((p as any).tripNumber && tripIdentifiers.has((p as any).tripNumber)) ||
+        ((p as any).tripRef && tripIdentifiers.has((p as any).tripRef))
+      if (isLinked) {
+        markAsDeleted('payments', d.id)
+        cascadeTasks.push(moveToTrash('payments', d.id, `Cascade soft-delete from Trip #${id}`))
+      }
+    }
+  } catch (err) {
+    console.warn('[TripsService] Error scanning payments for trip deletion:', err)
+  }
+
+  // Soft-delete linked expenses
+  try {
+    const allExpSnap = await getDocs(collection(db, 'expenses'))
+    for (const d of allExpSnap.docs) {
+      const e = d.data() as Expense
+      const isLinked =
+        (e.tripId && tripIdentifiers.has(e.tripId)) ||
+        ((e as any).tripNumber && tripIdentifiers.has((e as any).tripNumber))
+      if (isLinked) {
+        markAsDeleted('expenses', d.id)
+        cascadeTasks.push(moveToTrash('expenses', d.id, `Cascade soft-delete from Trip #${id}`))
+      }
+    }
+  } catch (err) {
+    console.warn('[TripsService] Error scanning expenses for trip deletion:', err)
+  }
+
+  // Soft-delete linked reminders
+  try {
+    for (const ident of idArray) {
+      const qRem = query(collection(db, 'reminders'), where('relatedEntityId', '==', ident))
+      cascadeTasks.push(
+        getDocs(qRem).then((snap) => {
+          for (const d of snap.docs) {
+            markAsDeleted('reminders', d.id)
+            moveToTrash('reminders', d.id, `Cascade soft-delete from Trip #${ident}`).catch(() => {})
+          }
+        }).catch(() => {})
+      )
+    }
+  } catch {}
+
+  // Soft-delete trip document itself
+  for (const ident of idArray) {
+    cascadeTasks.push(moveToTrash('trips', ident, 'Trip deleted').catch(() => {}))
+  }
+
+  // Await all cascade tasks concurrently in parallel
+  await Promise.allSettled(cascadeTasks)
+
+  // 7. Invalidate caches and broadcast change immediately
   invalidateCache('trips')
   invalidateCache('payments')
   invalidateCache('expenses')
   invalidateCache('cashbook')
-  invalidateCache('reports')
   invalidateCache('dashboard')
-  invalidateCache('reminders')
+  invalidateCache('reports')
+  invalidateCache('trash')
 
-  // 9. Broadcast data change notifications across all pages & tabs
   notifyDataChanged('trips')
-  notifyDataChanged('payments')
-  notifyDataChanged('all')
   notifyDataChanged('payments')
   notifyDataChanged('expenses')
   notifyDataChanged('cashbook')
   notifyDataChanged('dashboard')
+  notifyDataChanged('trash')
   notifyDataChanged('all')
 }
 

@@ -182,61 +182,61 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
 
   // Permanent Delete Single
   const handlePermanentDelete = async (item: TrashItem) => {
-    setActionLoadingId(item.id)
+    // 1. Optimistic UI update instantly (0ms response time!)
     setPermDeleteModal(null)
+    setItems((prev) => prev.filter((i) => i.id !== item.id && (!item.originalId || i.originalId !== item.originalId)))
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.delete(item.id)
+      if (item.originalId) next.delete(item.originalId)
+      return next
+    })
+    if (inspectItem?.id === item.id) setInspectItem(null)
+    showToast(`Permanently purged "${item.recordName}".`)
+
+    // 2. Perform deletions concurrently in the background
     try {
-      // 1. Call server API route first
-      await fetch(
-        `/api/admin/trash?id=${encodeURIComponent(item.id)}&col=${encodeURIComponent(item.originalCollection || '')}&origId=${encodeURIComponent(item.originalId || '')}`,
-        {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            trashId: item.id,
-            col: item.originalCollection,
-            origId: item.originalId,
-          }),
-        }
-      ).catch(() => {})
-
-      // 2. Execute full client-side permanent purge with complete item context
-      await permanentDeleteFromTrash(item.id, undefined, item)
-
-      setItems((prev) => prev.filter((i) => i.id !== item.id && (!item.originalId || i.originalId !== item.originalId)))
-      setSelectedIds((prev) => {
-        const next = new Set(prev)
-        next.delete(item.id)
-        if (item.originalId) next.delete(item.originalId)
-        return next
-      })
-      if (inspectItem?.id === item.id) setInspectItem(null)
-      showToast(`Permanently purged "${item.recordName}".`)
+      await Promise.allSettled([
+        fetch(
+          `/api/admin/trash?id=${encodeURIComponent(item.id)}&col=${encodeURIComponent(item.originalCollection || '')}&origId=${encodeURIComponent(item.originalId || '')}`,
+          {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              trashId: item.id,
+              col: item.originalCollection,
+              origId: item.originalId,
+            }),
+          }
+        ),
+        permanentDeleteFromTrash(item.id, undefined, item),
+      ])
     } catch (err: any) {
-      showToast(err?.message || 'Delete failed', 'error')
-    } finally {
-      setActionLoadingId(null)
+      console.warn('Permanent delete background sync:', err)
     }
   }
 
   // Empty Trash
   const handleEmptyTrash = async () => {
-    setLoading(true)
+    // 1. Optimistic UI update instantly (0ms response time!)
     setEmptyTrashModal(false)
-    try {
-      await fetch('/api/admin/trash?action=empty_all', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'empty_all' }),
-      }).catch(() => {})
+    const count = items.length
+    setItems([])
+    setSelectedIds(new Set())
+    showToast(`Trash emptied: ${count} records permanently removed.`)
 
-      const count = await emptyTrash()
-      setItems([])
-      setSelectedIds(new Set())
-      showToast(`Trash emptied: ${count} records permanently removed.`)
+    // 2. Perform backend & cloud cleanup concurrently in background
+    try {
+      await Promise.allSettled([
+        fetch('/api/admin/trash?action=empty_all', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'empty_all' }),
+        }),
+        emptyTrash(),
+      ])
     } catch (err: any) {
-      showToast(err?.message || 'Empty trash failed', 'error')
-    } finally {
-      setLoading(false)
+      console.warn('Empty trash background sync:', err)
     }
   }
 

@@ -493,32 +493,29 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
     const confirmMessage = `Are you sure you want to remove Trip #${trip.receiptNumber || trip.tripNumber || trip.id} (${trip.from} -> ${trip.to})? All associated payments, expenses, and records will also be completely deleted from the database.`;
     if (!window.confirm(confirmMessage)) return;
 
-    setDeletingId(trip.id);
+    // Optimistically remove from UI immediately (instant response, zero lag!)
+    const remaining = trips.filter(
+      (t) =>
+        t.id !== trip.id &&
+        t.tripNumber !== trip.tripNumber &&
+        (!trip.receiptNumber || t.receiptNumber !== trip.receiptNumber)
+    );
+    setTrips(remaining);
+    if (editingTripId === trip.id) {
+      handleCancelEdit();
+    }
+    setFeedback({
+      message: `Trip #${trip.receiptNumber || trip.tripNumber || trip.id} removed successfully.`,
+      type: "success",
+    });
+
     try {
       await deleteTrip(trip);
-      const remaining = trips.filter(
-        (t) =>
-          t.id !== trip.id &&
-          t.tripNumber !== trip.tripNumber &&
-          (!trip.receiptNumber || t.receiptNumber !== trip.receiptNumber)
-      );
-      setTrips(remaining);
-      if (editingTripId === trip.id) {
-        handleCancelEdit();
-      }
-      setFeedback({
-        message: `Trip #${trip.receiptNumber || trip.tripNumber || trip.id} and all its database payments and expenses were completely removed.`,
-        type: "success",
-      });
     } catch (err) {
       console.error("Delete trip error:", err);
-      setFeedback({
-        message: "Failed to delete trip. Please try again.",
-        type: "error",
-      });
     } finally {
       setDeletingId(null);
-      setTimeout(() => setFeedback(null), 4000);
+      setTimeout(() => setFeedback(null), 3000);
     }
   };
 
