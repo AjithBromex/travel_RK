@@ -1,12 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { getBackupHistory, createBackup } from '@/services/backup.service'
+import { getBackupHistory, createBackup, pruneExpiredBackups, BACKUP_RETENTION_DAYS } from '@/services/backup.service'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
     const list = await getBackupHistory(50)
-    return NextResponse.json(list)
+    return NextResponse.json({
+      backups: list,
+      retentionPolicyDays: BACKUP_RETENTION_DAYS,
+    })
   } catch (err: unknown) {
     return NextResponse.json(
       { error: (err as Error).message || 'Failed to fetch backup history' },
@@ -18,14 +21,24 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
-    const { type = 'manual', notes, user } = body
 
+    if (body.action === 'prune') {
+      const result = await pruneExpiredBackups(BACKUP_RETENTION_DAYS, body.user)
+      return NextResponse.json({
+        ok: true,
+        message: `Pruned ${result.prunedCount} expired backup(s) older than ${BACKUP_RETENTION_DAYS} days.`,
+        prunedCount: result.prunedCount,
+      })
+    }
+
+    const { type = 'manual', notes, user } = body
     const backup = await createBackup(type, notes, user)
     return NextResponse.json(backup, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json(
-      { error: (err as Error).message || 'Failed to create database backup' },
+      { error: (err as Error).message || 'Failed to process backup request' },
       { status: 500 }
     )
   }
 }
+

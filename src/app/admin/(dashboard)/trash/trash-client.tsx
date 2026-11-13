@@ -700,3 +700,4 @@ export default function TrashClient({ initialItems }: TrashClientProps) {
     </div>
   )
 }
+

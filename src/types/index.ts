@@ -313,6 +313,8 @@ export interface BackupRecord {
   downloadUrl?: string
   error?: string
   payload?: BackupPayload
+  retentionDays?: number
+  expiresAt?: string
 }
 
 export interface BackupPayload {

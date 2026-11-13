@@ -8,3 +8,4 @@ export default async function AuditLogsPage() {
 
   return <AuditLogsClient initialLogs={initialLogs} />
 }
+

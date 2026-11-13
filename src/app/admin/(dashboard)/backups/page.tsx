@@ -8,3 +8,4 @@ export default async function BackupsPage() {
 
   return <BackupsClient initialBackups={initialBackups} />
 }
+

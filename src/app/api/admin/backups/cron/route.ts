@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createBackup } from '@/services/backup.service'
+import { createBackup, pruneExpiredBackups, BACKUP_RETENTION_DAYS } from '@/services/backup.service'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,12 +14,21 @@ export async function GET(req: NextRequest) {
       displayName: 'System Automated Scheduler',
     })
 
+    // Execute 30-day retention cleanup
+    const pruneResult = await pruneExpiredBackups(BACKUP_RETENTION_DAYS, {
+      uid: 'system_scheduler',
+      email: 'cron@rktravelhub.internal',
+    })
+
     return NextResponse.json({
       ok: true,
       backupId: record.id,
       records: record.totalRecords,
       size: record.sizeFormatted,
       timestamp: record.createdAt,
+      retentionPolicyDays: BACKUP_RETENTION_DAYS,
+      expiresAt: record.expiresAt,
+      prunedExpiredBackups: pruneResult.prunedCount,
     })
   } catch (err: unknown) {
     return NextResponse.json(
@@ -28,3 +37,4 @@ export async function GET(req: NextRequest) {
     )
   }
 }
+

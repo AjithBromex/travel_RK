@@ -18,6 +18,8 @@ import { invalidateCache } from '@/lib/cache'
 const BACKUPS_COLLECTION = 'backups'
 const LOCAL_STORAGE_KEY = 'rk_backups_list'
 
+export const BACKUP_RETENTION_DAYS = 30
+
 export const BACKUP_COLLECTIONS = [
   'trips',
   'vehicles',
@@ -30,6 +32,34 @@ export const BACKUP_COLLECTIONS = [
   'trash',
   'audit_logs',
 ]
+
+/**
+ * Calculates the exact expiry timestamp for a backup based on retention days (30 days).
+ */
+export function getBackupExpiryDate(createdAt: string, retentionDays = BACKUP_RETENTION_DAYS): string {
+  const date = new Date(createdAt)
+  date.setDate(date.getDate() + retentionDays)
+  return date.toISOString()
+}
+
+/**
+ * Returns true if a backup is older than the retention threshold (30 days).
+ */
+export function isBackupExpired(createdAt: string, retentionDays = BACKUP_RETENTION_DAYS): boolean {
+  if (!createdAt) return false
+  const ageMs = Date.now() - new Date(createdAt).getTime()
+  return ageMs > retentionDays * 24 * 60 * 60 * 1000
+}
+
+/**
+ * Returns the number of days remaining before this backup expires (0 to 30).
+ */
+export function getDaysUntilExpiry(createdAt: string, retentionDays = BACKUP_RETENTION_DAYS): number {
+  if (!createdAt) return 0
+  const expiryTime = new Date(createdAt).getTime() + retentionDays * 24 * 60 * 60 * 1000
+  const diffMs = expiryTime - Date.now()
+  return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+}
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -119,6 +149,8 @@ export async function createBackup(
       displayName: user?.displayName || 'Administrator',
     },
     notes: notes || undefined,
+    retentionDays: BACKUP_RETENTION_DAYS,
+    expiresAt: getBackupExpiryDate(now, BACKUP_RETENTION_DAYS),
     payload,
   }
 
@@ -160,11 +192,16 @@ export async function createBackup(
   invalidateCache('backups')
   notifyDataChanged('all')
 
+  // Auto-prune any backups older than 30 days
+  pruneExpiredBackups(BACKUP_RETENTION_DAYS).catch((pruneErr) =>
+    console.warn('[BackupService] Background prune error:', pruneErr)
+  )
+
   return record
 }
 
 /**
- * Lists all previous backups from newest to oldest.
+ * Lists all previous backups from newest to oldest within the 30-day retention window.
  */
 export async function getBackupHistory(limitCount = 50): Promise<BackupRecord[]> {
   const localFallback = getLocalData<BackupRecord[]>(LOCAL_STORAGE_KEY, [])
@@ -181,14 +218,19 @@ export async function getBackupHistory(limitCount = 50): Promise<BackupRecord[]>
     })
 
     if (list.length > 0) {
-      setLocalData(LOCAL_STORAGE_KEY, list)
-      return list
+      // Filter out backups older than 30 days
+      const validList = list.filter((b) => !isBackupExpired(b.createdAt, BACKUP_RETENTION_DAYS))
+      if (validList.length !== list.length) {
+        pruneExpiredBackups(BACKUP_RETENTION_DAYS).catch(() => {})
+      }
+      setLocalData(LOCAL_STORAGE_KEY, validList)
+      return validList
     }
   } catch (err) {
     console.warn('[BackupService] Cloud getBackupHistory fallback to local:', err)
   }
 
-  return localFallback
+  return localFallback.filter((b) => !isBackupExpired(b.createdAt, BACKUP_RETENTION_DAYS))
 }
 
 /**
@@ -275,3 +317,61 @@ export function triggerBackupDownload(record: BackupRecord): void {
     details: `Exported and downloaded backup archive: ${record.name} (${record.sizeFormatted}).`,
   }).catch(() => {})
 }
+
+/**
+ * Automatically prunes any backup archives older than the 30-day retention threshold.
+ * Removes obsolete records from Firestore and local cache, and records an audit log.
+ */
+export async function pruneExpiredBackups(
+  retentionDays: number = BACKUP_RETENTION_DAYS,
+  user?: { uid?: string; email?: string }
+): Promise<{ prunedCount: number; prunedIds: string[] }> {
+  await waitForAuthReady()
+  const cutoffTime = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString()
+  const prunedIds: string[] = []
+
+  try {
+    const snap = await getDocs(collection(db, BACKUPS_COLLECTION))
+    for (const d of snap.docs) {
+      const data = d.data() as BackupRecord
+      if (data.createdAt && data.createdAt < cutoffTime) {
+        try {
+          await deleteDoc(doc(db, BACKUPS_COLLECTION, d.id))
+          prunedIds.push(d.id)
+        } catch (delErr) {
+          console.warn(`[BackupService] Failed to delete expired backup doc ${d.id}:`, delErr)
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[BackupService] Cloud check during prune error:', err)
+  }
+
+  // Also clean local storage cache
+  try {
+    const local = getLocalData<BackupRecord[]>(LOCAL_STORAGE_KEY, [])
+    const beforeCount = local.length
+    const remaining = local.filter((b) => !b.createdAt || b.createdAt >= cutoffTime)
+    if (remaining.length !== beforeCount) {
+      setLocalData(LOCAL_STORAGE_KEY, remaining)
+    }
+  } catch {}
+
+  if (prunedIds.length > 0) {
+    logAuditEvent({
+      action: 'BACKUP_DELETE',
+      collectionName: 'backups',
+      recordId: 'retention_prune_30d',
+      userId: user?.uid || 'system_retention',
+      userEmail: user?.email || 'system@rk-travel.com',
+      details: `30-Day Retention Policy: Pruned ${prunedIds.length} expired backup snapshot(s) older than 30 days.`,
+      metadata: { retentionDays, cutoffTime, prunedIds, count: prunedIds.length },
+    }).catch(() => {})
+
+    invalidateCache('backups')
+    notifyDataChanged('all')
+  }
+
+  return { prunedCount: prunedIds.length, prunedIds }
+}
+

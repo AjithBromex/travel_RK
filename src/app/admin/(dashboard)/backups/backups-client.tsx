@@ -31,6 +31,10 @@ import {
   triggerBackupDownload,
   getBackupById,
   BACKUP_COLLECTIONS,
+  BACKUP_RETENTION_DAYS,
+  getDaysUntilExpiry,
+  getBackupExpiryDate,
+  pruneExpiredBackups,
 } from '@/services/backup.service'
 import { restoreFromBackup } from '@/services/restore.service'
 import { subscribeDataChanged } from '@/lib/storage-sync'
@@ -85,6 +89,7 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
 
   const [deleteModalItem, setDeleteModalItem] = useState<BackupRecord | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [pruning, setPruning] = useState(false)
 
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
@@ -257,6 +262,24 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
     }
   }
 
+  // Handle Pruning of Backups older than 30 days
+  const handlePruneExpired = async () => {
+    setPruning(true)
+    try {
+      const res = await pruneExpiredBackups(BACKUP_RETENTION_DAYS)
+      if (res.prunedCount > 0) {
+        showToast(`30-Day Retention: Pruned ${res.prunedCount} expired backup snapshot(s) older than 30 days.`)
+      } else {
+        showToast('All backups are currently active within the 30-day retention window.')
+      }
+      await reloadBackups()
+    } catch (err: any) {
+      showToast(err.message || 'Failed to run retention cleanup.', 'error')
+    } finally {
+      setPruning(false)
+    }
+  }
+
   const toggleSelectCollection = (colName: string) => {
     setSelectedCollections((prev) =>
       prev.includes(colName) ? prev.filter((c) => c !== colName) : [...prev, colName]
@@ -320,12 +343,43 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
           </button>
 
           <button
+            onClick={handlePruneExpired}
+            disabled={pruning}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg shadow-sm transition-all"
+            title="Clean up backups older than 30 days"
+          >
+            <Clock className={`w-3.5 h-3.5 ${pruning ? 'animate-spin' : ''}`} />
+            <span>{pruning ? 'Pruning...' : 'Prune >30d'}</span>
+          </button>
+
+          <button
             onClick={() => setCreateModalOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-lg shadow-md shadow-blue-600/20 transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>Create Backup Now</span>
           </button>
+        </div>
+      </div>
+
+      {/* 30-Day Retention Policy Notice Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-xl text-xs text-blue-900 shadow-xs">
+        <div className="flex items-start sm:items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="font-bold text-slate-900">30-Day Storage Retention Policy Enforced:</span>
+            <span className="text-slate-600 ml-1">
+              All database backup archives are safely stored for <strong>30 days</strong>. Snapshots older than 30 days are automatically pruned to prevent database bloat and keep recovery operations fast.
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            30 Days Max
+          </span>
         </div>
       </div>
 
@@ -358,17 +412,17 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
           </div>
         </div>
 
-        {/* Card 2: Next Scheduled Backup */}
+        {/* Card 2: 30-Day Retention Policy & Next Scheduled Backup */}
         <div className="p-4 bg-white rounded-xl border border-slate-200/80 shadow-sm flex items-start gap-3.5">
           <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">
             <Clock className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-              Next Scheduled Backup
+              Retention Policy
             </p>
-            <p className="text-sm font-bold text-slate-900 mt-0.5">Daily at 02:00 AM IST</p>
-            <p className="text-xs text-emerald-600 font-medium mt-0.5">Automated Cron Active</p>
+            <p className="text-sm font-bold text-slate-900 mt-0.5">30-Day Auto Retention</p>
+            <p className="text-xs text-emerald-600 font-medium mt-0.5">Daily auto-prune • 02:00 AM IST</p>
           </div>
         </div>
 
@@ -482,6 +536,7 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                   <th className="py-3 px-4">Backup Name & ID</th>
                   <th className="py-3 px-4">Type</th>
                   <th className="py-3 px-4">Created Date</th>
+                  <th className="py-3 px-4">Expires In</th>
                   <th className="py-3 px-4">Records & Size</th>
                   <th className="py-3 px-4">Created By</th>
                   <th className="py-3 px-4">Status</th>
@@ -491,6 +546,9 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
               <tbody className="divide-y divide-slate-100 font-normal text-slate-700">
                 {filtered.map((b) => {
                   const typeConf = TYPE_CONFIG[b.type] || TYPE_CONFIG.manual
+                  const daysLeft = getDaysUntilExpiry(b.createdAt, BACKUP_RETENTION_DAYS)
+                  const expDate = b.expiresAt || getBackupExpiryDate(b.createdAt, BACKUP_RETENTION_DAYS)
+
                   return (
                     <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
                       {/* Name & ID */}
@@ -537,6 +595,31 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
                             second: '2-digit',
                           })}
                         </p>
+                      </td>
+
+                      {/* Expires In (30-day retention) */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border ${
+                              daysLeft <= 3
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : daysLeft <= 7
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}
+                          >
+                            <Clock className="w-3 h-3" />
+                            <span>{daysLeft === 0 ? 'Expires today' : `${daysLeft} days left`}</span>
+                          </span>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            {new Date(expDate).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
                       </td>
 
                       {/* Records & Size */}
@@ -885,3 +968,4 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
     </div>
   )
 }
+

@@ -506,3 +506,4 @@ export default function AuditLogsClient({ initialLogs }: AuditLogsClientProps) {
     </div>
   )
 }
+

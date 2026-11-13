@@ -8,3 +8,4 @@ export default async function TrashPage() {
 
   return <TrashClient initialItems={initialTrash} />
 }
+

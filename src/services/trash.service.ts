@@ -468,3 +468,4 @@ export async function emptyTrash(user?: { uid?: string; email?: string }): Promi
 
   return count
 }
+
