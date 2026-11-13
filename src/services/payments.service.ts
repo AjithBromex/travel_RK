@@ -16,6 +16,7 @@ import {
   notifyDataChanged,
   isDeleted,
   markAsDeleted,
+  unmarkDeleted,
 } from '@/lib/storage-sync'
 import { moveToTrash } from './trash.service'
 
@@ -114,12 +115,16 @@ export async function getPayments(limitCount = 100): Promise<Payment[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Payment))
-        .filter(
-          p =>
-            !p.isDeleted &&
-            !isDeleted('payments', p.id) &&
-            (!p.tripId || p.tripId === 'general' || !isDeleted('trips', p.tripId))
-        )
+        .filter(p => {
+          if (p.isDeleted) return false
+          if (isDeleted('payments', p.id)) {
+            unmarkDeleted('payments', p.id)
+          }
+          if (p.tripId && p.tripId !== 'general' && isDeleted('trips', p.tripId)) {
+            unmarkDeleted('trips', p.tripId)
+          }
+          return true
+        })
       const sorted = sortPaymentsRecentFirst(list)
       saveStoredPayments(sorted)
       return sorted

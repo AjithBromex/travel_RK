@@ -3,10 +3,23 @@ import {
   doc,
   writeBatch,
   setDoc,
+  deleteDoc,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
 import type { BackupPayload } from '@/types'
-import { waitForAuthReady, setLocalData, notifyDataChanged } from '@/lib/storage-sync'
+import {
+  waitForAuthReady,
+  setLocalData,
+  notifyDataChanged,
+  unmarkDeleted,
+  clearDeletedMarkers,
+  saveStoredTrips,
+  saveStoredVehicles,
+  saveStoredPayments,
+  saveStoredExpenses,
+  saveStoredReminders,
+} from '@/lib/storage-sync'
+import { unmarkPermanentlyPurged } from './trash.service'
 import { createBackup, getBackupById } from './backup.service'
 import { logAuditEvent } from './audit.service'
 import { invalidateCache } from '@/lib/cache'
@@ -89,6 +102,9 @@ export async function restoreFromBackup(
       continue
     }
 
+    // A. Wipe any stale deletion masks in localStorage for this collection
+    clearDeletedMarkers(colName)
+
     let restoredInCol = 0
 
     // Firestore batched writes chunked to 350 docs per batch
@@ -104,7 +120,28 @@ export async function restoreFromBackup(
 
         if (docId) {
           const docRef = doc(db, colName, String(docId))
-          batch.set(docRef, rawDoc, { merge: true })
+
+          const sanitizedDoc: Record<string, any> = {
+            ...rawDoc,
+            id: String(docId),
+          }
+
+          if (colName !== 'trash') {
+            sanitizedDoc.isDeleted = false
+            delete sanitizedDoc.deletedAt
+            delete sanitizedDoc.deletedBy
+            delete sanitizedDoc.deletionReason
+            delete sanitizedDoc.purgeScheduledAt
+          }
+
+          batch.set(docRef, sanitizedDoc)
+
+          // If restoring into an active collection, eliminate any matching soft-delete entry from 'trash'
+          if (colName !== 'trash') {
+            batch.delete(doc(db, 'trash', `trash_${colName}_${docId}`))
+            batch.delete(doc(db, 'trash', String(docId)))
+          }
+
           restoredInCol++
         }
       }
@@ -118,24 +155,68 @@ export async function restoreFromBackup(
           const docId = rawDoc._docId || rawDoc.id
           delete rawDoc._docId
           if (docId) {
+            const sanitizedDoc: Record<string, any> = {
+              ...rawDoc,
+              id: String(docId),
+            }
+            if (colName !== 'trash') {
+              sanitizedDoc.isDeleted = false
+              delete sanitizedDoc.deletedAt
+              delete sanitizedDoc.deletedBy
+              delete sanitizedDoc.deletionReason
+              delete sanitizedDoc.purgeScheduledAt
+            }
             try {
-              await setDoc(doc(db, colName, String(docId)), rawDoc, { merge: true })
+              await setDoc(doc(db, colName, String(docId)), sanitizedDoc)
+              if (colName !== 'trash') {
+                await deleteDoc(doc(db, 'trash', `trash_${colName}_${docId}`)).catch(() => {})
+                await deleteDoc(doc(db, 'trash', String(docId))).catch(() => {})
+              }
             } catch {}
           }
         }
       }
     }
 
-    // Update local cache for collection
-    try {
-      const cleanDocs = docs.map((d) => {
-        const c = { ...d }
-        const id = c._docId || c.id
-        delete c._docId
-        return { id, ...c }
-      })
-      setLocalData(colName, cleanDocs)
-    } catch {}
+    // B. Clean local storage and unmark deletion masks for each restored document
+    const cleanDocs = docs.map((d) => {
+      const c = { ...d }
+      const id = String(c._docId || c.id)
+      delete c._docId
+      const finalDoc = {
+        ...c,
+        id,
+        isDeleted: colName === 'trash' ? (c.isDeleted ?? true) : false,
+      }
+      if (colName !== 'trash') {
+        unmarkDeleted(colName, id)
+        unmarkPermanentlyPurged(colName, id)
+        if (c.tripNumber) {
+          unmarkDeleted(colName, String(c.tripNumber))
+          unmarkPermanentlyPurged(colName, String(c.tripNumber))
+        }
+        if (c.registrationNumber) {
+          unmarkDeleted(colName, String(c.registrationNumber))
+          unmarkPermanentlyPurged(colName, String(c.registrationNumber))
+        }
+      }
+      return finalDoc
+    })
+
+    setLocalData(colName, cleanDocs)
+
+    // C. Populate specific typed storage helpers
+    if (colName === 'trips') {
+      saveStoredTrips(cleanDocs as any)
+    } else if (colName === 'vehicles') {
+      saveStoredVehicles(cleanDocs as any)
+    } else if (colName === 'payments') {
+      saveStoredPayments(cleanDocs as any)
+    } else if (colName === 'expenses') {
+      saveStoredExpenses(cleanDocs as any)
+    } else if (colName === 'reminders') {
+      saveStoredReminders(cleanDocs as any)
+    }
 
     collectionCounts[colName] = restoredInCol
     totalRestored += restoredInCol
@@ -159,16 +240,19 @@ export async function restoreFromBackup(
     },
   }).catch(() => {})
 
-  // 5. Invalidate all caches and broadcast global refresh
-  invalidateCache('trips')
-  invalidateCache('vehicles')
-  invalidateCache('payments')
-  invalidateCache('expenses')
-  invalidateCache('reminders')
-  invalidateCache('dashboard')
-  invalidateCache('reports')
-  invalidateCache('trash')
+  // 5. Invalidate all caches and broadcast global refresh across tabs
+  clearDeletedMarkers()
+  invalidateCache()
   notifyDataChanged('all')
+  notifyDataChanged('trips')
+  notifyDataChanged('vehicles')
+  notifyDataChanged('payments')
+  notifyDataChanged('expenses')
+  notifyDataChanged('reminders')
+  notifyDataChanged('cashbook')
+  notifyDataChanged('dashboard')
+  notifyDataChanged('reports')
+  notifyDataChanged('trash')
 
   return {
     success: true,

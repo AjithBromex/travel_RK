@@ -22,6 +22,7 @@ import {
   notifyDataChanged,
   isDeleted,
   markAsDeleted,
+  unmarkDeleted,
 } from '@/lib/storage-sync'
 import { moveToTrash } from './trash.service'
 
@@ -38,12 +39,13 @@ export async function getReminders(limitCount = 100): Promise<Reminder[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Reminder))
-        .filter(
-          r =>
-            !r.isDeleted &&
-            !isDeleted('reminders', r.id) &&
-            !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id)
-        )
+        .filter(r => {
+          if (r.isDeleted) return false
+          if (isDeleted('reminders', r.id)) {
+            unmarkDeleted('reminders', r.id)
+          }
+          return !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id)
+        })
 
       saveStoredReminders(list)
       return list
@@ -67,12 +69,13 @@ export async function getActiveReminders(): Promise<Reminder[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Reminder))
-        .filter(
-          r =>
-            !r.isDeleted &&
-            !isDeleted('reminders', r.id) &&
-            !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id)
-        )
+        .filter(r => {
+          if (r.isDeleted) return false
+          if (isDeleted('reminders', r.id)) {
+            unmarkDeleted('reminders', r.id)
+          }
+          return !['rem-1', 'rem-2', 'rem-3', 'rem-4', 'rem-5', 'rem-6'].includes(r.id)
+        })
 
       return list
     },

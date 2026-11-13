@@ -14,6 +14,7 @@ import {
   removeStoredVehicle,
   notifyDataChanged,
   isDeleted,
+  unmarkDeleted,
 } from '@/lib/storage-sync'
 import { moveToTrash } from './trash.service'
 
@@ -33,7 +34,14 @@ export async function getVehicles(limitCount?: number): Promise<Vehicle[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Vehicle))
-        .filter(v => !v.isDeleted && !isDeleted('vehicles', v.id))
+        .filter(v => {
+          if (v.isDeleted) return false
+          if (isDeleted('vehicles', v.id)) {
+            unmarkDeleted('vehicles', v.id)
+            if (v.registrationNumber) unmarkDeleted('vehicles', v.registrationNumber)
+          }
+          return true
+        })
 
       saveStoredVehicles(list)
       return list
@@ -54,7 +62,14 @@ export async function getActiveVehicles(): Promise<Vehicle[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Vehicle))
-        .filter(v => !v.isDeleted && !isDeleted('vehicles', v.id))
+        .filter(v => {
+          if (v.isDeleted) return false
+          if (isDeleted('vehicles', v.id)) {
+            unmarkDeleted('vehicles', v.id)
+            if (v.registrationNumber) unmarkDeleted('vehicles', v.registrationNumber)
+          }
+          return true
+        })
       list.sort((a, b) => (a.name || a.registrationNumber).localeCompare(b.name || b.registrationNumber))
       return list
     },

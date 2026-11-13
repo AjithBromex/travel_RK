@@ -87,3 +87,4 @@ export async function deleteBackupPayload(backupId: string): Promise<void> {
     console.warn('[BackupDB] Could not delete backup payload from IndexedDB:', err)
   }
 }
+

@@ -129,6 +129,26 @@ export function unmarkDeleted(entity: string, id: string): void {
   }
 }
 
+export function clearDeletedMarkers(entity?: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (entity) {
+      localStorage.removeItem(`rk_deleted_${entity}`)
+      localStorage.removeItem(`deleted_${entity}`)
+    } else {
+      const keys = ['trips', 'vehicles', 'payments', 'expenses', 'reminders', 'cashbook', 'users', 'trash']
+      for (const k of keys) {
+        localStorage.removeItem(`rk_deleted_${k}`)
+        localStorage.removeItem(`deleted_${k}`)
+      }
+      localStorage.removeItem('rk_permanently_purged_ids')
+      localStorage.removeItem('permanently_purged_ids')
+    }
+  } catch (err) {
+    console.warn('[Sync] Error clearing deleted markers:', err)
+  }
+}
+
 export function isDeleted(entity: string, id: string): boolean {
   if (typeof window === 'undefined') return false
   try {

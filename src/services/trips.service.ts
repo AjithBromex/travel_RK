@@ -27,6 +27,7 @@ import {
   getStoredExpenses,
   removeStoredExpense,
   markAsDeleted,
+  unmarkDeleted,
   getLocalData,
   setLocalData,
   notifyDataChanged,
@@ -61,14 +62,27 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Trip))
-        .filter(t => !t.isDeleted && !isDeleted('trips', t.id) && (!t.tripNumber || !isDeleted('trips', t.tripNumber)))
+        .filter(t => {
+          if (t.isDeleted) return false
+          if (isDeleted('trips', t.id)) {
+            unmarkDeleted('trips', t.id)
+            if (t.tripNumber) unmarkDeleted('trips', t.tripNumber)
+          }
+          return true
+        })
 
       let paymentsList = getStoredPayments()
       try {
         const paySnap = await getDocs(query(collection(db, 'payments'), limit(200)))
         const cloudPayments = paySnap.docs
           .map(d => ({ id: d.id, ...d.data() } as Payment))
-          .filter(p => !p.isDeleted && !isDeleted('payments', p.id))
+          .filter(p => {
+            if (p.isDeleted) return false
+            if (isDeleted('payments', p.id)) {
+              unmarkDeleted('payments', p.id)
+            }
+            return true
+          })
         saveStoredPayments(cloudPayments)
         paymentsList = cloudPayments
       } catch {}
@@ -113,7 +127,14 @@ export async function getRecentTrips(count = 5): Promise<Trip[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Trip))
-        .filter(t => !isDeleted('trips', t.id) && (!t.tripNumber || !isDeleted('trips', t.tripNumber)))
+        .filter(t => {
+          if (t.isDeleted) return false
+          if (isDeleted('trips', t.id)) {
+            unmarkDeleted('trips', t.id)
+            if (t.tripNumber) unmarkDeleted('trips', t.tripNumber)
+          }
+          return true
+        })
       return reconcileTripsWithPayments(list, getStoredPayments())
     },
     { fallback: localFallback }

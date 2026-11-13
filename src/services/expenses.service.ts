@@ -22,6 +22,7 @@ import {
   notifyDataChanged,
   isDeleted,
   markAsDeleted,
+  unmarkDeleted,
 } from '@/lib/storage-sync'
 import { moveToTrash } from './trash.service'
 
@@ -37,13 +38,19 @@ export async function getExpenses(limitCount = 100): Promise<Expense[]> {
       const snap = await getDocs(q)
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Expense))
-        .filter(
-          e =>
-            !e.isDeleted &&
-            !isDeleted('expenses', e.id) &&
-            (!e.tripId || !isDeleted('trips', e.tripId)) &&
-            (!e.tripNumber || !isDeleted('trips', e.tripNumber))
-        )
+        .filter(e => {
+          if (e.isDeleted) return false
+          if (isDeleted('expenses', e.id)) {
+            unmarkDeleted('expenses', e.id)
+          }
+          if (e.tripId && isDeleted('trips', e.tripId)) {
+            unmarkDeleted('trips', e.tripId)
+          }
+          if (e.tripNumber && isDeleted('trips', e.tripNumber)) {
+            unmarkDeleted('trips', e.tripNumber)
+          }
+          return true
+        })
       saveStoredExpenses(list)
       return list
     },

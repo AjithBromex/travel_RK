@@ -222,11 +222,17 @@ export default function BackupsClient({ initialBackups }: BackupsClientProps) {
       })
 
       showToast(
-        `Restoration completed successfully! ${res.totalRestored} records recovered across ${Object.keys(res.collectionCounts).length} collections.`
+        `Restoration completed successfully! ${res.totalRestored} records recovered across ${Object.keys(res.collectionCounts).length} collections. Refreshing system data...`
       )
       setRestoreModalItem(null)
       setRestoreDetails(null)
       await reloadBackups()
+
+      if (typeof window !== 'undefined') {
+        setTimeout(() => {
+          window.location.reload()
+        }, 1200)
+      }
     } catch (err: any) {
       showToast(err.message || 'Failed to restore database from backup.', 'error')
     } finally {
