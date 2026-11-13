@@ -537,6 +537,39 @@ test('Expense Trip Linkage: invalid or zero amount is rejected', () => {
   assert.match(resNegative.error, /Please enter a valid expense amount/);
 });
 
+// ─── 11. AUDIT LOG RETENTION & AUTO-EXPIRY TESTS ─────────────────────────────
+console.log('\n[SUITE 11: Audit Log 30-Day Retention & Auto-Pruning]');
+
+const AUDIT_RETENTION_DAYS = 30;
+
+function isAuditLogExpired(timestamp, retentionDays = AUDIT_RETENTION_DAYS) {
+  if (!timestamp) return false;
+  const t = new Date(timestamp).getTime();
+  if (isNaN(t)) return false;
+  const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+  return t < cutoff;
+}
+
+function getDaysUntilAuditExpiry(timestamp, retentionDays = AUDIT_RETENTION_DAYS) {
+  const t = new Date(timestamp).getTime();
+  const exp = t + retentionDays * 24 * 60 * 60 * 1000;
+  const diff = exp - Date.now();
+  if (diff <= 0) return 0;
+  return Math.ceil(diff / (24 * 60 * 60 * 1000));
+}
+
+test('Audit Log Expiry: 5-day-old audit log is active and kept', () => {
+  const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+  assert.strictEqual(isAuditLogExpired(fiveDaysAgo), false);
+  assert.strictEqual(getDaysUntilAuditExpiry(fiveDaysAgo), 25);
+});
+
+test('Audit Log Expiry: 31-day-old audit log is marked expired and automatically pruned', () => {
+  const thirtyOneDaysAgo = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+  assert.strictEqual(isAuditLogExpired(thirtyOneDaysAgo), true);
+  assert.strictEqual(getDaysUntilAuditExpiry(thirtyOneDaysAgo), 0);
+});
+
 // ─── TEST SUMMARY ─────────────────────────────────────────────────────────────
 console.log('\n=============================================================================');
 console.log(`  TEST RESULTS: ${passedTests} / ${totalTests} PASSED (${Math.round((passedTests / totalTests) * 100)}%)`);

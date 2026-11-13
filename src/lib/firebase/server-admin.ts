@@ -343,3 +343,44 @@ export async function getAdminBackupById(backupId: string): Promise<BackupRecord
 
   return parsed as BackupRecord
 }
+
+/**
+ * Deletes a single audit log from Cloud Firestore using admin authority.
+ */
+export async function deleteAdminAuditLog(logId: string): Promise<boolean> {
+  try {
+    const res = await firestoreRest(`audit_logs/${encodeURIComponent(logId)}`, 'DELETE')
+    return res.status === 200 || res.status === 404
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Prunes audit logs older than retentionDays (default 30) from Cloud Firestore.
+ */
+export async function pruneAdminExpiredAuditLogs(retentionDays = 30): Promise<number> {
+  const cutoffTime = Date.now() - retentionDays * 24 * 60 * 60 * 1000
+  let prunedCount = 0
+
+  const res = await firestoreRest('audit_logs?pageSize=300', 'GET')
+  if (res.status === 200 && res.data?.documents) {
+    for (const doc of res.data.documents) {
+      const docId = doc.name.split('/').pop()
+      const timestampStr = doc.fields?.timestamp?.stringValue
+      if (docId && timestampStr) {
+        const time = new Date(timestampStr).getTime()
+        if (!isNaN(time) && time < cutoffTime) {
+          try {
+            const delRes = await firestoreRest(`audit_logs/${encodeURIComponent(docId)}`, 'DELETE')
+            if (delRes.status === 200 || delRes.status === 404) {
+              prunedCount++
+            }
+          } catch {}
+        }
+      }
+    }
+  }
+  return prunedCount
+}
+

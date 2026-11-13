@@ -19,9 +19,10 @@ import {
   PlusCircle,
   Edit,
   AlertTriangle,
+  Clock,
 } from 'lucide-react'
 import type { AuditLogEntry, AuditAction } from '@/types'
-import { getAuditLogs } from '@/services/audit.service'
+import { getAuditLogs, pruneExpiredAuditLogs, AUDIT_RETENTION_DAYS } from '@/services/audit.service'
 import { subscribeDataChanged } from '@/lib/storage-sync'
 
 interface AuditLogsClientProps {
@@ -87,10 +88,17 @@ const ACTION_CONFIG: Record<
 export default function AuditLogsClient({ initialLogs }: AuditLogsClientProps) {
   const [logs, setLogs] = useState<AuditLogEntry[]>(initialLogs || [])
   const [loading, setLoading] = useState(false)
+  const [pruning, setPruning] = useState(false)
+  const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [search, setSearch] = useState('')
   const [actionFilter, setActionFilter] = useState('all')
   const [collectionFilter, setCollectionFilter] = useState('all')
   const [inspectLog, setInspectLog] = useState<AuditLogEntry | null>(null)
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setFeedback({ message, type })
+    setTimeout(() => setFeedback(null), 4000)
+  }
 
   const reloadLogs = useCallback(async () => {
     setLoading(true)
@@ -103,6 +111,23 @@ export default function AuditLogsClient({ initialLogs }: AuditLogsClientProps) {
       setLoading(false)
     }
   }, [])
+
+  const handlePruneExpired = async () => {
+    setPruning(true)
+    try {
+      const res = await pruneExpiredAuditLogs(AUDIT_RETENTION_DAYS)
+      if (res.prunedCount > 0) {
+        showToast(`Successfully pruned ${res.prunedCount} audit log(s) older than ${AUDIT_RETENTION_DAYS} days.`)
+      } else {
+        showToast(`All audit logs are within the active ${AUDIT_RETENTION_DAYS}-day retention period. No expired records found.`)
+      }
+      await reloadLogs()
+    } catch (err: any) {
+      showToast(err.message || 'Failed to prune expired logs', 'error')
+    } finally {
+      setPruning(false)
+    }
+  }
 
   useEffect(() => {
     // Automatically load logs on client mount
@@ -204,6 +229,16 @@ export default function AuditLogsClient({ initialLogs }: AuditLogsClientProps) {
           </button>
 
           <button
+            onClick={handlePruneExpired}
+            disabled={pruning}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg shadow-sm transition-all cursor-pointer"
+            title="Clean up audit logs older than 30 days"
+          >
+            <Clock className={`w-3.5 h-3.5 ${pruning ? 'animate-spin' : ''}`} />
+            <span>{pruning ? 'Pruning...' : 'Prune >30d'}</span>
+          </button>
+
+          <button
             onClick={exportCsv}
             disabled={logs.length === 0}
             className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-sm transition-all disabled:opacity-50"
@@ -211,6 +246,40 @@ export default function AuditLogsClient({ initialLogs }: AuditLogsClientProps) {
             <Download className="w-3.5 h-3.5 text-slate-500" />
             <span>Export CSV</span>
           </button>
+        </div>
+      </div>
+
+      {/* Feedback Toast */}
+      {feedback && (
+        <div
+          className={`p-3 rounded-xl border text-xs font-medium animate-in fade-in ${
+            feedback.type === 'error'
+              ? 'bg-rose-50 border-rose-200 text-rose-700'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+          }`}
+        >
+          {feedback.message}
+        </div>
+      )}
+
+      {/* 30-Day Retention Policy Notice Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-xl text-xs text-blue-900 shadow-xs">
+        <div className="flex items-start sm:items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="font-bold text-slate-900">30-Day Storage Retention Policy Enforced:</span>
+            <span className="text-slate-600 ml-1">
+              Audit activity logs are safely preserved for <strong>30 days</strong>. Records older than 30 days are automatically deleted from the database to prevent database bloat and keep system queries fast.
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            30 Days Max
+          </span>
         </div>
       </div>
 

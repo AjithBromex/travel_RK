@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createBackup, pruneExpiredBackups, BACKUP_RETENTION_DAYS } from '@/services/backup.service'
 import { verifyAdminAuth } from '@/lib/admin/auth-check'
+import { pruneAdminExpiredAuditLogs } from '@/lib/firebase/server-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,11 +21,12 @@ export async function GET(req: NextRequest) {
       displayName: 'System Automated Scheduler',
     })
 
-    // Execute 30-day retention cleanup
+    // Execute 30-day retention cleanup for both Backups and Audit Logs
     const pruneResult = await pruneExpiredBackups(BACKUP_RETENTION_DAYS, {
       uid: 'system_scheduler',
       email: 'cron@rktravelhub.internal',
     })
+    const prunedAuditLogs = await pruneAdminExpiredAuditLogs(30)
 
     return NextResponse.json({
       ok: true,
@@ -35,6 +37,7 @@ export async function GET(req: NextRequest) {
       retentionPolicyDays: BACKUP_RETENTION_DAYS,
       expiresAt: record.expiresAt,
       prunedExpiredBackups: pruneResult.prunedCount,
+      prunedAuditLogs,
     })
   } catch (err: unknown) {
     return NextResponse.json(
@@ -43,3 +46,4 @@ export async function GET(req: NextRequest) {
     )
   }
 }
+
