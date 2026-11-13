@@ -55,14 +55,41 @@ service cloud.firestore {
       allow read, create, update, delete: if isAuthenticated();
     }
 
-    // 3. System & Audit Logs (Immutable: cannot be edited or deleted by anyone)
-    match /auditLogs/{id} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated();
-      allow update, delete: if false;
+    match /settings/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // 4. Default: deny everything else
+    // 3. Trash & Recovery System
+    // - Authenticated staff and admins can move documents to trash and restore them
+    // - Permanent purge is restricted to authorized administrators
+    match /trash/{id} {
+      allow read, create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    // 4. Backup & Disaster Recovery System (30-day retention)
+    // - Authenticated administrators can manage and restore database snapshots
+    match /backups/{id} {
+      allow read, create, update, delete: if isAuthenticated();
+    }
+
+    // 5. System & Audit Logs (Immutable activity trail)
+    match /audit_logs/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /auditLogs/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // 6. Default: deny everything else
     match /{document=**} {
       allow read, write: if false;
     }
