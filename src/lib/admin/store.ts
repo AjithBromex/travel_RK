@@ -1,8 +1,22 @@
 // Real database store backed by Firestore Cloud Database.
 import { MODULES } from './modules';
+import { getAdminToken } from '@/lib/firebase/server-admin';
 
 const PROJECT_ID = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'rk-travels-1f4f3';
 const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+
+async function getAdminHeaders(extra: Record<string, string> = {}): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { ...extra };
+  try {
+    const token = await getAdminToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  } catch {
+    // If admin token cannot be acquired, proceed with extra headers
+  }
+  return headers;
+}
 
 function getEndpoint(col: string, docId?: string) {
   const base = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${col}`;
@@ -232,10 +246,12 @@ const STALE_CACHE_TTL_MS = 600_000; // 10 minutes stale-while-revalidate
 async function backgroundRevalidateRows(slug: string): Promise<void> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
     const url = getEndpoint(slug) + (API_KEY ? '&pageSize=200' : '?pageSize=200');
+    const headers = await getAdminHeaders();
     const res = await fetch(url, {
       cache: 'no-store',
+      headers,
       signal: controller.signal,
     }).finally(() => clearTimeout(timeoutId));
 
@@ -266,14 +282,16 @@ export async function listRows(slug: string): Promise<Record<string, unknown>[]>
     return cached.data;
   }
 
-  // 3. Cold start: fast fetch with 450ms strict timeout so SSR never blocks navigation
+  // 3. Cold start: fast authenticated fetch with 3500ms timeout
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 450);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     const url = getEndpoint(slug) + (API_KEY ? '&pageSize=200' : '?pageSize=200');
+    const headers = await getAdminHeaders();
     const res = await fetch(url, {
       cache: 'no-store',
+      headers,
       signal: controller.signal,
     }).finally(() => clearTimeout(timeoutId));
 
@@ -353,7 +371,7 @@ export async function createRow(slug: string, body: Record<string, unknown>): Pr
 
   const res = await fetch(getEndpoint(slug), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await getAdminHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ fields }),
   });
 
@@ -401,7 +419,7 @@ export async function updateRow(slug: string, id: string, body: Record<string, u
 
   const res = await fetch(getEndpoint(slug, id), {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await getAdminHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ fields }),
   });
 
@@ -415,13 +433,16 @@ export async function updateRow(slug: string, id: string, body: Record<string, u
 
 export async function deleteRow(slug: string, id: string): Promise<boolean> {
   try {
+    const adminHeaders = await getAdminHeaders();
+    const adminJsonHeaders = await getAdminHeaders({ 'Content-Type': 'application/json' });
+
     if (slug === 'trips') {
       try {
         const urlPay = getEndpoint('payments') + (API_KEY ? '&pageSize=300' : '?pageSize=300');
         const urlExp = getEndpoint('expenses') + (API_KEY ? '&pageSize=300' : '?pageSize=300');
         const [payRes, expRes] = await Promise.all([
-          fetch(urlPay, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
-          fetch(urlExp, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
+          fetch(urlPay, { cache: 'no-store', headers: adminHeaders }).then((r) => (r.ok ? r.json() : null)),
+          fetch(urlExp, { cache: 'no-store', headers: adminHeaders }).then((r) => (r.ok ? r.json() : null)),
         ]);
 
         if (payRes && payRes.documents) {
@@ -433,7 +454,7 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
               dec.tripRef === id ||
               (typeof dec.tripRef === 'string' && dec.tripRef.includes(id))
             ) {
-              await fetch(getEndpoint('payments', dec.id), { method: 'DELETE' }).catch(() => {});
+              await fetch(getEndpoint('payments', dec.id), { method: 'DELETE', headers: adminHeaders }).catch(() => {});
             }
           }
         }
@@ -442,7 +463,7 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
           for (const d of expRes.documents) {
             const dec = decodeDoc(d);
             if (dec.tripId === id || dec.tripNumber === id) {
-              await fetch(getEndpoint('expenses', dec.id), { method: 'DELETE' }).catch(() => {});
+              await fetch(getEndpoint('expenses', dec.id), { method: 'DELETE', headers: adminHeaders }).catch(() => {});
             }
           }
         }
@@ -453,13 +474,13 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
 
     if (slug === 'payments') {
       try {
-        const payRes = await fetch(getEndpoint('payments', id), { cache: 'no-store' });
+        const payRes = await fetch(getEndpoint('payments', id), { cache: 'no-store', headers: adminHeaders });
         if (payRes.ok) {
           const payDoc = decodeDoc(await payRes.json());
           const targetTripId = payDoc.tripId || payDoc.tripNumber;
           if (targetTripId && targetTripId !== 'general') {
-            const tripsRes = await fetch(getEndpoint('trips') + (API_KEY ? '&pageSize=300' : '?pageSize=300'), { cache: 'no-store' });
-            const allPayRes = await fetch(getEndpoint('payments') + (API_KEY ? '&pageSize=300' : '?pageSize=300'), { cache: 'no-store' });
+            const tripsRes = await fetch(getEndpoint('trips') + (API_KEY ? '&pageSize=300' : '?pageSize=300'), { cache: 'no-store', headers: adminHeaders });
+            const allPayRes = await fetch(getEndpoint('payments') + (API_KEY ? '&pageSize=300' : '?pageSize=300'), { cache: 'no-store', headers: adminHeaders });
             if (tripsRes.ok && allPayRes.ok) {
               const tripsData = await tripsRes.json();
               const allPayData = await allPayRes.json();
@@ -505,7 +526,7 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
                 const patchUrl = `${getEndpoint('trips', targetTrip.id)}${API_KEY ? '&' : '?'}updateMask.fieldPaths=customerPaid&updateMask.fieldPaths=customerBalance&updateMask.fieldPaths=driverPaid&updateMask.fieldPaths=driverBalance&updateMask.fieldPaths=advanceReceived&updateMask.fieldPaths=updatedAt`;
                 await fetch(patchUrl, {
                   method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: adminJsonHeaders,
                   body: JSON.stringify({
                     fields: {
                       customerPaid: encodeFirestoreValue(trueCustPaid),
@@ -535,7 +556,7 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
 
     const res = await fetch(patchUrl, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: adminJsonHeaders,
       body: JSON.stringify({
         fields: {
           isDeleted: encodeFirestoreValue(true),
@@ -549,7 +570,7 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
     try {
       let existingDocData: Record<string, any> = {};
       try {
-        const getRes = await fetch(getEndpoint(slug, id), { cache: 'no-store' });
+        const getRes = await fetch(getEndpoint(slug, id), { cache: 'no-store', headers: adminHeaders });
         if (getRes.ok) {
           existingDocData = decodeDoc(await getRes.json());
         }
@@ -576,7 +597,7 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
       const trashUrl = `${getEndpoint('trash', trashId)}${API_KEY ? '&' : '?'}${updateMaskParams}`;
       await fetch(trashUrl, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: adminJsonHeaders,
         body: JSON.stringify({
           fields: {
             id: encodeFirestoreValue(trashId),
@@ -609,7 +630,7 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
       const auditUrl = `${getEndpoint('audit_logs', auditId)}${API_KEY ? '&' : '?'}${auditMask}`;
       await fetch(auditUrl, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: adminJsonHeaders,
         body: JSON.stringify({
           fields: {
             id: encodeFirestoreValue(auditId),

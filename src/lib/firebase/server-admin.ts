@@ -22,8 +22,8 @@ export async function getAdminToken(): Promise<string> {
   }
 
   const postData = JSON.stringify({
-    email: 'admin@gmail.com',
-    password: 'admin123',
+    email: process.env.ADMIN_USER || 'admin@gmail.com',
+    password: process.env.ADMIN_PASS || 'admin123',
     returnSecureToken: true,
   })
 

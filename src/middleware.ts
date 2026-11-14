@@ -26,11 +26,6 @@ function constantTimeCompare(a: string, b: string): boolean {
 async function verifyEdgeAdminToken(token?: string | null): Promise<boolean> {
   if (!token || typeof token !== 'string') return false;
 
-  // Direct secret backward compatibility for existing active sessions
-  if (constantTimeCompare(token, ADMIN_SECRET)) {
-    return true;
-  }
-
   const parts = token.split('.');
   if (parts.length !== 2) return false;
   const [payload, sig] = parts;
@@ -78,6 +73,9 @@ export async function middleware(req: NextRequest) {
     res.headers.set('X-Frame-Options', 'SAMEORIGIN');
     res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    if (process.env.NODE_ENV === 'production') {
+      res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
     return res;
   };
 

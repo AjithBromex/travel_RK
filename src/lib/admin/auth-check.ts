@@ -48,11 +48,6 @@ export function createAdminSessionToken(): string {
 export function verifyAdminSessionToken(token?: string | null): boolean {
   if (!token || typeof token !== 'string') return false;
 
-  // Backward compatibility check for existing active sessions during deploy
-  if (secureCompare(token, ADMIN_SECRET)) {
-    return true;
-  }
-
   const parts = token.split('.');
   if (parts.length !== 2) return false;
 

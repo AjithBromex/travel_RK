@@ -570,6 +570,86 @@ test('Audit Log Expiry: 31-day-old audit log is marked expired and automatically
   assert.strictEqual(getDaysUntilAuditExpiry(thirtyOneDaysAgo), 0);
 });
 
+// ─── 12. ADMIN AUTH HARDENING & CREDENTIAL PRECEDENCE TESTS ─────────────────
+console.log('\n[SUITE 12: Admin Authentication Hardening & Bypass Prevention]');
+
+function secureCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a, 'utf-8');
+  const bufB = Buffer.from(b, 'utf-8');
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
+function validateLoginCredentials(username, password, envUser, envPass) {
+  const hasConfiguredPass = Boolean(envPass);
+  const hasConfiguredUser = Boolean(envUser);
+  const configuredUser = (envUser || 'admin@gmail.com').toLowerCase().trim();
+  const configuredPass = (envPass || 'admin123').trim();
+  const inputUser = String(username || '').toLowerCase().trim();
+  const inputPass = String(password || '').trim();
+  if (!inputUser || !inputPass) return false;
+
+  const isValidUser =
+    secureCompare(inputUser, configuredUser) ||
+    (!hasConfiguredUser && (secureCompare(inputUser, 'admin@gmail.com') || secureCompare(inputUser, 'admin')));
+
+  const isValidPass =
+    secureCompare(inputPass, configuredPass) ||
+    (!hasConfiguredPass && secureCompare(inputPass, 'admin123'));
+
+  return isValidUser && isValidPass;
+}
+
+test('Login Security: configured ADMIN_PASS strictly rejects default admin123 bypass', () => {
+  const envPass = 'CustomProductionKey#99!';
+  // Default password MUST fail when custom password is set
+  assert.strictEqual(validateLoginCredentials('admin@gmail.com', 'admin123', null, envPass), false);
+  // Custom password MUST succeed
+  assert.strictEqual(validateLoginCredentials('admin@gmail.com', envPass, null, envPass), true);
+});
+
+test('Login Security: default admin123 is only accepted when ADMIN_PASS is unset', () => {
+  assert.strictEqual(validateLoginCredentials('admin@gmail.com', 'admin123', null, undefined), true);
+  assert.strictEqual(validateLoginCredentials('admin', 'admin123', null, undefined), true);
+  assert.strictEqual(validateLoginCredentials('admin@gmail.com', 'wrongpassword', null, undefined), false);
+});
+
+test('Session Security: raw ADMIN_SECRET string cannot be used directly as a session token', () => {
+  // Raw secret has no HMAC signature, format is not payload.sig
+  assert.strictEqual(mockVerifyToken(TEST_SECRET), false);
+  assert.strictEqual(mockVerifyToken('rk-travel-admin-secret-2026-key'), false);
+});
+
+// ─── 13. SECURITY HEADERS & HSTS POLICY ENFORCEMENT ─────────────────────────
+console.log('\n[SUITE 13: Security Headers & Transport Security (HSTS) Enforcement]');
+
+function getSecurityHeaders(isProduction = false) {
+  const headers = {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  };
+  if (isProduction) {
+    headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
+  }
+  return headers;
+}
+
+test('Security Headers: nosniff, SAMEORIGIN, and Referrer-Policy are enforced', () => {
+  const devHeaders = getSecurityHeaders(false);
+  assert.strictEqual(devHeaders['X-Content-Type-Options'], 'nosniff');
+  assert.strictEqual(devHeaders['X-Frame-Options'], 'SAMEORIGIN');
+  assert.strictEqual(devHeaders['Referrer-Policy'], 'strict-origin-when-cross-origin');
+  assert.strictEqual(devHeaders['Strict-Transport-Security'], undefined);
+});
+
+test('Security Headers: HSTS max-age=31536000 is enforced in production', () => {
+  const prodHeaders = getSecurityHeaders(true);
+  assert.strictEqual(prodHeaders['Strict-Transport-Security'], 'max-age=31536000; includeSubDomains');
+});
+
 // ─── TEST SUMMARY ─────────────────────────────────────────────────────────────
 console.log('\n=============================================================================');
 console.log(`  TEST RESULTS: ${passedTests} / ${totalTests} PASSED (${Math.round((passedTests / totalTests) * 100)}%)`);

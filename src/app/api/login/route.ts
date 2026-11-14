@@ -33,6 +33,9 @@ export async function POST(req: NextRequest) {
 
     const { username, password } = await req.json().catch(() => ({}));
 
+    const hasConfiguredPass = Boolean(process.env.ADMIN_PASS);
+    const hasConfiguredUser = Boolean(process.env.ADMIN_USER);
+
     const configuredUser = (process.env.ADMIN_USER || 'admin@gmail.com').toLowerCase().trim();
     const configuredPass = (process.env.ADMIN_PASS || 'admin123').trim();
 
@@ -45,12 +48,11 @@ export async function POST(req: NextRequest) {
 
     const isValidUser =
       secureCompare(inputUser, configuredUser) ||
-      secureCompare(inputUser, 'admin@gmail.com') ||
-      secureCompare(inputUser, 'admin');
+      (!hasConfiguredUser && (secureCompare(inputUser, 'admin@gmail.com') || secureCompare(inputUser, 'admin')));
 
     const isValidPass =
       secureCompare(inputPass, configuredPass) ||
-      secureCompare(inputPass, 'admin123');
+      (!hasConfiguredPass && secureCompare(inputPass, 'admin123'));
 
     if (!isValidUser || !isValidPass) {
       // Record failed attempt
