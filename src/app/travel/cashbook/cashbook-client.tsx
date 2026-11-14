@@ -836,6 +836,11 @@ export default function CashBookClient({
                     unlinkedLabel="Select trip (General Inflow/Outflow)"
                     showDueBadge={true}
                   />
+                  {formDirection === "outflow" && form.tripId && form.tripId !== "general" && form.type !== "driver_payment" && (
+                    <p className="mt-1 text-[10px] text-blue-700 font-medium">
+                      💡 Expense will be automatically added to the trip amount.
+                    </p>
+                  )}
                 </div>
 
                 <div>

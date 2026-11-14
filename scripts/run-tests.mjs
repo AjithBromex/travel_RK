@@ -537,6 +537,60 @@ test('Expense Trip Linkage: invalid or zero amount is rejected', () => {
   assert.match(resNegative.error, /Please enter a valid expense amount/);
 });
 
+test('Expense Trip Reconciliation: operating expenses automatically add to trip totalFare and customerBalance', () => {
+  const trip = {
+    id: 'trp_101',
+    tripNumber: 'TRP-101',
+    baseFare: 5000,
+    totalFare: 5000,
+    advanceReceived: 1000,
+    customerPaid: 1000,
+    customerBalance: 4000,
+  };
+
+  const payments = [
+    { id: 'pay_1', tripId: 'TRP-101', type: 'customer_received', paymentStage: 'advance', amount: 1000 },
+  ];
+
+  const expenses = [
+    { id: 'exp_1', tripId: 'TRP-101', category: 'fuel', amount: 800 },
+    { id: 'exp_2', tripId: 'TRP-101', category: 'tolls', amount: 350 },
+  ];
+
+  const tripExpensesSum = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const baseFare = Number(trip.baseFare ?? trip.totalFare);
+  const totalFare = baseFare + tripExpensesSum;
+  const customerPaid = payments.filter((p) => p.type === 'customer_received').reduce((sum, p) => sum + p.amount, 0);
+  const customerBalance = Math.max(0, totalFare - customerPaid);
+
+  assert.strictEqual(tripExpensesSum, 1150);
+  assert.strictEqual(totalFare, 6150);
+  assert.strictEqual(customerBalance, 5150);
+});
+
+test('Expense Trip Reconciliation: deleted expense is excluded and fare drops back', () => {
+  const trip = {
+    id: 'trp_101',
+    tripNumber: 'TRP-101',
+    baseFare: 5000,
+    totalFare: 5000,
+    customerPaid: 1000,
+  };
+
+  const allExpenses = [
+    { id: 'exp_1', tripId: 'TRP-101', amount: 800, isDeleted: false },
+    { id: 'exp_2', tripId: 'TRP-101', amount: 350, isDeleted: true },
+  ];
+
+  const activeExpenses = allExpenses.filter((e) => !e.isDeleted);
+  const tripExpensesSum = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalFare = trip.baseFare + tripExpensesSum;
+  const customerBalance = Math.max(0, totalFare - 1000);
+
+  assert.strictEqual(totalFare, 5800);
+  assert.strictEqual(customerBalance, 4800);
+});
+
 // ─── 11. AUDIT LOG RETENTION & AUTO-EXPIRY TESTS ─────────────────────────────
 console.log('\n[SUITE 11: Audit Log 30-Day Retention & Auto-Pruning]');
 

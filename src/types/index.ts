@@ -68,6 +68,7 @@ export interface Trip extends SoftDeleteMetadata {
   advanceReceived: number
   driverAgreedPay: number
   totalFare: number
+  totalExpenses?: number
   customerPaid: number
   customerBalance: number
   driverPaid: number

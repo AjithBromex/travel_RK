@@ -25,6 +25,7 @@ import {
   saveStoredPayments,
   removeStoredPayment,
   getStoredExpenses,
+  saveStoredExpenses,
   removeStoredExpense,
   markAsDeleted,
   unmarkDeleted,
@@ -52,7 +53,7 @@ export {
 const COLLECTION = 'trips'
 
 export async function getTrips(limitCount = 100): Promise<Trip[]> {
-  const localFallback = reconcileTripsWithPayments(getStoredTrips(), getStoredPayments())
+  const localFallback = reconcileTripsWithPayments(getStoredTrips(), getStoredPayments(), getStoredExpenses())
 
   return withCache(
     `trips:list:${limitCount}`,
@@ -76,6 +77,7 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
             status: data.status || 'scheduled',
             customerName: data.customerName || (data as any).customer || data.tripNumber || d.id,
             tripDate: data.tripDate || (data as any).startDate || new Date().toISOString().slice(0, 10),
+            baseFare: Number(data.baseFare ?? (data.totalFare || (data as any).amount || 0)),
             totalFare: Number(data.totalFare || (data as any).amount || 0),
             from: data.from || 'Tirur',
             to: data.to || 'Chennai',
@@ -107,7 +109,23 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
         paymentsList = cloudPayments
       } catch {}
 
-      const reconciled = reconcileTripsWithPayments(list, paymentsList)
+      let expensesList = getStoredExpenses()
+      try {
+        const expSnap = await getDocs(query(collection(db, 'expenses'), limit(200)))
+        const cloudExpenses = expSnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Expense))
+          .filter(e => {
+            if (e.isDeleted) return false
+            if (isDeleted('expenses', e.id)) {
+              unmarkDeleted('expenses', e.id)
+            }
+            return true
+          })
+        saveStoredExpenses(cloudExpenses)
+        expensesList = cloudExpenses
+      } catch {}
+
+      const reconciled = reconcileTripsWithPayments(list, paymentsList, expensesList)
       saveStoredTrips(reconciled)
 
       // Sync Firestore trip documents if they differ from reconciled amounts
@@ -115,12 +133,16 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
         const raw = list.find((t) => t.id === rTrip.id)
         if (
           raw &&
-          (Number(raw.advanceReceived || 0) !== Number(rTrip.advanceReceived || 0) ||
+          (Number(raw.totalFare || 0) !== Number(rTrip.totalFare || 0) ||
+            Number(raw.advanceReceived || 0) !== Number(rTrip.advanceReceived || 0) ||
             Number(raw.customerPaid || 0) !== Number(rTrip.customerPaid || 0) ||
             Number(raw.customerBalance || 0) !== Number(rTrip.customerBalance || 0))
         ) {
           try {
             updateDoc(doc(db, COLLECTION, rTrip.id), {
+              baseFare: rTrip.baseFare,
+              totalFare: rTrip.totalFare,
+              totalExpenses: (rTrip as any).totalExpenses || 0,
               advanceReceived: rTrip.advanceReceived,
               customerPaid: rTrip.customerPaid,
               customerBalance: rTrip.customerBalance,
@@ -137,7 +159,7 @@ export async function getTrips(limitCount = 100): Promise<Trip[]> {
 }
 
 export async function getRecentTrips(count = 5): Promise<Trip[]> {
-  const localFallback = reconcileTripsWithPayments(getStoredTrips().slice(0, count), getStoredPayments())
+  const localFallback = reconcileTripsWithPayments(getStoredTrips().slice(0, count), getStoredPayments(), getStoredExpenses())
 
   return withCache(
     `trips:recent:${count}`,
@@ -169,22 +191,24 @@ export async function getRecentTrips(count = 5): Promise<Trip[]> {
 
 export async function getTripById(id: string): Promise<Trip | null> {
   const local = getStoredTrips().find(t => t.id === id || t.tripNumber === id) || null
+  const localReconciled = local ? reconcileTripWithPayments(local) : null
 
   return withCache(
     `trips:id:${id}`,
     async () => {
       await waitForAuthReady()
       const snap = await getDoc(doc(db, COLLECTION, id))
-      if (!snap.exists()) return local
-      return { id: snap.id, ...snap.data() } as Trip
+      if (!snap.exists()) return localReconciled
+      const cloudTrip = { id: snap.id, ...snap.data() } as Trip
+      return reconcileTripWithPayments(cloudTrip)
     },
-    { fallback: local }
+    { fallback: localReconciled }
   )
 }
 
 export async function getTodayTrips(): Promise<Trip[]> {
   const today = new Date().toISOString().split('T')[0]
-  const localFallback = getStoredTrips().filter(t => t.tripDate === today)
+  const localFallback = reconcileTripsWithPayments(getStoredTrips().filter(t => t.tripDate === today))
 
   return withCache(
     `trips:today:${today}`,
@@ -193,14 +217,14 @@ export async function getTodayTrips(): Promise<Trip[]> {
       const q = query(collection(db, COLLECTION), where('tripDate', '==', today))
       const snap = await getDocs(q)
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Trip))
-      return list
+      return reconcileTripsWithPayments(list)
     },
     { fallback: localFallback }
   )
 }
 
 export async function getTripsByStatus(status: TripStatus): Promise<Trip[]> {
-  const localFallback = getStoredTrips().filter(t => t.status === status)
+  const localFallback = reconcileTripsWithPayments(getStoredTrips().filter(t => t.status === status))
 
   return withCache(
     `trips:status:${status}`,
@@ -209,7 +233,7 @@ export async function getTripsByStatus(status: TripStatus): Promise<Trip[]> {
       const q = query(collection(db, COLLECTION), where('status', '==', status), orderBy('createdAt', 'desc'))
       const snap = await getDocs(q)
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Trip))
-      return list
+      return reconcileTripsWithPayments(list)
     },
     { fallback: localFallback }
   )

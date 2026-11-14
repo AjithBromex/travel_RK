@@ -162,7 +162,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
     // Cross-page real-time sync listener
     const unsubscribe = subscribeDataChanged((entity) => {
-      if (entity === "trips" || entity === "payments" || entity === "all") {
+      if (entity === "trips" || entity === "payments" || entity === "expenses" || entity === "all") {
         fetchTripsData();
       }
       if (entity === "vehicles" || entity === "all") {
@@ -1603,6 +1603,14 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                           <span className="font-extrabold font-mono text-slate-900">
                             ₹{Number(trip.totalFare).toLocaleString("en-IN")}
                           </span>
+                          {Number((trip as any).totalExpenses) > 0 && (
+                            <span
+                              className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200/60 px-1 rounded"
+                              title={`Includes ₹${Number((trip as any).totalExpenses).toLocaleString("en-IN")} expenses added to trip amount`}
+                            >
+                              +₹{Number((trip as any).totalExpenses).toLocaleString("en-IN")} exp
+                            </span>
+                          )}
                           {Number(trip.advanceReceived) > 0 && (
                             <span className="text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-200/60 px-1 rounded">
                               Adv: ₹{Number(trip.advanceReceived).toLocaleString("en-IN")}
@@ -1726,6 +1734,14 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                           <span className="text-xs font-black font-mono text-slate-900">
                             ₹{Number(trip.totalFare).toLocaleString("en-IN")}
                           </span>
+                          {Number((trip as any).totalExpenses) > 0 && (
+                            <span
+                              className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200/60 px-1 rounded"
+                              title={`Includes ₹${Number((trip as any).totalExpenses).toLocaleString("en-IN")} expenses added to trip amount`}
+                            >
+                              +₹{Number((trip as any).totalExpenses).toLocaleString("en-IN")} exp
+                            </span>
+                          )}
                           {Number(trip.advanceReceived) > 0 && (
                             <span className="text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-200/60 px-1 rounded">
                               Adv: ₹{Number(trip.advanceReceived).toLocaleString("en-IN")}

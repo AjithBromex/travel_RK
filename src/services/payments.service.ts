@@ -3,7 +3,7 @@ import {
   query, where, orderBy, limit,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
-import type { Payment, Trip } from '@/types'
+import type { Payment, Trip, Expense } from '@/types'
 import { withCache, invalidateCache } from '@/lib/cache'
 import {
   waitForAuthReady,
@@ -13,6 +13,7 @@ import {
   removeStoredPayment,
   getStoredTrips,
   upsertStoredTrip,
+  getStoredExpenses,
   notifyDataChanged,
   isDeleted,
   markAsDeleted,
@@ -38,11 +39,38 @@ export function isPaymentLinkedToTrip(payment: Partial<Payment>, trip: Partial<T
   );
 }
 
-export function reconcileTripWithPayments(trip: Trip, allPayments?: Payment[]): Trip {
+export function isExpenseLinkedToTrip(expense: Partial<Expense>, trip: Partial<Trip>): boolean {
+  if (!expense || !expense.tripId || expense.tripId === 'general') return false;
+  const eId = String(expense.tripId).trim().toLowerCase();
+  const eNum = String((expense as any).tripNumber || '').trim().toLowerCase();
+  const tId = String(trip.id || '').trim().toLowerCase();
+  const tNum = String(trip.tripNumber || '').trim().toLowerCase();
+  const tRec = String(trip.receiptNumber || '').trim().toLowerCase();
+
+  return (
+    (tId !== '' && (eId === tId || eNum === tId)) ||
+    (tNum !== '' && (eId === tNum || eNum === tNum)) ||
+    (tRec !== '' && (eId === tRec || eNum === tRec)) ||
+    (tRec !== '' && (eId.replace(/^#/, '') === tRec.replace(/^#/, '') || eNum.replace(/^#/, '') === tRec.replace(/^#/, '')))
+  );
+}
+
+export function reconcileTripWithPayments(
+  trip: Trip,
+  allPayments?: Payment[],
+  allExpenses?: Expense[]
+): Trip {
   const paymentsList = allPayments || getStoredPayments();
+  const expensesList = allExpenses || getStoredExpenses();
+
   const activePayments = paymentsList.filter(
     (p) => !isDeleted('payments', p.id) && isPaymentLinkedToTrip(p, trip)
   );
+
+  const activeExpenses = expensesList.filter(
+    (e) => !isDeleted('expenses', e.id) && isExpenseLinkedToTrip(e, trip)
+  );
+  const tripExpensesSum = activeExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
   const customerPayments = activePayments.filter((p) => p.type === 'customer_received');
   const customerPaidSum = customerPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
@@ -57,12 +85,16 @@ export function reconcileTripWithPayments(trip: Trip, allPayments?: Payment[]): 
   );
   const advanceFromPayments = advancePayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-  // Advance received and customer paid are strictly derived from active customer payment vouchers.
-  // When an advance voucher is deleted, advanceReceived is 0 and full fare is due!
   const effectiveAdvanceReceived = advanceFromPayments;
   const trueCustomerPaid = customerPaidSum;
 
-  const totalFare = Number(trip.totalFare ?? (Number(trip.baseFare || 0) + Number(trip.extraKmCharge || 0))) || 0;
+  // Base agreed fare for the trip
+  const baseFare = Number(
+    trip.baseFare ?? (Number((trip as any).amount) || Number(trip.totalFare) || 0)
+  ) || 0;
+
+  // Operating expenses incurred for this trip are added to the trip amount
+  const totalFare = baseFare + tripExpensesSum;
   const agreedDriverPay = Number(trip.driverAgreedPay) || 0;
 
   const trueCustomerBalance = Math.max(0, totalFare - trueCustomerPaid);
@@ -71,6 +103,9 @@ export function reconcileTripWithPayments(trip: Trip, allPayments?: Payment[]): 
 
   return {
     ...trip,
+    baseFare,
+    totalExpenses: tripExpensesSum,
+    totalFare,
     advanceReceived: effectiveAdvanceReceived,
     customerPaid: trueCustomerPaid,
     customerBalance: trueCustomerBalance,
@@ -79,9 +114,14 @@ export function reconcileTripWithPayments(trip: Trip, allPayments?: Payment[]): 
   };
 }
 
-export function reconcileTripsWithPayments(trips: Trip[], allPayments?: Payment[]): Trip[] {
+export function reconcileTripsWithPayments(
+  trips: Trip[],
+  allPayments?: Payment[],
+  allExpenses?: Expense[]
+): Trip[] {
   const paymentsList = allPayments || getStoredPayments();
-  return (trips || []).map((t) => reconcileTripWithPayments(t, paymentsList));
+  const expensesList = allExpenses || getStoredExpenses();
+  return (trips || []).map((t) => reconcileTripWithPayments(t, paymentsList, expensesList));
 }
 
 export function sortPaymentsRecentFirst(list: Payment[]): Payment[] {
