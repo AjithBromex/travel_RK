@@ -23,7 +23,6 @@ import {
   IndianRupee,
   Bus,
   Receipt,
-  Calculator,
   Users,
   UserCheck,
   ArrowLeftRight,
@@ -256,33 +255,18 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
   // Auto calculate fare
   const fareCalcs = useMemo(() => {
-    const start = Number(form.startingKm) || 0;
-    const end = Number(form.endingKm) || 0;
-    const distance = Math.max(0, end - start);
-    const included = Number(form.includedKm) || 0;
-    const extraKm = Math.max(0, distance - included);
-    const rate = Number(form.extraKmRate) || 0;
-    const extraCharge = extraKm * rate;
-    const base = Number(form.baseFare) || 0;
-    const totalFare = base + extraCharge;
+    const totalFare = Number(form.baseFare) || 0;
     const advance = Number(form.advanceReceived) || 0;
     const balance = Math.max(0, totalFare - advance);
 
     return {
-      distance,
-      extraKm,
-      extraCharge,
+      distance: 0,
+      extraKm: 0,
+      extraCharge: 0,
       totalFare,
       balance,
     };
-  }, [
-    form.startingKm,
-    form.endingKm,
-    form.includedKm,
-    form.extraKmRate,
-    form.baseFare,
-    form.advanceReceived,
-  ]);
+  }, [form.baseFare, form.advanceReceived]);
 
   const handleVehicleChange = (vehicleId: string) => {
     const list = vehicleList.length > 0 ? vehicleList : vehicles;
@@ -468,7 +452,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       endingKm: trip.endingKm || 0,
       includedKm: trip.includedKm || 100,
       extraKmRate: trip.extraKmRate || 25,
-      baseFare: trip.baseFare || 0,
+      baseFare: trip.baseFare || trip.totalFare || (trip as any).amount || 0,
       advanceReceived: trip.advanceReceived || 0,
       status: trip.status || "scheduled",
       notes: trip.notes || "",
@@ -556,6 +540,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
       const assignedReceiptNo = (form.receiptNumber && form.receiptNumber.trim()) || getNextReceiptNumber(trips);
 
+      const tripAmount = Number(form.baseFare) || 0;
       const tripPayload = {
         receiptNumber: assignedReceiptNo,
         tripDate: form.tripDate,
@@ -572,12 +557,12 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         endingKm: Number(form.endingKm) || 0,
         includedKm: Number(form.includedKm) || 0,
         extraKmRate: Number(form.extraKmRate) || 0,
-        extraKmCharge: fareCalcs.extraCharge,
-        baseFare: Number(form.baseFare) || 0,
-        totalFare: fareCalcs.totalFare,
+        extraKmCharge: 0,
+        baseFare: tripAmount,
+        totalFare: tripAmount,
         advanceReceived: Number(form.advanceReceived) || 0,
         customerPaid: Number(form.advanceReceived) || 0,
-        customerBalance: fareCalcs.balance,
+        customerBalance: Math.max(0, tripAmount - (Number(form.advanceReceived) || 0)),
         driverPaid: 0,
         driverBalance: Number(form.driverAgreedPay) || 0,
         status: form.status,
@@ -1381,121 +1366,28 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                 </div>
               </div>
 
-              {/* Row 5: Start KM, End KM, Included KM */}
-              <div className="grid grid-cols-3 gap-2.5">
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
-                    START KM
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.startingKm}
-                    onChange={(e) => setForm({ ...form, startingKm: Number(e.target.value) })}
-                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 outline-none focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
-                    END KM
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.endingKm}
-                    onChange={(e) => setForm({ ...form, endingKm: Number(e.target.value) })}
-                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 outline-none focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
-                    INCLUDED KM
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.includedKm}
-                    onChange={(e) => setForm({ ...form, includedKm: Number(e.target.value) })}
-                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              {/* Fare & Billing Calculation Box */}
-              <div className="bg-[#F0F6FE] border border-blue-100 rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-blue-100/80">
-                  <div className="flex items-center gap-2">
-                    <Calculator className="w-4 h-4 text-blue-600" />
-                    <span className="text-xs font-bold text-slate-800">
-                      Fare &amp; Billing Calculation
-                    </span>
-                  </div>
-                  <span className="text-sm font-black text-[#0D62FE] font-mono">
-                    Total : ₹{fareCalcs.totalFare.toLocaleString("en-IN")}
+              {/* Row 5: Amount */}
+              <div>
+                <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
+                  AMOUNT (₹) <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs pointer-events-none">
+                    ₹
                   </span>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Enter trip amount (e.g. 5000)"
+                    value={form.baseFare === 0 ? "" : form.baseFare}
+                    onChange={(e) => {
+                      const val = e.target.value === "" ? 0 : Number(e.target.value);
+                      setForm((prev) => ({ ...prev, baseFare: val }));
+                    }}
+                    className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400 font-mono"
+                    required
+                  />
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                      Base Fare (₹)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={form.baseFare}
-                      onChange={(e) => setForm({ ...form, baseFare: Number(e.target.value) })}
-                      className="w-full px-2.5 py-1.5 bg-white border border-blue-200/80 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                      Extra Rate (₹/km)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={form.extraKmRate}
-                      onChange={(e) => setForm({ ...form, extraKmRate: Number(e.target.value) })}
-                      className="w-full px-2.5 py-1.5 bg-white border border-blue-200/80 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                      Advance (₹)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={form.advanceReceived}
-                      onChange={(e) => setForm({ ...form, advanceReceived: Number(e.target.value) })}
-                      className="w-full px-2.5 py-1.5 bg-white border border-blue-200/80 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                      Driver Pay (₹)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={form.driverAgreedPay}
-                      onChange={(e) => setForm({ ...form, driverAgreedPay: Number(e.target.value) })}
-                      className="w-full px-2.5 py-1.5 bg-white border border-blue-200/80 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                {fareCalcs.extraKm > 0 && (
-                  <p className="text-[10px] text-blue-700 font-semibold pt-1">
-                    * Extra distance: {fareCalcs.extraKm} km @ ₹{form.extraKmRate}/km = ₹{fareCalcs.extraCharge}
-                  </p>
-                )}
               </div>
 
               {/* Action Buttons: Reset & Save Trip */}
