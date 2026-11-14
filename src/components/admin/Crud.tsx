@@ -77,7 +77,20 @@ const BADGE_STYLES: Record<string, string> = {
 
 function Cell({ f, v, row }: { f: FieldConfig; v: unknown; row?: Record<string, unknown> }) {
   if (f.type === 'money') {
-    return <span className="font-extrabold text-slate-900 tracking-tight">{inr(v)}</span>;
+    const hasExpenses = f.key === 'amount' && row && Number(row.totalExpenses || 0) > 0;
+    return (
+      <div className="inline-flex items-center gap-1.5 justify-end">
+        <span className="font-extrabold text-slate-900 tracking-tight">{inr(v)}</span>
+        {hasExpenses && (
+          <span
+            className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200/60 px-1 py-0.2 rounded"
+            title={`Includes ${inr(Number(row!.totalExpenses))} operating expenses added to trip amount`}
+          >
+            +{inr(Number(row!.totalExpenses))}
+          </span>
+        )}
+      </div>
+    );
   }
   if (f.type === 'select' && typeof v === 'string' && v) {
     const badgeClass =

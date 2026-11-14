@@ -1135,6 +1135,11 @@ export default function CashBookClient({
                                     {item.tripRoute}
                                   </p>
                                 )}
+                                {item.direction === "outflow" && (
+                                  <span className="text-[9px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/60 px-1 py-0.2 rounded inline-block mt-0.5">
+                                    Billed to trip
+                                  </span>
+                                )}
                               </div>
                             ) : (
                               <span className="text-slate-400 font-bold">-</span>

@@ -17,6 +17,7 @@ import {
   waitForAuthReady,
   getLocalData,
   setLocalData,
+  isDeleted,
   markAsDeleted,
   unmarkDeleted,
   notifyDataChanged,
@@ -603,7 +604,40 @@ export async function restoreFromTrash(
   if (originalCollection === 'trips') upsertStoredTrip(restoredPayload as any)
   else if (originalCollection === 'vehicles') upsertStoredVehicle(restoredPayload as any)
   else if (originalCollection === 'payments') upsertStoredPayment(restoredPayload as any)
-  else if (originalCollection === 'expenses') upsertStoredExpense(restoredPayload as any)
+  else if (originalCollection === 'expenses') {
+    upsertStoredExpense(restoredPayload as any)
+    try {
+      const trips = getStoredTrips()
+      const targetTrip = trips.find(t =>
+        (data.tripId && (t.id === data.tripId || t.tripNumber === data.tripId)) ||
+        (data.tripNumber && (t.id === data.tripNumber || t.tripNumber === data.tripNumber))
+      )
+      if (targetTrip) {
+        const allExpenses = [restoredPayload as any, ...getStoredExpenses().filter(e => e.id !== originalId && !isDeleted('expenses', e.id))]
+        const activeTripExpenses = allExpenses.filter(e =>
+          (e.tripId && (e.tripId === targetTrip.id || e.tripId === targetTrip.tripNumber)) ||
+          (e.tripNumber && (e.tripNumber === targetTrip.id || e.tripNumber === targetTrip.tripNumber))
+        )
+        const tripExpensesSum = activeTripExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
+        const baseFare = Number(targetTrip.baseFare ?? targetTrip.totalFare) || 0
+        const totalFare = baseFare + tripExpensesSum
+        const customerPaid = Number(targetTrip.customerPaid) || 0
+        const customerBalance = Math.max(0, totalFare - customerPaid)
+
+        const tripUpdates = {
+          baseFare,
+          totalExpenses: tripExpensesSum,
+          totalFare,
+          customerBalance,
+          updatedAt: now,
+        }
+        upsertStoredTrip({ ...targetTrip, ...tripUpdates })
+        updateDoc(doc(db, 'trips', targetTrip.id), tripUpdates).catch(() => {})
+      }
+    } catch (e) {
+      console.warn('[TrashService] Trip reconcile after expense restore error:', e)
+    }
+  }
   else if (originalCollection === 'reminders') upsertStoredReminder(restoredPayload as any)
 
   // Remove from local trash cache

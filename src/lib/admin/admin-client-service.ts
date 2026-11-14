@@ -67,6 +67,8 @@ import type { Trip, Vehicle, Payment, Expense, Reminder, UserProfile } from '@/t
 // Normalizers: convert domain models into flat table records matching MODULES[slug].columns
 export function normalizeTrip(t: Partial<Trip> & Record<string, any>): Record<string, unknown> {
   const amount = Number(t.totalFare ?? t.amount ?? t.baseFare ?? 0);
+  const baseFare = Number(t.baseFare ?? amount);
+  const totalExpenses = Number(t.totalExpenses || 0);
   const statusRaw = String(t.status || 'scheduled').toLowerCase();
   const status =
     statusRaw === 'on_trip'
@@ -85,6 +87,11 @@ export function normalizeTrip(t: Partial<Trip> & Record<string, any>): Record<st
     startDate: t.tripDate || t.startDate || (typeof t.createdAt === 'string' ? t.createdAt.slice(0, 10) : ''),
     endDate: t.endDate || '',
     amount,
+    baseFare,
+    totalExpenses,
+    customerBalance: Number(t.customerBalance || 0),
+    customerPaid: Number(t.customerPaid || 0),
+    advanceReceived: Number(t.advanceReceived || 0),
     status,
     note: t.notes || t.note || '',
     isConfirmed,
@@ -435,6 +442,7 @@ export async function saveAdminRow(
       tripDate: String((form as Record<string, any>).startDate || new Date().toISOString().slice(0, 10)),
       endDate: String((form as Record<string, any>).endDate || ''),
       pickupTime: String((form as Record<string, any>).pickupTime || ''),
+      baseFare: Number((form as Record<string, any>).amount || 0),
       totalFare: Number((form as Record<string, any>).amount || 0),
       status: mappedStatus,
       notes: String((form as Record<string, any>).note || ''),

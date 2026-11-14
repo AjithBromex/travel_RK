@@ -540,7 +540,24 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
       const assignedReceiptNo = (form.receiptNumber && form.receiptNumber.trim()) || getNextReceiptNumber(trips);
 
+      let totalExpenses = 0;
+      let existingCustomerPaid = Number(form.advanceReceived) || 0;
+      let existingDriverPaid = 0;
+
+      if (editingTripId) {
+        const existing = trips.find((t) => t.id === editingTripId);
+        if (existing) {
+          totalExpenses = Number((existing as any).totalExpenses) || 0;
+          existingCustomerPaid = Number(existing.customerPaid) || (Number(form.advanceReceived) || 0);
+          existingDriverPaid = Number(existing.driverPaid) || 0;
+        }
+      }
+
       const tripAmount = Number(form.baseFare) || 0;
+      const totalFare = tripAmount + totalExpenses;
+      const customerBalance = Math.max(0, totalFare - existingCustomerPaid);
+      const driverBalance = Math.max(0, (Number(form.driverAgreedPay) || 0) - existingDriverPaid);
+
       const tripPayload = {
         receiptNumber: assignedReceiptNo,
         tripDate: form.tripDate,
@@ -559,12 +576,13 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         extraKmRate: Number(form.extraKmRate) || 0,
         extraKmCharge: 0,
         baseFare: tripAmount,
-        totalFare: tripAmount,
+        totalExpenses,
+        totalFare,
         advanceReceived: Number(form.advanceReceived) || 0,
-        customerPaid: Number(form.advanceReceived) || 0,
-        customerBalance: Math.max(0, tripAmount - (Number(form.advanceReceived) || 0)),
-        driverPaid: 0,
-        driverBalance: Number(form.driverAgreedPay) || 0,
+        customerPaid: existingCustomerPaid,
+        customerBalance,
+        driverPaid: existingDriverPaid,
+        driverBalance,
         status: form.status,
         notes: form.notes || "",
       };
@@ -654,6 +672,8 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       To: t.to,
       Vehicle: t.vehicleName || "-",
       Driver: t.driverName ? `${t.driverName}${t.driverPhone ? ` (${t.driverPhone})` : ""}` : "-",
+      "Base Fare (INR)": t.baseFare || t.totalFare,
+      "Operating Expenses (INR)": Number((t as any).totalExpenses) || 0,
       "Total Fare (INR)": t.totalFare,
       "Advance Received": t.advanceReceived,
       "Customer Balance": t.customerBalance,
@@ -675,6 +695,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       "Route",
       "Vehicle",
       "Driver",
+      "Expenses",
       "Total Fare",
       "Balance",
       "Status",
@@ -687,6 +708,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       `${t.from} → ${t.to}`,
       t.vehicleName || "-",
       t.driverName ? `${t.driverName}${t.driverPhone ? ` (${t.driverPhone})` : ""}` : "-",
+      Number((t as any).totalExpenses) > 0 ? `+${formatINR((t as any).totalExpenses)}` : "-",
       formatINR(t.totalFare),
       formatINR(t.customerBalance),
       t.status.toUpperCase(),
@@ -1388,6 +1410,19 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     required
                   />
                 </div>
+                {editingTripId && (() => {
+                  const existing = trips.find((t) => t.id === editingTripId);
+                  const expAmt = Number((existing as any)?.totalExpenses || 0);
+                  if (expAmt > 0) {
+                    const totalWithExp = (Number(form.baseFare) || 0) + expAmt;
+                    return (
+                      <p className="mt-1.5 text-[10px] text-rose-700 font-semibold flex items-center gap-1 bg-rose-50 border border-rose-200/60 px-2 py-1 rounded-lg">
+                        <span>Includes ₹{expAmt.toLocaleString('en-IN')} operating expenses • Total Billed Fare will be ₹{totalWithExp.toLocaleString('en-IN')}</span>
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Action Buttons: Reset & Save Trip */}
