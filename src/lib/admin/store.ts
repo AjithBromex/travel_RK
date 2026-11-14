@@ -591,10 +591,12 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
                 const tripExpensesSum = activeTripExpenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
                 const baseFare = Number(targetTrip.baseFare ?? targetTrip.totalFare) || 0;
                 const newTotalFare = baseFare + tripExpensesSum;
-                const custPaid = Number(targetTrip.customerPaid) || 0;
-                const newCustBal = Math.max(0, newTotalFare - custPaid);
+                const prevExpenses = Number(targetTrip.totalExpenses) || 0;
+                const custPaymentsSum = Math.max(0, (Number(targetTrip.customerPaid) || 0) - prevExpenses);
+                const newCustPaid = custPaymentsSum + tripExpensesSum;
+                const newCustBal = Math.max(0, baseFare - custPaymentsSum);
 
-                const patchUrl = `${getEndpoint('trips', targetTrip.id)}${API_KEY ? '&' : '?'}updateMask.fieldPaths=baseFare&updateMask.fieldPaths=totalExpenses&updateMask.fieldPaths=totalFare&updateMask.fieldPaths=customerBalance&updateMask.fieldPaths=updatedAt`;
+                const patchUrl = `${getEndpoint('trips', targetTrip.id)}${API_KEY ? '&' : '?'}updateMask.fieldPaths=baseFare&updateMask.fieldPaths=totalExpenses&updateMask.fieldPaths=totalFare&updateMask.fieldPaths=customerPaid&updateMask.fieldPaths=customerBalance&updateMask.fieldPaths=updatedAt`;
                 await fetch(patchUrl, {
                   method: 'PATCH',
                   headers: adminJsonHeaders,
@@ -603,6 +605,7 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
                       baseFare: encodeFirestoreValue(baseFare),
                       totalExpenses: encodeFirestoreValue(tripExpensesSum),
                       totalFare: encodeFirestoreValue(newTotalFare),
+                      customerPaid: encodeFirestoreValue(newCustPaid),
                       customerBalance: encodeFirestoreValue(newCustBal),
                       updatedAt: encodeFirestoreValue(new Date().toISOString()),
                     },

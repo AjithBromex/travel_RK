@@ -86,7 +86,6 @@ export function reconcileTripWithPayments(
   const advanceFromPayments = advancePayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
   const effectiveAdvanceReceived = advanceFromPayments;
-  const trueCustomerPaid = customerPaidSum;
 
   // Base agreed fare for the trip
   const baseFare = Number(
@@ -97,7 +96,9 @@ export function reconcileTripWithPayments(
   const totalFare = baseFare + tripExpensesSum;
   const agreedDriverPay = Number(trip.driverAgreedPay) || 0;
 
-  const trueCustomerBalance = Math.max(0, totalFare - trueCustomerPaid);
+  // Operating expenses are directly added to the trip payment (operating expenses are entered after payment is received and are already funded/paid, not a customer due)
+  const trueCustomerPaid = customerPaidSum + tripExpensesSum;
+  const trueCustomerBalance = Math.max(0, baseFare - customerPaidSum);
   const trueDriverPaid = driverPaidSum;
   const trueDriverBalance = Math.max(0, agreedDriverPay - trueDriverPaid);
 

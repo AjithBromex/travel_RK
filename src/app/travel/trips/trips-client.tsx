@@ -555,7 +555,10 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
       const tripAmount = Number(form.baseFare) || 0;
       const totalFare = tripAmount + totalExpenses;
-      const customerBalance = Math.max(0, totalFare - existingCustomerPaid);
+      // Operating expenses are directly added to the trip payment (funded outlays, not customer due)
+      const existingCustomerPaymentsOnly = Math.max(0, existingCustomerPaid - totalExpenses);
+      const customerBalance = Math.max(0, tripAmount - (editingTripId ? existingCustomerPaymentsOnly : (Number(form.advanceReceived) || 0)));
+      const customerPaid = (editingTripId ? existingCustomerPaymentsOnly : (Number(form.advanceReceived) || 0)) + totalExpenses;
       const driverBalance = Math.max(0, (Number(form.driverAgreedPay) || 0) - existingDriverPaid);
 
       const tripPayload = {
@@ -1652,7 +1655,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                             </span>
                           )}
                         </div>
-                        {Number(trip.customerBalance) > 0 && (
+                        {Number(trip.customerBalance) > 0 ? (
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded">
                               Due ₹{Number(trip.customerBalance).toLocaleString("en-IN")}
@@ -1665,6 +1668,13 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                               <CreditCard className="w-2.5 h-2.5" />
                               <span>Collect Balance</span>
                             </Link>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.2 rounded inline-flex items-center gap-0.5">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                              <span>Paid</span>
+                            </span>
                           </div>
                         )}
                       </div>
@@ -1783,7 +1793,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                             </span>
                           )}
                         </div>
-                        {Number(trip.customerBalance) > 0 && (
+                        {Number(trip.customerBalance) > 0 ? (
                           <div className="flex items-center sm:justify-end gap-1 mt-0.5">
                             <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded block">
                               Due ₹{Number(trip.customerBalance).toLocaleString("en-IN")}
@@ -1796,6 +1806,13 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                               <CreditCard className="w-2.5 h-2.5" />
                               <span>Collect Balance</span>
                             </Link>
+                          </div>
+                        ) : (
+                          <div className="flex items-center sm:justify-end gap-1 mt-0.5">
+                            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.2 rounded inline-flex items-center gap-0.5">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                              <span>Paid</span>
+                            </span>
                           </div>
                         )}
                       </div>

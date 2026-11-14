@@ -537,7 +537,7 @@ test('Expense Trip Linkage: invalid or zero amount is rejected', () => {
   assert.match(resNegative.error, /Please enter a valid expense amount/);
 });
 
-test('Expense Trip Reconciliation: operating expenses automatically add to trip totalFare and customerBalance', () => {
+test('Expense Trip Reconciliation: operating expenses directly add to trip totalFare and trip payment without increasing customer due', () => {
   const trip = {
     id: 'trp_101',
     tripNumber: 'TRP-101',
@@ -560,12 +560,15 @@ test('Expense Trip Reconciliation: operating expenses automatically add to trip 
   const tripExpensesSum = expenses.reduce((sum, e) => sum + e.amount, 0);
   const baseFare = Number(trip.baseFare ?? trip.totalFare);
   const totalFare = baseFare + tripExpensesSum;
-  const customerPaid = payments.filter((p) => p.type === 'customer_received').reduce((sum, p) => sum + p.amount, 0);
-  const customerBalance = Math.max(0, totalFare - customerPaid);
+  const customerPaymentsSum = payments.filter((p) => p.type === 'customer_received').reduce((sum, p) => sum + p.amount, 0);
+  // Expenses directly add to the payment of that trip (operating expenses are funded/paid, not customer due)
+  const customerPaid = customerPaymentsSum + tripExpensesSum;
+  const customerBalance = Math.max(0, baseFare - customerPaymentsSum);
 
   assert.strictEqual(tripExpensesSum, 1150);
   assert.strictEqual(totalFare, 6150);
-  assert.strictEqual(customerBalance, 5150);
+  assert.strictEqual(customerPaid, 2150);
+  assert.strictEqual(customerBalance, 4000);
 });
 
 test('Expense Trip Reconciliation: deleted expense is excluded and fare drops back', () => {
@@ -585,10 +588,13 @@ test('Expense Trip Reconciliation: deleted expense is excluded and fare drops ba
   const activeExpenses = allExpenses.filter((e) => !e.isDeleted);
   const tripExpensesSum = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalFare = trip.baseFare + tripExpensesSum;
-  const customerBalance = Math.max(0, totalFare - 1000);
+  const customerPaymentsSum = 1000;
+  const customerPaid = customerPaymentsSum + tripExpensesSum;
+  const customerBalance = Math.max(0, trip.baseFare - customerPaymentsSum);
 
   assert.strictEqual(totalFare, 5800);
-  assert.strictEqual(customerBalance, 4800);
+  assert.strictEqual(customerPaid, 1800);
+  assert.strictEqual(customerBalance, 4000);
 });
 
 // ─── 11. AUDIT LOG RETENTION & AUTO-EXPIRY TESTS ─────────────────────────────

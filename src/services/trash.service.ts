@@ -621,13 +621,19 @@ export async function restoreFromTrash(
         const tripExpensesSum = activeTripExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
         const baseFare = Number(targetTrip.baseFare ?? targetTrip.totalFare) || 0
         const totalFare = baseFare + tripExpensesSum
-        const customerPaid = Number(targetTrip.customerPaid) || 0
-        const customerBalance = Math.max(0, totalFare - customerPaid)
+        const activeCustomerPayments = getStoredPayments().filter(p => !isDeleted('payments', p.id) && (
+          (p.tripId && (p.tripId === targetTrip.id || p.tripId === targetTrip.tripNumber || p.tripId === targetTrip.receiptNumber)) ||
+          ((p as any).tripNumber && ((p as any).tripNumber === targetTrip.id || (p as any).tripNumber === targetTrip.tripNumber))
+        ) && p.type === 'customer_received')
+        const customerPaymentsSum = activeCustomerPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+        const customerPaid = customerPaymentsSum + tripExpensesSum
+        const customerBalance = Math.max(0, baseFare - customerPaymentsSum)
 
         const tripUpdates = {
           baseFare,
           totalExpenses: tripExpensesSum,
           totalFare,
+          customerPaid,
           customerBalance,
           updatedAt: now,
         }
