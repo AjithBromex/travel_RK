@@ -410,7 +410,8 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
               matchedTrip = t;
               if (form.type === "customer_received") {
                 const newPaid = (Number(t.customerPaid) || 0) + amountNum;
-                const newBal = Math.max(0, (Number(t.totalFare) || 0) - newPaid);
+                const currentBalance = Number(t.customerBalance) > 0 ? Number(t.customerBalance) : Math.max(0, (Number(t.baseFare || t.totalFare) || 0) - (Number(t.customerPaid) || 0));
+                const newBal = Math.max(0, currentBalance - amountNum);
                 const newAdv = form.paymentStage === "advance"
                   ? (Number(t.advanceReceived) || 0) + amountNum
                   : t.advanceReceived;

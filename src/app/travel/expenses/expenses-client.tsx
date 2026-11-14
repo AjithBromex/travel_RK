@@ -1015,11 +1015,11 @@ export default function ExpensesClient({
                   ) : form.amount && Number(form.amount) > 0 ? (
                     <p className="mt-1 text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
                       <span>Trip amount will become ₹{((Number(selectedTrip.totalFare || selectedTrip.baseFare || 0)) + Number(form.amount)).toLocaleString("en-IN")}</span>
-                      <span className="text-slate-400 font-normal">(adds to trip total &amp; balance)</span>
+                      <span className="text-slate-400 font-normal">(directly added to trip total &amp; payment)</span>
                     </p>
                   ) : (
                     <p className="mt-1 text-[10px] text-slate-500">
-                      Expense will be automatically added to the trip amount.
+                      Expense will be automatically added to the trip amount and payment.
                     </p>
                   )}
                 </div>

@@ -141,7 +141,9 @@ export default function AdminDashboardClient({ initialData }: Props) {
     const balance =
       sum(cash, (c) => c.type === 'In') - sum(cash, (c) => c.type === 'Out');
     const profit = received - spent;
-    const toCollect = Math.max(billed - received, 0);
+    const toCollect = trips
+      .filter((t) => t.status !== 'Cancelled')
+      .reduce((acc, t) => acc + (Number((t as any).customerBalance) > 0 ? Number((t as any).customerBalance) : 0), 0);
 
     const today = new Date().toISOString().slice(0, 10);
     const due = reminders

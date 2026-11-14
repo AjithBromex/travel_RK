@@ -838,7 +838,7 @@ export default function CashBookClient({
                   />
                   {formDirection === "outflow" && form.tripId && form.tripId !== "general" && form.type !== "driver_payment" && (
                     <p className="mt-1 text-[10px] text-blue-700 font-medium">
-                      💡 Expense will be automatically added to the trip amount.
+                      💡 Expense will be automatically added to the trip amount and payment.
                     </p>
                   )}
                 </div>

@@ -161,8 +161,8 @@ export default function SearchableTripSelect({
                 (() => {
                   const tTotal = Number(selectedTrip.totalFare) || 0;
                   const tPaid = Number(selectedTrip.customerPaid) || 0;
-                  const tBal = Number(selectedTrip.customerBalance) || 0;
-                  const effBal = tBal > 0 ? tBal : Math.max(0, tTotal - tPaid);
+                  const hasExplicitBalance = selectedTrip.customerBalance !== undefined && selectedTrip.customerBalance !== null;
+                  const effBal = hasExplicitBalance ? Number(selectedTrip.customerBalance) : Math.max(0, tTotal - tPaid);
                   if (effBal > 0) {
                     return (
                       <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded-md">
@@ -170,7 +170,7 @@ export default function SearchableTripSelect({
                       </span>
                     );
                   }
-                  if (tTotal > 0 && tPaid >= tTotal) {
+                  if (tTotal > 0 && (tPaid >= tTotal || effBal === 0)) {
                     return (
                       <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded-md">
                         Paid
@@ -284,10 +284,10 @@ export default function SearchableTripSelect({
                   (trip.receiptNumber && trip.receiptNumber === value);
                 const totalFare = Number(trip.totalFare ?? (Number(trip.baseFare || 0) + Number(trip.extraKmCharge || 0))) || 0;
                 const customerPaid = Number(trip.customerPaid) || 0;
-                const rawBalance = Number(trip.customerBalance) || 0;
-                const effectiveBalance = rawBalance > 0 ? rawBalance : Math.max(0, totalFare - customerPaid);
-                const isPaid = totalFare > 0 ? customerPaid >= totalFare : (customerPaid > 0 && effectiveBalance === 0);
-                const hasDue = effectiveBalance > 0 || (totalFare > 0 && !isPaid);
+                const hasExplicitBalance = trip.customerBalance !== undefined && trip.customerBalance !== null;
+                const effectiveBalance = hasExplicitBalance ? Number(trip.customerBalance) : Math.max(0, totalFare - customerPaid);
+                const isPaid = effectiveBalance === 0 || (totalFare > 0 && customerPaid >= totalFare);
+                const hasDue = effectiveBalance > 0;
 
                 return (
                   <div
