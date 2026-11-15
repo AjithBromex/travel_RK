@@ -279,10 +279,13 @@ export function normalizeCashbook(c: Record<string, any>): Record<string, unknow
   const recId = String(c.id || '');
   const isConfirmed = Boolean(c.isConfirmed || (recId && isRecordConfirmed('cashbook', recId)));
 
+  const isTripLinked = Boolean((c.tripId && c.tripId !== 'general') || (c as any).typeTitle?.includes('Added to Trip') || c.type === 'trip_expense');
+  const isInflow = c.type === 'receipt' || c.type === 'trip_expense' || (c.cashIn && Number(c.cashIn) > 0) || isTripLinked;
+
   return {
     id: c.id || `cb_${Math.random().toString(36).slice(2)}`,
     date: c.date || (typeof c.createdAt === 'string' ? c.createdAt.slice(0, 10) : ''),
-    type: c.type === 'receipt' || (c.cashIn && Number(c.cashIn) > 0) ? 'In' : 'Out',
+    type: isInflow ? 'In' : 'Out',
     description: c.description || '',
     amount: Number(c.cashIn > 0 ? c.cashIn : c.cashOut || c.amount || 0),
     mode: (c.paymentMode || c.mode || 'Cash').toUpperCase(),

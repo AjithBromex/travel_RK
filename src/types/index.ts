@@ -195,7 +195,7 @@ export interface CashBookEntry extends SoftDeleteMetadata {
   cashIn: number
   cashOut: number
   balance: number
-  type: 'receipt' | 'expense' | 'driver_payment'
+  type: 'receipt' | 'expense' | 'driver_payment' | 'trip_expense'
   paymentMode: PaymentMode
   createdAt: string
 }

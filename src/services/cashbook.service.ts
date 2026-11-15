@@ -52,15 +52,19 @@ export async function getCashBookEntries(): Promise<CashBookEntry[]> {
 
     // Expenses
     expenses.forEach(e => {
+      const isTripLinked = Boolean(e.tripId && e.tripId !== 'general')
+      const amt = Number(e.amount) || 0
       entries.push({
         id: `e-${e.id}`,
         date: e.expenseDate,
         tripId: e.tripId,
-        description: `${e.category.toUpperCase()}: ${e.description}`,
-        cashIn: 0,
-        cashOut: Number(e.amount) || 0,
+        description: isTripLinked
+          ? `${e.category.toUpperCase()}: ${e.description} (Added to Trip Amount)`
+          : `${e.category.toUpperCase()}: ${e.description}`,
+        cashIn: isTripLinked ? amt : 0,
+        cashOut: isTripLinked ? 0 : amt,
         balance: 0,
-        type: 'expense',
+        type: isTripLinked ? 'trip_expense' : 'expense',
         paymentMode: e.paymentMode || 'cash',
         createdAt: e.createdAt || e.expenseDate,
       })
@@ -71,7 +75,7 @@ export async function getCashBookEntries(): Promise<CashBookEntry[]> {
 
     let runningBalance = 0
     entries.forEach(entry => {
-      // Only cash transactions or all modes according to preference
+      // Trip-linked expenses add to the trip amount & running balance; unlinked general outlays subtract
       runningBalance += entry.cashIn - entry.cashOut
       entry.balance = runningBalance
     })

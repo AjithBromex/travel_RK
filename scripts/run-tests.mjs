@@ -597,6 +597,56 @@ test('Expense Trip Reconciliation: deleted expense is excluded and fare drops ba
   assert.strictEqual(customerBalance, 4000);
 });
 
+test('Cash Book: trip-linked expenses add to the trip amount and running balance instead of subtracting', () => {
+  const initialReceipts = [
+    { id: 'cb-1', date: '2026-11-15', tripId: 'TRP-3046', cashIn: 2500, cashOut: 0, type: 'payment' },
+    { id: 'cb-2', date: '2026-11-15', tripId: 'TRP-3046', cashIn: 5000, cashOut: 0, type: 'payment' },
+  ];
+
+  const expenses = [
+    { id: 'e-1', expenseDate: '2026-11-15', tripId: 'TRP-3046', category: 'fuel', amount: 1500, description: 'Fuel Expense' },
+    { id: 'e-2', expenseDate: '2026-11-15', tripId: 'general', category: 'office', amount: 200, description: 'Office Tea' },
+  ];
+
+  const entries = [...initialReceipts];
+
+  expenses.forEach((e) => {
+    const isTripLinked = Boolean(e.tripId && e.tripId !== 'general');
+    const amt = Number(e.amount) || 0;
+    entries.push({
+      id: `e-${e.id}`,
+      date: e.expenseDate,
+      tripId: e.tripId,
+      description: isTripLinked ? `${e.category.toUpperCase()}: ${e.description} (Added to Trip Amount)` : `${e.category.toUpperCase()}: ${e.description}`,
+      cashIn: isTripLinked ? amt : 0,
+      cashOut: isTripLinked ? 0 : amt,
+      balance: 0,
+      type: isTripLinked ? 'trip_expense' : 'expense',
+    });
+  });
+
+  let runningBalance = 0;
+  entries.forEach((entry) => {
+    runningBalance += entry.cashIn - entry.cashOut;
+    entry.balance = runningBalance;
+  });
+
+  // Entry 1: 2500 -> Balance: 2500
+  assert.strictEqual(entries[0].balance, 2500);
+  // Entry 2: +5000 -> Balance: 7500
+  assert.strictEqual(entries[1].balance, 7500);
+  // Entry 3 (Trip Expense of 1500 for TRP-3046): +1500 -> Balance: 9000 (NOT 6000!)
+  assert.strictEqual(entries[2].type, 'trip_expense');
+  assert.strictEqual(entries[2].cashIn, 1500);
+  assert.strictEqual(entries[2].cashOut, 0);
+  assert.strictEqual(entries[2].balance, 9000);
+  // Entry 4 (General unlinked office expense of 200): -200 -> Balance: 8800
+  assert.strictEqual(entries[3].type, 'expense');
+  assert.strictEqual(entries[3].cashIn, 0);
+  assert.strictEqual(entries[3].cashOut, 200);
+  assert.strictEqual(entries[3].balance, 8800);
+});
+
 // ─── 11. AUDIT LOG RETENTION & AUTO-EXPIRY TESTS ─────────────────────────────
 console.log('\n[SUITE 11: Audit Log 30-Day Retention & Auto-Pruning]');
 
