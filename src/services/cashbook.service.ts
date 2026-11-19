@@ -84,8 +84,26 @@ export async function getCashBookEntries(): Promise<CashBookEntry[]> {
         })
       })
 
-    // Sort chronologically ascending to calculate running balance
-    entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    // Sort chronologically ascending (oldest first) to calculate running balance accurately
+    entries.sort((a, b) => {
+      // 1. Transaction date ascending
+      const dateA = new Date(a.date).getTime()
+      const dateB = new Date(b.date).getTime()
+      if (dateA !== dateB) return dateA - dateB
+
+      // 2. Exact creation timestamp ascending (oldest first)
+      const timeA = new Date(a.createdAt || a.date).getTime()
+      const timeB = new Date(b.createdAt || b.date).getTime()
+      if (timeA !== timeB) return timeA - timeB
+
+      // 3. For the same trip and date, advance payments strictly come before balance payments and expenses
+      const isAdvanceA = a.type === 'receipt' && (/advance/i.test(a.description))
+      const isAdvanceB = b.type === 'receipt' && (/advance/i.test(b.description))
+      if (isAdvanceA && !isAdvanceB) return -1
+      if (!isAdvanceA && isAdvanceB) return 1
+
+      return String(a.id).localeCompare(String(b.id))
+    })
 
     let runningBalance = 0
     entries.forEach(entry => {
@@ -94,7 +112,7 @@ export async function getCashBookEntries(): Promise<CashBookEntry[]> {
       entry.balance = runningBalance
     })
 
-    // Return in reverse chronological order for table display
+    // Return in reverse chronological order for table display (newest at the top)
     return entries.reverse()
   } catch (error) {
     console.error('Error calculating cashbook entries:', error)

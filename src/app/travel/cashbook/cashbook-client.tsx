@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import {
   ArrowDown,
   ArrowUp,
+  ArrowUpDown,
   Wallet,
   FileText,
   Search,
@@ -33,7 +34,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
-import type { CashBookEntry, PaymentMode, Trip, ExpenseCategory } from "@/types";
+import type { CashBookEntry, PaymentMode, Trip, ExpenseCategory, PaymentStage } from "@/types";
 import { createPayment } from "@/services/payments.service";
 import { createExpense } from "@/services/expenses.service";
 import { getCashBookEntries, deleteCashBookEntry } from "@/services/cashbook.service";
@@ -147,7 +148,7 @@ export default function CashBookClient({
   const [formDirection, setFormDirection] = useState<"inflow" | "outflow">("inflow");
   const [form, setForm] = useState({
     date: todayStr,
-    type: "customer_payment",
+    type: "trip_advance",
     tripId: "",
     amount: "",
     paymentMode: "cash" as PaymentMode,
@@ -158,11 +159,17 @@ export default function CashBookClient({
   const [search, setSearch] = useState("");
   const [timeFilter, setTimeFilter] = useState("this_month");
   const [directionFilter, setDirectionFilter] = useState<"all" | "inflow" | "outflow">("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const amountInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedTrip = useMemo(
+    () => tripList.find((t) => t.id === form.tripId || t.tripNumber === form.tripId),
+    [tripList, form.tripId]
+  );
 
   // Dynamic Real KPIs strictly from actual items
   const totalCashIn = useMemo(() => {
@@ -183,7 +190,7 @@ export default function CashBookClient({
 
   // Filtered items
   const filteredItems = useMemo(() => {
-    return items.filter((item) => {
+    const list = items.filter((item) => {
       if (search.trim()) {
         const q = search.toLowerCase();
         const matchesDate = item.date.toLowerCase().includes(q);
@@ -204,7 +211,12 @@ export default function CashBookClient({
 
       return true;
     });
-  }, [items, search, directionFilter]);
+
+    if (sortOrder === "oldest") {
+      return [...list].reverse();
+    }
+    return list;
+  }, [items, search, directionFilter, sortOrder]);
 
   // Pagination (8 entries per page matching mockup)
   const pageSize = 8;
@@ -236,18 +248,29 @@ export default function CashBookClient({
       let createdId = "";
 
       if (formDirection === "inflow") {
-        if (form.type === "trip_advance") {
-          typeTitle = "Advance Payment";
+        const isAdvance = form.type === "trip_advance";
+        const isBalance = form.type === "customer_balance";
+        const stage: PaymentStage | undefined = isAdvance ? "advance" : isBalance ? "balance" : undefined;
+
+        if (isAdvance) {
+          typeTitle = "Customer Advance";
+        } else if (isBalance) {
+          typeTitle = "Customer Balance";
         } else {
           typeTitle = "Customer Payment";
         }
+
+        const tripRef = selectedTrip ? ` (Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)})` : "";
+        typeSubtitle = form.notes.trim() || `${typeTitle}${tripRef}`;
+
         createdId = await createPayment({
           tripId: form.tripId || "general",
           type: "customer_received",
+          paymentStage: stage,
           amount: parsedAmount,
           paymentDate: form.date,
           paymentMode: form.paymentMode,
-          notes: form.notes.trim(),
+          notes: form.notes.trim() || typeSubtitle,
         });
       } else {
         if (form.type === "driver_payment") {
@@ -332,7 +355,7 @@ export default function CashBookClient({
 
       setForm({
         date: todayStr,
-        type: formDirection === "inflow" ? "customer_payment" : "fuel",
+        type: formDirection === "inflow" ? "trip_advance" : "fuel",
         tripId: "",
         amount: "",
         paymentMode: "cash",
@@ -791,7 +814,7 @@ export default function CashBookClient({
                   type="button"
                   onClick={() => {
                     setFormDirection("inflow");
-                    setForm((f) => ({ ...f, type: "customer_payment" }));
+                    setForm((f) => ({ ...f, type: "trip_advance" }));
                   }}
                   className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     formDirection === "inflow"
@@ -856,9 +879,10 @@ export default function CashBookClient({
                     >
                       {formDirection === "inflow" ? (
                         <>
-                          <option value="customer_payment">Customer Payment</option>
-                          <option value="trip_advance">Trip Advance</option>
-                          <option value="other_inflow">Other Collection</option>
+                          <option value="trip_advance">Trip Advance (Pre-Trip)</option>
+                          <option value="customer_balance">Trip Balance (Post-Trip)</option>
+                          <option value="customer_payment">General Customer Receipt</option>
+                          <option value="other_inflow">Other Cash Inflow</option>
                         </>
                       ) : (
                         <>
@@ -886,7 +910,18 @@ export default function CashBookClient({
                   <SearchableTripSelect
                     trips={tripList}
                     value={form.tripId}
-                    onChange={(selectedId) => setForm({ ...form, tripId: selectedId })}
+                    onChange={(selectedId) => {
+                      const trip = tripList.find((t) => t.id === selectedId || t.tripNumber === selectedId);
+                      const hasAdvance = Number(trip?.advanceReceived || 0) > 0;
+                      const hasDue = Number(trip?.customerBalance || 0) > 0;
+                      setForm((prev) => ({
+                        ...prev,
+                        tripId: selectedId,
+                        type: formDirection === "inflow"
+                          ? (hasAdvance && hasDue ? "customer_balance" : "trip_advance")
+                          : prev.type,
+                      }));
+                    }}
                     placeholder="Search trip #, customer, route, vehicle..."
                     unlinkedLabel="Select trip (General Inflow/Outflow)"
                     showDueBadge={true}
@@ -915,6 +950,65 @@ export default function CashBookClient({
                   </div>
                 </div>
               </div>
+
+              {/* Selected Trip Financial Details & Quick-Fill */}
+              {selectedTrip && (
+                <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-950 truncate">
+                      Trip #{selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} • {selectedTrip.customerName || "Customer"}
+                    </span>
+                    <span className="font-bold text-slate-800 font-mono-nums shrink-0 ml-2">
+                      Fare: {formatINR(selectedTrip.totalFare || selectedTrip.baseFare || 0)}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-blue-100">
+                    <div className="bg-white/80 p-1.5 rounded-lg border border-blue-100/60">
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Advance Paid</span>
+                      <span className="font-extrabold text-sky-700 text-xs font-mono-nums">
+                        {formatINR(selectedTrip.advanceReceived || 0)}
+                      </span>
+                    </div>
+                    <div className="bg-white/80 p-1.5 rounded-lg border border-blue-100/60">
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Remaining Due</span>
+                      <span className={`font-extrabold text-xs font-mono-nums ${Number(selectedTrip.customerBalance) > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                        {Number(selectedTrip.customerBalance) > 0 ? formatINR(selectedTrip.customerBalance) : "Settled ✓"}
+                      </span>
+                    </div>
+                  </div>
+                  {formDirection === "inflow" && (
+                    <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                      {Number(selectedTrip.customerBalance || 0) > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setForm((prev) => ({
+                            ...prev,
+                            type: "customer_balance",
+                            amount: String(selectedTrip.customerBalance),
+                            notes: `Customer Balance - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)}`,
+                          }))}
+                          className="text-[10px] font-bold px-2.5 py-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                          <span>Fill Due ({formatINR(selectedTrip.customerBalance)})</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({
+                          ...prev,
+                          type: "trip_advance",
+                          amount: selectedTrip.advanceReceived ? String(selectedTrip.advanceReceived) : prev.amount,
+                          notes: `Customer Advance - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)}`,
+                        }))}
+                        className="text-[10px] font-bold px-2.5 py-1 bg-sky-100 text-sky-800 hover:bg-sky-200 rounded-md transition-colors cursor-pointer"
+                      >
+                        Fill Advance
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Row 3: Payment Mode Pills */}
               <div>
@@ -1081,6 +1175,17 @@ export default function CashBookClient({
                   <Filter className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
+
+                {/* Sort Order Pill */}
+                <button
+                  type="button"
+                  onClick={() => setSortOrder((s) => (s === "newest" ? "oldest" : "newest"))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                  title="Toggle chronological sequence"
+                >
+                  <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                  <span>{sortOrder === "newest" ? "Newest First" : "Oldest First"}</span>
+                </button>
 
                 {/* Export Excel */}
                 <button

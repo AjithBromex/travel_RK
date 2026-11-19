@@ -615,6 +615,95 @@ test('Cash Book Balance: recalculates running balance accurately upon deletion o
   assert.strictEqual(remaining[1].balance, 500);
 });
 
+test('Cash Book Order: sorts chronologically by date and createdAt so Advance comes before Balance payments', () => {
+  const entries = [
+    {
+      id: 'p-pay_balance_2',
+      date: '2026-11-19',
+      createdAt: '2026-11-19T14:00:00.000Z',
+      description: 'Customer Balance (Trip #TRP-3214)',
+      cashIn: 1000,
+      cashOut: 0,
+      type: 'receipt',
+    },
+    {
+      id: 'p-pay_balance_1',
+      date: '2026-11-19',
+      createdAt: '2026-11-19T12:00:00.000Z',
+      description: 'Customer Balance (Trip #TRP-3214)',
+      cashIn: 3500,
+      cashOut: 0,
+      type: 'receipt',
+    },
+    {
+      id: 'p-pay_advance',
+      date: '2026-11-19',
+      createdAt: '2026-11-19T09:00:00.000Z',
+      description: 'Customer Advance (Trip #TRP-3214)',
+      cashIn: 2000,
+      cashOut: 0,
+      type: 'receipt',
+    },
+    {
+      id: 'e-exp_fuel',
+      date: '2026-11-19',
+      createdAt: '2026-11-19T15:00:00.000Z',
+      description: 'FUEL: Fuel Expense',
+      cashIn: 0,
+      cashOut: 1000,
+      type: 'expense',
+    },
+  ];
+
+  // Chronological sort
+  entries.sort((a, b) => {
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    if (dateA !== dateB) return dateA - dateB;
+
+    const timeA = new Date(a.createdAt || a.date).getTime();
+    const timeB = new Date(b.createdAt || b.date).getTime();
+    if (timeA !== timeB) return timeA - timeB;
+
+    const isAdvanceA = a.type === 'receipt' && (/advance/i.test(a.description));
+    const isAdvanceB = b.type === 'receipt' && (/advance/i.test(b.description));
+    if (isAdvanceA && !isAdvanceB) return -1;
+    if (!isAdvanceA && isAdvanceB) return 1;
+
+    return String(a.id).localeCompare(String(b.id));
+  });
+
+  // Calculate forward running balance
+  let running = 0;
+  entries.forEach((e) => {
+    running += e.cashIn - e.cashOut;
+    e.balance = running;
+  });
+
+  // 1. Advance is first (+2000 -> balance 2000)
+  assert.strictEqual(entries[0].id, 'p-pay_advance');
+  assert.strictEqual(entries[0].balance, 2000);
+
+  // 2. Balance 1 is second (+3500 -> balance 5500)
+  assert.strictEqual(entries[1].id, 'p-pay_balance_1');
+  assert.strictEqual(entries[1].balance, 5500);
+
+  // 3. Balance 2 is third (+1000 -> balance 6500)
+  assert.strictEqual(entries[2].id, 'p-pay_balance_2');
+  assert.strictEqual(entries[2].balance, 6500);
+
+  // 4. Fuel expense is fourth (-1000 -> balance 5500)
+  assert.strictEqual(entries[3].id, 'e-exp_fuel');
+  assert.strictEqual(entries[3].balance, 5500);
+
+  // When reversed for display (newest on top):
+  const displayItems = [...entries].reverse();
+  assert.strictEqual(displayItems[0].id, 'e-exp_fuel'); // latest on top
+  assert.strictEqual(displayItems[0].balance, 5500); // final balance on top
+  assert.strictEqual(displayItems[3].id, 'p-pay_advance'); // initial advance on bottom
+  assert.strictEqual(displayItems[3].balance, 2000); // initial balance on bottom
+});
+
 // ─── 11. AUDIT LOG RETENTION & AUTO-EXPIRY TESTS ─────────────────────────────
 console.log('\n[SUITE 11: Audit Log 30-Day Retention & Auto-Pruning]');
 
