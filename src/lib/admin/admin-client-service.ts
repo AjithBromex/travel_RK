@@ -35,7 +35,7 @@ import {
   updateReminder,
   deleteReminder,
 } from '@/services/reminders.service';
-import { getCashBookEntries } from '@/services/cashbook.service';
+import { getCashBookEntries, deleteCashBookEntry } from '@/services/cashbook.service';
 import {
   getAllUsers,
   createUserProfile,
@@ -646,7 +646,7 @@ export async function deleteAdminRow(
   } else if (slug === 'users') {
     await deleteUserProfile(id);
   } else if (slug === 'cashbook') {
-    await moveToTrash('cashbook', id, 'Deleted from Cash Book', undefined, recordData as any);
+    await deleteCashBookEntry(id, recordData);
   } else {
     await moveToTrash(slug, id, `Deleted from ${slug}`, undefined, recordData as any);
   }

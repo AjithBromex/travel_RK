@@ -197,6 +197,7 @@ export interface CashBookEntry extends SoftDeleteMetadata {
   type: 'receipt' | 'expense' | 'driver_payment'
   paymentMode: PaymentMode
   createdAt: string
+  isConfirmed?: boolean
 }
 
 // ─── Report ───

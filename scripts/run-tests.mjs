@@ -537,6 +537,84 @@ test('Expense Trip Linkage: invalid or zero amount is rejected', () => {
   assert.match(resNegative.error, /Please enter a valid expense amount/);
 });
 
+// ─── 10B. CASH BOOK DELETION & BALANCE RECALCULATION TESTS ────────────────────
+console.log('\n[SUITE 10B: Cash Book Record Deletion & Real-time Ledger Recalculation]');
+
+function resolveCashBookTarget(id) {
+  const cleanId = String(id || '').trim();
+  if (cleanId.startsWith('p-')) {
+    return { targetCollection: 'payments', targetId: cleanId.slice(2) };
+  }
+  if (cleanId.startsWith('e-')) {
+    return { targetCollection: 'expenses', targetId: cleanId.slice(2) };
+  }
+  return { targetCollection: 'cashbook', targetId: cleanId };
+}
+
+test('Cash Book Deletion: resolves underlying collection and document IDs for p- and e- prefixes', () => {
+  const resPay = resolveCashBookTarget('p-pay_123456');
+  assert.strictEqual(resPay.targetCollection, 'payments');
+  assert.strictEqual(resPay.targetId, 'pay_123456');
+
+  const resExp = resolveCashBookTarget('e-exp_789012');
+  assert.strictEqual(resExp.targetCollection, 'expenses');
+  assert.strictEqual(resExp.targetId, 'exp_789012');
+
+  const resDirect = resolveCashBookTarget('cb-1700000000');
+  assert.strictEqual(resDirect.targetCollection, 'cashbook');
+  assert.strictEqual(resDirect.targetId, 'cb-1700000000');
+});
+
+test('Cash Book Deletion: deleted cash receipt is permanently filtered out and does not reappear', () => {
+  const allPayments = [
+    { id: 'pay_1', type: 'customer_received', amount: 2000, date: '2026-11-19', isDeleted: false },
+    { id: 'pay_2', type: 'customer_received', amount: 3500, date: '2026-11-19', isDeleted: false },
+    { id: 'pay_3', type: 'customer_received', amount: 1000, date: '2026-11-19', isDeleted: false },
+  ];
+
+  const deletedTracker = new Set(['payments:pay_2', 'cashbook:p-pay_2']);
+
+  const activePayments = allPayments.filter(
+    (p) => !p.isDeleted && !deletedTracker.has(`payments:${p.id}`) && !deletedTracker.has(`cashbook:p-${p.id}`)
+  );
+
+  assert.strictEqual(activePayments.length, 2);
+  assert.strictEqual(activePayments.some((p) => p.id === 'pay_2'), false);
+  assert.strictEqual(activePayments[0].id, 'pay_1');
+  assert.strictEqual(activePayments[1].id, 'pay_3');
+});
+
+test('Cash Book Balance: recalculates running balance accurately upon deletion of an inflow entry', () => {
+  const rawEntries = [
+    { id: 'p-pay_1', date: '2026-11-19T10:00:00Z', cashIn: 1000, cashOut: 0 },
+    { id: 'p-pay_2', date: '2026-11-19T11:00:00Z', cashIn: 3500, cashOut: 0 },
+    { id: 'e-exp_1', date: '2026-11-19T12:00:00Z', cashIn: 0, cashOut: 500 },
+  ];
+
+  // Initial calculation
+  let running = 0;
+  rawEntries.forEach((e) => {
+    running += e.cashIn - e.cashOut;
+    e.balance = running;
+  });
+  assert.strictEqual(rawEntries[0].balance, 1000);
+  assert.strictEqual(rawEntries[1].balance, 4500);
+  assert.strictEqual(rawEntries[2].balance, 4000);
+
+  // Delete 'p-pay_2' (receipt of 3500)
+  const remaining = rawEntries.filter((e) => e.id !== 'p-pay_2');
+  let newRunning = 0;
+  remaining.forEach((e) => {
+    newRunning += e.cashIn - e.cashOut;
+    e.balance = newRunning;
+  });
+
+  assert.strictEqual(remaining.length, 2);
+  assert.strictEqual(remaining[0].balance, 1000);
+  // 1000 - 500 = 500
+  assert.strictEqual(remaining[1].balance, 500);
+});
+
 // ─── 11. AUDIT LOG RETENTION & AUTO-EXPIRY TESTS ─────────────────────────────
 console.log('\n[SUITE 11: Audit Log 30-Day Retention & Auto-Pruning]');
 

@@ -436,6 +436,15 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
     const adminHeaders = await getAdminHeaders();
     const adminJsonHeaders = await getAdminHeaders({ 'Content-Type': 'application/json' });
 
+    if (slug === 'cashbook') {
+      if (id.startsWith('p-')) {
+        return await deleteRow('payments', id.slice(2));
+      }
+      if (id.startsWith('e-')) {
+        return await deleteRow('expenses', id.slice(2));
+      }
+    }
+
     if (slug === 'trips') {
       try {
         const urlPay = getEndpoint('payments') + (API_KEY ? '&pageSize=300' : '?pageSize=300');

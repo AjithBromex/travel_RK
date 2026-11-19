@@ -36,9 +36,9 @@ import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { CashBookEntry, PaymentMode, Trip, ExpenseCategory } from "@/types";
 import { createPayment } from "@/services/payments.service";
 import { createExpense } from "@/services/expenses.service";
-import { getCashBookEntries } from "@/services/cashbook.service";
+import { getCashBookEntries, deleteCashBookEntry } from "@/services/cashbook.service";
 import { getTrips } from "@/services/trips.service";
-import { getStoredTrips, subscribeDataChanged } from "@/lib/storage-sync";
+import { getStoredTrips, subscribeDataChanged, isRecordConfirmed } from "@/lib/storage-sync";
 import SearchableTripSelect from "@/components/SearchableTripSelect";
 
 interface CashBookClientProps {
@@ -58,6 +58,7 @@ interface DisplayCashBookItem {
   paymentMode: PaymentMode;
   balance: number;
   notes?: string;
+  isConfirmed?: boolean;
 }
 
 const MODE_META: Record<PaymentMode, { label: string; badgeClass: string }> = {
@@ -93,6 +94,7 @@ export default function CashBookClient({
         paymentMode: e.paymentMode || "cash",
         balance: e.balance || 0,
         notes: e.description || "",
+        isConfirmed: Boolean(e.isConfirmed),
       };
     });
   }, []);
@@ -231,6 +233,7 @@ export default function CashBookClient({
 
       let typeTitle = "Customer Payment";
       let typeSubtitle = form.notes.trim() || "General Inflow";
+      let createdId = "";
 
       if (formDirection === "inflow") {
         if (form.type === "trip_advance") {
@@ -238,7 +241,7 @@ export default function CashBookClient({
         } else {
           typeTitle = "Customer Payment";
         }
-        await createPayment({
+        createdId = await createPayment({
           tripId: form.tripId || "general",
           type: "customer_received",
           amount: parsedAmount,
@@ -250,7 +253,7 @@ export default function CashBookClient({
         if (form.type === "driver_payment") {
           typeTitle = "Driver Settlement";
           typeSubtitle = form.notes.trim() || "Driver Payout";
-          await createPayment({
+          createdId = await createPayment({
             tripId: form.tripId || "general",
             type: "driver_payment",
             amount: parsedAmount,
@@ -284,7 +287,7 @@ export default function CashBookClient({
             typeSubtitle = form.notes.trim() || "Office outlays";
           }
 
-          await createExpense({
+          createdId = await createExpense({
             tripId: form.tripId || "",
             tripNumber: tripNumberStr,
             expenseDate: form.date,
@@ -304,8 +307,11 @@ export default function CashBookClient({
           ? currentHeadBalance + parsedAmount
           : currentHeadBalance - parsedAmount;
 
+      const prefix = formDirection === "inflow" ? "p-" : form.type === "driver_payment" ? "p-" : "e-";
+      const newItemId = createdId ? `${prefix}${createdId}` : `cb-${Date.now()}`;
+
       const newItem: DisplayCashBookItem = {
-        id: `cb-${Date.now()}`,
+        id: newItemId,
         date: form.date,
         direction: formDirection,
         typeTitle,
@@ -344,12 +350,61 @@ export default function CashBookClient({
     }
   };
 
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = async (id: string) => {
     setActiveMenuId(null);
-    if (!window.confirm("Are you sure you want to remove this cash book entry?")) return;
+    const itemToDelete = items.find((i) => i.id === id);
+    if (!itemToDelete) return;
+
+    const targetPaymentId = id.startsWith("p-") ? id.slice(2) : id;
+    const targetExpenseId = id.startsWith("e-") ? id.slice(2) : id;
+
+    if (
+      itemToDelete.isConfirmed ||
+      isRecordConfirmed("cashbook", id) ||
+      isRecordConfirmed("payments", targetPaymentId) ||
+      isRecordConfirmed("expenses", targetExpenseId)
+    ) {
+      alert("This entry has been confirmed by Admin and cannot be deleted.");
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to remove this ${itemToDelete.typeTitle} of ₹${itemToDelete.amount.toLocaleString("en-IN")} from cash book?`)) {
+      return;
+    }
+
+    // 1. Optimistic removal from state immediately
     setItems((prev) => prev.filter((i) => i.id !== id));
-    setFeedback({ message: "Entry removed from cash book.", type: "success" });
-    setTimeout(() => setFeedback(null), 3000);
+    setFeedback({ message: "Removing cash entry...", type: "success" });
+
+    try {
+      // 2. Perform backend deletion, trash archiving & trip reconciliation
+      await deleteCashBookEntry(id);
+      setFeedback({ message: "Cash entry removed successfully.", type: "success" });
+
+      // 3. Refresh with exact calculated running balances
+      const [freshEntries, freshTrips] = await Promise.all([
+        getCashBookEntries(),
+        getTrips(100),
+      ]);
+      const validTrips = freshTrips && freshTrips.length > 0 ? freshTrips : getStoredTrips();
+      setTripList(validTrips);
+      if (Array.isArray(freshEntries)) {
+        setItems(transformEntries(freshEntries, validTrips));
+      }
+    } catch (err: unknown) {
+      console.error("Cashbook delete error:", err);
+      setFeedback({
+        message: (err as Error)?.message || "Failed to remove entry from cash book.",
+        type: "error",
+      });
+      // Restore view if error
+      try {
+        const freshEntries = await getCashBookEntries();
+        setItems(transformEntries(freshEntries, tripList));
+      } catch {}
+    } finally {
+      setTimeout(() => setFeedback(null), 3000);
+    }
   };
 
   const handleExportCSV = () => {
