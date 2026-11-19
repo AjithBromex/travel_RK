@@ -2,7 +2,6 @@ import {
   collection,
   doc,
   getDocs,
-  getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -12,7 +11,7 @@ import {
   limit,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
-import type { Expense, ExpenseCategory, Trip } from '@/types'
+import type { Expense, ExpenseCategory } from '@/types'
 import { withCache, invalidateCache } from '@/lib/cache'
 import {
   waitForAuthReady,
@@ -20,16 +19,12 @@ import {
   saveStoredExpenses,
   upsertStoredExpense,
   removeStoredExpense,
-  getStoredTrips,
-  upsertStoredTrip,
-  getStoredPayments,
   notifyDataChanged,
   isDeleted,
   markAsDeleted,
   unmarkDeleted,
 } from '@/lib/storage-sync'
 import { moveToTrash } from './trash.service'
-import { reconcileTripWithPayments, isExpenseLinkedToTrip } from './payments.service'
 
 const COLLECTION = 'expenses'
 
@@ -94,76 +89,6 @@ export async function getExpensesByTrip(tripId: string): Promise<Expense[]> {
   )
 }
 
-export async function syncTripFareWithExpenses(target: string | Partial<Expense>): Promise<void> {
-  try {
-    const dummyExpense: Partial<Expense> = typeof target === 'string'
-      ? { tripId: target, tripNumber: target }
-      : target
-
-    if (!dummyExpense.tripId && !dummyExpense.tripNumber) return
-    if (dummyExpense.tripId === 'general') return
-
-    const trips = getStoredTrips()
-    let targetTrip = trips.find(t => isExpenseLinkedToTrip(dummyExpense, t))
-
-    if (!targetTrip) {
-      if (dummyExpense.tripId) {
-        try {
-          const tripSnap = await getDoc(doc(db, 'trips', dummyExpense.tripId))
-          if (tripSnap.exists()) {
-            targetTrip = { id: tripSnap.id, ...tripSnap.data() } as Trip
-          }
-        } catch {}
-      }
-      if (!targetTrip && (dummyExpense.tripNumber || dummyExpense.tripId)) {
-        try {
-          const identifier = (dummyExpense.tripNumber || dummyExpense.tripId || '').trim()
-          const qTrips = query(collection(db, 'trips'), where('tripNumber', '==', identifier), limit(1))
-          const snap = await getDocs(qTrips)
-          if (!snap.empty) {
-            targetTrip = { id: snap.docs[0].id, ...snap.docs[0].data() } as Trip
-          }
-        } catch {}
-      }
-    }
-
-    if (!targetTrip) return
-
-    const paymentsList = getStoredPayments()
-    const expensesList = getStoredExpenses()
-
-    const reconciled = reconcileTripWithPayments(targetTrip, paymentsList, expensesList)
-
-    const tripUpdates: Partial<Trip> = {
-      baseFare: reconciled.baseFare,
-      totalFare: reconciled.totalFare,
-      totalExpenses: reconciled.totalExpenses || 0,
-      customerBalance: reconciled.customerBalance,
-      customerPaid: reconciled.customerPaid,
-      advanceReceived: reconciled.advanceReceived,
-      driverBalance: reconciled.driverBalance,
-      driverPaid: reconciled.driverPaid,
-      updatedAt: new Date().toISOString(),
-    }
-
-    upsertStoredTrip({ ...targetTrip, ...tripUpdates })
-
-    try {
-      await updateDoc(doc(db, 'trips', targetTrip.id), tripUpdates)
-    } catch (tripErr) {
-      console.warn('[ExpensesService] Linked trip update fallback to local:', tripErr)
-    }
-
-    invalidateCache('trips')
-    invalidateCache('dashboard')
-    invalidateCache('reports')
-    notifyDataChanged('trips')
-    notifyDataChanged('all')
-  } catch (err) {
-    console.warn('[ExpensesService] Error syncing trip fare with expenses:', err)
-  }
-}
-
 export async function createExpense(data: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   await waitForAuthReady()
   const now = new Date().toISOString()
@@ -188,11 +113,6 @@ export async function createExpense(data: Omit<Expense, 'id' | 'createdAt' | 'up
   }
   upsertStoredExpense(newExpense)
 
-  // Synchronize trip fare if expense is linked to a trip
-  if (data.tripId && data.tripId !== 'general') {
-    await syncTripFareWithExpenses(newExpense)
-  }
-
   invalidateCache('expenses')
   invalidateCache('dashboard')
   invalidateCache('cashbook')
@@ -204,11 +124,6 @@ export async function createExpense(data: Omit<Expense, 'id' | 'createdAt' | 'up
 export async function updateExpense(id: string, data: Partial<Expense>): Promise<void> {
   await waitForAuthReady()
   const now = new Date().toISOString()
-  const list = getStoredExpenses()
-  const existing = list.find(e => e.id === id)
-  const previousTripId = existing?.tripId
-  const previousTripNumber = existing?.tripNumber
-
   try {
     await updateDoc(doc(db, COLLECTION, id), {
       ...data,
@@ -218,19 +133,10 @@ export async function updateExpense(id: string, data: Partial<Expense>): Promise
     console.warn('[Expenses] Cloud update failed, updating local copy:', err)
   }
 
+  const list = getStoredExpenses()
+  const existing = list.find(e => e.id === id)
   if (existing) {
     upsertStoredExpense({ ...existing, ...data, updatedAt: now })
-  }
-
-  // If linked trip changed, sync old trip
-  if (previousTripId && previousTripId !== 'general' && (previousTripId !== data.tripId || previousTripNumber !== data.tripNumber)) {
-    await syncTripFareWithExpenses({ tripId: previousTripId, tripNumber: previousTripNumber })
-  }
-
-  // Sync new/current trip
-  const updatedExpense = { ...(existing || {}), ...data }
-  if (updatedExpense.tripId && updatedExpense.tripId !== 'general') {
-    await syncTripFareWithExpenses(updatedExpense)
   }
 
   invalidateCache('expenses')
@@ -242,21 +148,13 @@ export async function updateExpense(id: string, data: Partial<Expense>): Promise
 
 export async function deleteExpense(id: string, recordData?: Partial<Expense>): Promise<void> {
   await waitForAuthReady()
-  const currentExpenses = getStoredExpenses()
-  const expenseToDelete = recordData || currentExpenses.find(e => e.id === id)
-
   try {
-    await moveToTrash('expenses', id, 'Expense deleted', undefined, expenseToDelete as any)
+    await moveToTrash('expenses', id, 'Expense deleted', undefined, recordData as any)
   } catch (err) {
     console.warn('[Expenses] moveToTrash failed, removing locally:', err)
   }
   removeStoredExpense(id)
   markAsDeleted('expenses', id)
-
-  // Synchronize linked trip totalFare & customerBalance
-  if (expenseToDelete && expenseToDelete.tripId && expenseToDelete.tripId !== 'general') {
-    await syncTripFareWithExpenses(expenseToDelete)
-  }
 
   invalidateCache('expenses')
   invalidateCache('dashboard')

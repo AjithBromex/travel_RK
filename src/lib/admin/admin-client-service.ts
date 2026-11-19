@@ -67,8 +67,6 @@ import type { Trip, Vehicle, Payment, Expense, Reminder, UserProfile } from '@/t
 // Normalizers: convert domain models into flat table records matching MODULES[slug].columns
 export function normalizeTrip(t: Partial<Trip> & Record<string, any>): Record<string, unknown> {
   const amount = Number(t.totalFare ?? t.amount ?? t.baseFare ?? 0);
-  const baseFare = Number(t.baseFare ?? amount);
-  const totalExpenses = Number(t.totalExpenses || 0);
   const statusRaw = String(t.status || 'scheduled').toLowerCase();
   const status =
     statusRaw === 'on_trip'
@@ -87,11 +85,6 @@ export function normalizeTrip(t: Partial<Trip> & Record<string, any>): Record<st
     startDate: t.tripDate || t.startDate || (typeof t.createdAt === 'string' ? t.createdAt.slice(0, 10) : ''),
     endDate: t.endDate || '',
     amount,
-    baseFare,
-    totalExpenses,
-    customerBalance: Number(t.customerBalance || 0),
-    customerPaid: Number(t.customerPaid || 0),
-    advanceReceived: Number(t.advanceReceived || 0),
     status,
     note: t.notes || t.note || '',
     isConfirmed,
@@ -279,13 +272,10 @@ export function normalizeCashbook(c: Record<string, any>): Record<string, unknow
   const recId = String(c.id || '');
   const isConfirmed = Boolean(c.isConfirmed || (recId && isRecordConfirmed('cashbook', recId)));
 
-  const isTripLinked = Boolean((c.tripId && c.tripId !== 'general') || (c as any).typeTitle?.includes('Added to Trip') || c.type === 'trip_expense');
-  const isInflow = c.type === 'receipt' || c.type === 'trip_expense' || (c.cashIn && Number(c.cashIn) > 0) || isTripLinked;
-
   return {
     id: c.id || `cb_${Math.random().toString(36).slice(2)}`,
     date: c.date || (typeof c.createdAt === 'string' ? c.createdAt.slice(0, 10) : ''),
-    type: isInflow ? 'In' : 'Out',
+    type: c.type === 'receipt' || (c.cashIn && Number(c.cashIn) > 0) ? 'In' : 'Out',
     description: c.description || '',
     amount: Number(c.cashIn > 0 ? c.cashIn : c.cashOut || c.amount || 0),
     mode: (c.paymentMode || c.mode || 'Cash').toUpperCase(),
@@ -445,7 +435,6 @@ export async function saveAdminRow(
       tripDate: String((form as Record<string, any>).startDate || new Date().toISOString().slice(0, 10)),
       endDate: String((form as Record<string, any>).endDate || ''),
       pickupTime: String((form as Record<string, any>).pickupTime || ''),
-      baseFare: Number((form as Record<string, any>).amount || 0),
       totalFare: Number((form as Record<string, any>).amount || 0),
       status: mappedStatus,
       notes: String((form as Record<string, any>).note || ''),

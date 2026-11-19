@@ -162,7 +162,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
     // Cross-page real-time sync listener
     const unsubscribe = subscribeDataChanged((entity) => {
-      if (entity === "trips" || entity === "payments" || entity === "expenses" || entity === "all") {
+      if (entity === "trips" || entity === "payments" || entity === "all") {
         fetchTripsData();
       }
       if (entity === "vehicles" || entity === "all") {
@@ -540,27 +540,7 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
 
       const assignedReceiptNo = (form.receiptNumber && form.receiptNumber.trim()) || getNextReceiptNumber(trips);
 
-      let totalExpenses = 0;
-      let existingCustomerPaid = Number(form.advanceReceived) || 0;
-      let existingDriverPaid = 0;
-
-      if (editingTripId) {
-        const existing = trips.find((t) => t.id === editingTripId);
-        if (existing) {
-          totalExpenses = Number((existing as any).totalExpenses) || 0;
-          existingCustomerPaid = Number(existing.customerPaid) || (Number(form.advanceReceived) || 0);
-          existingDriverPaid = Number(existing.driverPaid) || 0;
-        }
-      }
-
       const tripAmount = Number(form.baseFare) || 0;
-      const totalFare = tripAmount + totalExpenses;
-      // Operating expenses are directly added to the trip payment (funded outlays, not customer due)
-      const existingCustomerPaymentsOnly = Math.max(0, existingCustomerPaid - totalExpenses);
-      const customerBalance = Math.max(0, tripAmount - (editingTripId ? existingCustomerPaymentsOnly : (Number(form.advanceReceived) || 0)));
-      const customerPaid = (editingTripId ? existingCustomerPaymentsOnly : (Number(form.advanceReceived) || 0)) + totalExpenses;
-      const driverBalance = Math.max(0, (Number(form.driverAgreedPay) || 0) - existingDriverPaid);
-
       const tripPayload = {
         receiptNumber: assignedReceiptNo,
         tripDate: form.tripDate,
@@ -579,13 +559,12 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
         extraKmRate: Number(form.extraKmRate) || 0,
         extraKmCharge: 0,
         baseFare: tripAmount,
-        totalExpenses,
-        totalFare,
+        totalFare: tripAmount,
         advanceReceived: Number(form.advanceReceived) || 0,
-        customerPaid: existingCustomerPaid,
-        customerBalance,
-        driverPaid: existingDriverPaid,
-        driverBalance,
+        customerPaid: Number(form.advanceReceived) || 0,
+        customerBalance: Math.max(0, tripAmount - (Number(form.advanceReceived) || 0)),
+        driverPaid: 0,
+        driverBalance: Number(form.driverAgreedPay) || 0,
         status: form.status,
         notes: form.notes || "",
       };
@@ -675,8 +654,6 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       To: t.to,
       Vehicle: t.vehicleName || "-",
       Driver: t.driverName ? `${t.driverName}${t.driverPhone ? ` (${t.driverPhone})` : ""}` : "-",
-      "Base Fare (INR)": t.baseFare || t.totalFare,
-      "Operating Expenses (INR)": Number((t as any).totalExpenses) || 0,
       "Total Fare (INR)": t.totalFare,
       "Advance Received": t.advanceReceived,
       "Customer Balance": t.customerBalance,
@@ -698,7 +675,6 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       "Route",
       "Vehicle",
       "Driver",
-      "Expenses",
       "Total Fare",
       "Balance",
       "Status",
@@ -711,7 +687,6 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
       `${t.from} → ${t.to}`,
       t.vehicleName || "-",
       t.driverName ? `${t.driverName}${t.driverPhone ? ` (${t.driverPhone})` : ""}` : "-",
-      Number((t as any).totalExpenses) > 0 ? `+${formatINR((t as any).totalExpenses)}` : "-",
       formatINR(t.totalFare),
       formatINR(t.customerBalance),
       t.status.toUpperCase(),
@@ -1413,19 +1388,6 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                     required
                   />
                 </div>
-                {editingTripId && (() => {
-                  const existing = trips.find((t) => t.id === editingTripId);
-                  const expAmt = Number((existing as any)?.totalExpenses || 0);
-                  if (expAmt > 0) {
-                    const totalWithExp = (Number(form.baseFare) || 0) + expAmt;
-                    return (
-                      <p className="mt-1.5 text-[10px] text-rose-700 font-semibold flex items-center gap-1 bg-rose-50 border border-rose-200/60 px-2 py-1 rounded-lg">
-                        <span>Includes ₹{expAmt.toLocaleString('en-IN')} operating expenses • Total Billed Fare will be ₹{totalWithExp.toLocaleString('en-IN')}</span>
-                      </p>
-                    );
-                  }
-                  return null;
-                })()}
               </div>
 
               {/* Action Buttons: Reset & Save Trip */}
@@ -1641,21 +1603,13 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                           <span className="font-extrabold font-mono text-slate-900">
                             ₹{Number(trip.totalFare).toLocaleString("en-IN")}
                           </span>
-                          {Number((trip as any).totalExpenses) > 0 && (
-                            <span
-                              className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200/60 px-1 rounded"
-                              title={`Includes ₹${Number((trip as any).totalExpenses).toLocaleString("en-IN")} expenses added to trip amount`}
-                            >
-                              +₹{Number((trip as any).totalExpenses).toLocaleString("en-IN")} exp
-                            </span>
-                          )}
                           {Number(trip.advanceReceived) > 0 && (
                             <span className="text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-200/60 px-1 rounded">
                               Adv: ₹{Number(trip.advanceReceived).toLocaleString("en-IN")}
                             </span>
                           )}
                         </div>
-                        {Number(trip.customerBalance) > 0 ? (
+                        {Number(trip.customerBalance) > 0 && (
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded">
                               Due ₹{Number(trip.customerBalance).toLocaleString("en-IN")}
@@ -1668,13 +1622,6 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                               <CreditCard className="w-2.5 h-2.5" />
                               <span>Collect Balance</span>
                             </Link>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.2 rounded inline-flex items-center gap-0.5">
-                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
-                              <span>Paid</span>
-                            </span>
                           </div>
                         )}
                       </div>
@@ -1779,21 +1726,13 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                           <span className="text-xs font-black font-mono text-slate-900">
                             ₹{Number(trip.totalFare).toLocaleString("en-IN")}
                           </span>
-                          {Number((trip as any).totalExpenses) > 0 && (
-                            <span
-                              className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200/60 px-1 rounded"
-                              title={`Includes ₹${Number((trip as any).totalExpenses).toLocaleString("en-IN")} expenses added to trip amount`}
-                            >
-                              +₹{Number((trip as any).totalExpenses).toLocaleString("en-IN")} exp
-                            </span>
-                          )}
                           {Number(trip.advanceReceived) > 0 && (
                             <span className="text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-200/60 px-1 rounded">
                               Adv: ₹{Number(trip.advanceReceived).toLocaleString("en-IN")}
                             </span>
                           )}
                         </div>
-                        {Number(trip.customerBalance) > 0 ? (
+                        {Number(trip.customerBalance) > 0 && (
                           <div className="flex items-center sm:justify-end gap-1 mt-0.5">
                             <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded block">
                               Due ₹{Number(trip.customerBalance).toLocaleString("en-IN")}
@@ -1806,13 +1745,6 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                               <CreditCard className="w-2.5 h-2.5" />
                               <span>Collect Balance</span>
                             </Link>
-                          </div>
-                        ) : (
-                          <div className="flex items-center sm:justify-end gap-1 mt-0.5">
-                            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.2 rounded inline-flex items-center gap-0.5">
-                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
-                              <span>Paid</span>
-                            </span>
                           </div>
                         )}
                       </div>

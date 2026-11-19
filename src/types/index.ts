@@ -68,7 +68,6 @@ export interface Trip extends SoftDeleteMetadata {
   advanceReceived: number
   driverAgreedPay: number
   totalFare: number
-  totalExpenses?: number
   customerPaid: number
   customerBalance: number
   driverPaid: number
@@ -195,7 +194,7 @@ export interface CashBookEntry extends SoftDeleteMetadata {
   cashIn: number
   cashOut: number
   balance: number
-  type: 'receipt' | 'expense' | 'driver_payment' | 'trip_expense'
+  type: 'receipt' | 'expense' | 'driver_payment'
   paymentMode: PaymentMode
   createdAt: string
 }

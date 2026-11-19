@@ -80,24 +80,16 @@ export default function CashBookClient({
   const transformEntries = useCallback((entriesList: CashBookEntry[], currentTrips: Trip[]): DisplayCashBookItem[] => {
     return (entriesList || []).map((e) => {
       const trip = currentTrips.find((t) => t.id === e.tripId || t.tripNumber === e.tripId);
-      const isTripLinkedExpense = e.type === "trip_expense" || (e.type === "expense" && Boolean(e.tripId && e.tripId !== "general"));
-      const isInflow = (e.cashIn || 0) > 0 || isTripLinkedExpense;
-      const amountVal = (e.cashIn || 0) > 0 ? e.cashIn : e.cashOut;
+      const isInflow = (e.cashIn || 0) > 0;
       return {
         id: e.id,
         date: e.date,
         direction: isInflow ? "inflow" : "outflow",
-        typeTitle: isTripLinkedExpense
-          ? "Expense (Added to Trip)"
-          : isInflow
-          ? "Customer Payment"
-          : e.type === "driver_payment"
-          ? "Driver Settlement"
-          : "Expense",
+        typeTitle: isInflow ? "Customer Payment" : e.type === "driver_payment" ? "Driver Settlement" : "Expense",
         typeSubtitle: e.description || "General Cash Entry",
         tripNumber: trip?.tripNumber || (e.tripId !== "general" ? e.tripId : ""),
         tripRoute: trip ? `${trip.vehicleName ? trip.vehicleName + " • " : ""}${trip.from || "Origin"} → ${trip.to || "Destination"}` : "",
-        amount: amountVal,
+        amount: isInflow ? e.cashIn : e.cashOut,
         paymentMode: e.paymentMode || "cash",
         balance: e.balance || 0,
         notes: e.description || "",
@@ -305,19 +297,18 @@ export default function CashBookClient({
         }
       }
 
-      // Calculate new running balance (trip-linked expenses add to the trip amount & running balance)
-      const isTripLinkedExpense = formDirection === "outflow" && Boolean(form.tripId && form.tripId !== "general" && form.type !== "driver_payment");
+      // Calculate new running balance
       const currentHeadBalance = items[0]?.balance || 0;
-      const isAddition = formDirection === "inflow" || isTripLinkedExpense;
-      const newBalance = isAddition
-        ? currentHeadBalance + parsedAmount
-        : currentHeadBalance - parsedAmount;
+      const newBalance =
+        formDirection === "inflow"
+          ? currentHeadBalance + parsedAmount
+          : currentHeadBalance - parsedAmount;
 
       const newItem: DisplayCashBookItem = {
         id: `cb-${Date.now()}`,
         date: form.date,
-        direction: isAddition ? "inflow" : "outflow",
-        typeTitle: isTripLinkedExpense ? `${typeTitle} (Added to Trip)` : typeTitle,
+        direction: formDirection,
+        typeTitle,
         typeSubtitle,
         tripNumber: tripNumberStr,
         tripRoute: tripRouteStr,
@@ -845,11 +836,6 @@ export default function CashBookClient({
                     unlinkedLabel="Select trip (General Inflow/Outflow)"
                     showDueBadge={true}
                   />
-                  {formDirection === "outflow" && form.tripId && form.tripId !== "general" && form.type !== "driver_payment" && (
-                    <p className="mt-1 text-[10px] text-blue-700 font-medium">
-                      💡 Expense will be automatically added to the trip amount and payment.
-                    </p>
-                  )}
                 </div>
 
                 <div>
@@ -1098,20 +1084,13 @@ export default function CashBookClient({
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                item.typeTitle.includes("Added to Trip")
-                                  ? "bg-blue-50 text-blue-700 border border-blue-200/60"
-                                  : item.direction === "inflow"
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                item.direction === "inflow"
                                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
                                   : "bg-rose-50 text-rose-700 border border-rose-200/60"
                               }`}
                             >
-                              {item.typeTitle.includes("Added to Trip") ? (
-                                <>
-                                  <Plus className="w-2.5 h-2.5 stroke-[2.75]" />
-                                  <span>Added to Trip</span>
-                                </>
-                              ) : item.direction === "inflow" ? (
+                              {item.direction === "inflow" ? (
                                 <>
                                   <ArrowDown className="w-2.5 h-2.5 stroke-[2.5]" />
                                   <span>Inflow</span>
@@ -1151,15 +1130,6 @@ export default function CashBookClient({
                                     {item.tripRoute}
                                   </p>
                                 )}
-                                {item.typeTitle.includes("Added to Trip") ? (
-                                  <span className="text-[9px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-1 py-0.2 rounded inline-block mt-0.5">
-                                    Added to trip amount
-                                  </span>
-                                ) : item.direction === "outflow" ? (
-                                  <span className="text-[9px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/60 px-1 py-0.2 rounded inline-block mt-0.5">
-                                    General Outflow
-                                  </span>
-                                ) : null}
                               </div>
                             ) : (
                               <span className="text-slate-400 font-bold">-</span>
@@ -1168,9 +1138,7 @@ export default function CashBookClient({
                           <td className="py-3 px-3 text-right font-bold font-mono-nums whitespace-nowrap">
                             <span
                               className={
-                                item.typeTitle.includes("Added to Trip")
-                                  ? "text-blue-600 font-bold"
-                                  : item.direction === "inflow"
+                                item.direction === "inflow"
                                   ? "text-emerald-600"
                                   : "text-rose-600"
                               }

@@ -531,14 +531,6 @@ export default function DashboardClient({
                             <span className="text-xs font-bold text-slate-900 font-mono">
                               {formatINR(trip.totalFare || 0)}
                             </span>
-                            {Number((trip as any).totalExpenses) > 0 && (
-                              <span
-                                className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200/60 px-1 rounded"
-                                title={`Includes ₹${Number((trip as any).totalExpenses).toLocaleString("en-IN")} operating expenses added to trip amount`}
-                              >
-                                +₹{Number((trip as any).totalExpenses).toLocaleString("en-IN")} exp
-                              </span>
-                            )}
                             {Number(trip.advanceReceived) > 0 && (
                               <span className="text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-200/60 px-1 rounded">
                                 Adv: {formatINR(trip.advanceReceived)}

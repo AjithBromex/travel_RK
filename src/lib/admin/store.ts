@@ -154,11 +154,6 @@ function normalize(slug: string, d: Record<string, any>): Record<string, any> {
       startDate: d.tripDate || d.startDate || (typeof d.createdAt === 'string' ? d.createdAt.slice(0, 10) : ''),
       endDate: d.endDate || '',
       amount: Number(d.totalFare || d.amount || d.baseFare || 0),
-      baseFare: Number(d.baseFare || d.totalFare || d.amount || 0),
-      totalExpenses: Number(d.totalExpenses || 0),
-      customerBalance: Number(d.customerBalance || 0),
-      customerPaid: Number(d.customerPaid || 0),
-      advanceReceived: Number(d.advanceReceived || 0),
       status: d.status ? (d.status.charAt(0).toUpperCase() + d.status.slice(1).replace('_', ' ')) : 'Scheduled',
       note: d.notes || d.note || '',
       customerName: d.customerName || d.customer || '',
@@ -345,7 +340,6 @@ export async function createRow(slug: string, body: Record<string, unknown>): Pr
   // Sync dual keys for compatibility between user app & admin table
   if (slug === 'trips') {
     payload.customerName = (cleaned as Record<string, any>).customer || (cleaned as Record<string, any>).customerName || '';
-    payload.baseFare = cleaned.amount;
     payload.totalFare = cleaned.amount;
     payload.tripDate = cleaned.startDate;
     payload.vehicleName = cleaned.vehicle;
@@ -398,7 +392,6 @@ export async function updateRow(slug: string, id: string, body: Record<string, u
 
   if (slug === 'trips') {
     payload.customerName = (cleaned as Record<string, any>).customer || (cleaned as Record<string, any>).customerName || '';
-    payload.baseFare = cleaned.amount;
     payload.totalFare = cleaned.amount;
     payload.tripDate = cleaned.startDate;
     payload.vehicleName = cleaned.vehicle;
@@ -552,72 +545,6 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
         }
       } catch (payReconcileErr) {
         console.warn('[AdminStore] Cascade delete linked payment error:', payReconcileErr);
-      }
-    }
-
-    if (slug === 'expenses') {
-      try {
-        const expRes = await fetch(getEndpoint('expenses', id), { cache: 'no-store', headers: adminHeaders });
-        if (expRes.ok) {
-          const expDoc = decodeDoc(await expRes.json());
-          const targetTripId = expDoc.tripId || expDoc.tripNumber;
-          if (targetTripId && targetTripId !== 'general') {
-            const tripsRes = await fetch(getEndpoint('trips') + (API_KEY ? '&pageSize=300' : '?pageSize=300'), { cache: 'no-store', headers: adminHeaders });
-            const allExpRes = await fetch(getEndpoint('expenses') + (API_KEY ? '&pageSize=300' : '?pageSize=300'), { cache: 'no-store', headers: adminHeaders });
-            if (tripsRes.ok && allExpRes.ok) {
-              const tripsData = await tripsRes.json();
-              const allExpData = await allExpRes.json();
-              const tripDocs = (tripsData.documents || []).map(decodeDoc);
-              const remainingExpenses = (allExpData.documents || []).map(decodeDoc).filter((e: any) => e.id !== id && !e.isDeleted);
-
-              const targetTrip = tripDocs.find((t: any) =>
-                t.id === targetTripId ||
-                t.tripNumber === targetTripId ||
-                t.receiptNumber === targetTripId ||
-                (t.receiptNumber && String(targetTripId).replace(/^#/, '') === String(t.receiptNumber).replace(/^#/, ''))
-              );
-
-              if (targetTrip) {
-                const isLinked = (e: any) => {
-                  return (
-                    e.tripId === targetTrip.id ||
-                    e.tripId === targetTrip.tripNumber ||
-                    e.tripId === targetTrip.receiptNumber ||
-                    (targetTrip.receiptNumber && String(e.tripId).replace(/^#/, '') === String(targetTrip.receiptNumber).replace(/^#/, ''))
-                  );
-                };
-
-                const activeTripExpenses = remainingExpenses.filter(isLinked);
-                const tripExpensesSum = activeTripExpenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
-                const baseFare = Number(targetTrip.baseFare ?? targetTrip.totalFare) || 0;
-                const newTotalFare = baseFare + tripExpensesSum;
-                const prevExpenses = Number(targetTrip.totalExpenses) || 0;
-                const custPaymentsSum = Math.max(0, (Number(targetTrip.customerPaid) || 0) - prevExpenses);
-                const newCustPaid = custPaymentsSum + tripExpensesSum;
-                const newCustBal = Math.max(0, baseFare - custPaymentsSum);
-
-                const patchUrl = `${getEndpoint('trips', targetTrip.id)}${API_KEY ? '&' : '?'}updateMask.fieldPaths=baseFare&updateMask.fieldPaths=totalExpenses&updateMask.fieldPaths=totalFare&updateMask.fieldPaths=customerPaid&updateMask.fieldPaths=customerBalance&updateMask.fieldPaths=updatedAt`;
-                await fetch(patchUrl, {
-                  method: 'PATCH',
-                  headers: adminJsonHeaders,
-                  body: JSON.stringify({
-                    fields: {
-                      baseFare: encodeFirestoreValue(baseFare),
-                      totalExpenses: encodeFirestoreValue(tripExpensesSum),
-                      totalFare: encodeFirestoreValue(newTotalFare),
-                      customerPaid: encodeFirestoreValue(newCustPaid),
-                      customerBalance: encodeFirestoreValue(newCustBal),
-                      updatedAt: encodeFirestoreValue(new Date().toISOString()),
-                    },
-                  }),
-                }).catch(() => {});
-                rowsCache.delete('trips');
-              }
-            }
-          }
-        }
-      } catch (expReconcileErr) {
-        console.warn('[AdminStore] Cascade delete linked expense error:', expReconcileErr);
       }
     }
 

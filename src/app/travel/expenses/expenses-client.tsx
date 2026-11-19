@@ -907,21 +907,10 @@ export default function ExpensesClient({
                     <p className="text-[11px] text-slate-600 truncate mt-0.5">
                       {selectedTrip.from || "Start"} → {selectedTrip.to || "End"} {selectedTrip.vehicleName ? `• ${selectedTrip.vehicleName}` : ""}
                     </p>
-                    <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                      Current Trip Amount: <span className="font-bold text-slate-800">₹{Number(selectedTrip.totalFare || selectedTrip.baseFare || 0).toLocaleString("en-IN")}</span>
-                      {Number((selectedTrip as any).totalExpenses || 0) > 0 && (
-                        <span className="text-rose-600 ml-1 font-semibold">(incl. ₹{Number((selectedTrip as any).totalExpenses).toLocaleString("en-IN")} exp)</span>
-                      )}
-                    </p>
                   </div>
-                  <div className="text-right shrink-0 ml-2">
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md inline-block">
-                      Trip Linked ✓
-                    </span>
-                    <span className="text-[9px] font-semibold text-blue-600 block mt-1">
-                      Adds to trip total
-                    </span>
-                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md shrink-0 ml-2">
+                    Trip Linked ✓
+                  </span>
                 </div>
               )}
 
@@ -1008,18 +997,9 @@ export default function ExpensesClient({
                       }`}
                     />
                   </div>
-                  {!selectedTrip ? (
+                  {!selectedTrip && (
                     <p className="mt-1 text-[10px] text-slate-400 italic">
                       Amount unlocks after selecting a trip booking.
-                    </p>
-                  ) : form.amount && Number(form.amount) > 0 ? (
-                    <p className="mt-1 text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
-                      <span>Trip amount will become ₹{((Number(selectedTrip.totalFare || selectedTrip.baseFare || 0)) + Number(form.amount)).toLocaleString("en-IN")}</span>
-                      <span className="text-slate-400 font-normal">(directly added to trip total &amp; payment)</span>
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-[10px] text-slate-500">
-                      Expense will be automatically added to the trip amount and payment.
                     </p>
                   )}
                 </div>

@@ -152,17 +152,12 @@ export default function SearchableTripSelect({
               <span className="text-slate-500 text-[11px] truncate">
                 ({selectedTrip.from || "Origin"} → {selectedTrip.to || "Destination"})
               </span>
-              {Number((selectedTrip as any).totalExpenses) > 0 && (
-                <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200/60 px-1.5 py-0.2 rounded-md">
-                  +{formatINR(Number((selectedTrip as any).totalExpenses))} exp
-                </span>
-              )}
               {showDueBadge && (
                 (() => {
                   const tTotal = Number(selectedTrip.totalFare) || 0;
                   const tPaid = Number(selectedTrip.customerPaid) || 0;
-                  const hasExplicitBalance = selectedTrip.customerBalance !== undefined && selectedTrip.customerBalance !== null;
-                  const effBal = hasExplicitBalance ? Number(selectedTrip.customerBalance) : Math.max(0, tTotal - tPaid);
+                  const tBal = Number(selectedTrip.customerBalance) || 0;
+                  const effBal = tBal > 0 ? tBal : Math.max(0, tTotal - tPaid);
                   if (effBal > 0) {
                     return (
                       <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded-md">
@@ -170,7 +165,7 @@ export default function SearchableTripSelect({
                       </span>
                     );
                   }
-                  if (tTotal > 0 && (tPaid >= tTotal || effBal === 0)) {
+                  if (tTotal > 0 && tPaid >= tTotal) {
                     return (
                       <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded-md">
                         Paid
@@ -284,10 +279,10 @@ export default function SearchableTripSelect({
                   (trip.receiptNumber && trip.receiptNumber === value);
                 const totalFare = Number(trip.totalFare ?? (Number(trip.baseFare || 0) + Number(trip.extraKmCharge || 0))) || 0;
                 const customerPaid = Number(trip.customerPaid) || 0;
-                const hasExplicitBalance = trip.customerBalance !== undefined && trip.customerBalance !== null;
-                const effectiveBalance = hasExplicitBalance ? Number(trip.customerBalance) : Math.max(0, totalFare - customerPaid);
-                const isPaid = effectiveBalance === 0 || (totalFare > 0 && customerPaid >= totalFare);
-                const hasDue = effectiveBalance > 0;
+                const rawBalance = Number(trip.customerBalance) || 0;
+                const effectiveBalance = rawBalance > 0 ? rawBalance : Math.max(0, totalFare - customerPaid);
+                const isPaid = totalFare > 0 ? customerPaid >= totalFare : (customerPaid > 0 && effectiveBalance === 0);
+                const hasDue = effectiveBalance > 0 || (totalFare > 0 && !isPaid);
 
                 return (
                   <div
@@ -326,29 +321,19 @@ export default function SearchableTripSelect({
                     </div>
 
                     <div className="text-right shrink-0 flex items-center gap-2">
-                      <div className="text-right">
-                        <span className="block text-xs font-bold text-slate-800 font-mono-nums">
-                          {formatINR(totalFare)}
-                        </span>
-                        {Number((trip as any).totalExpenses) > 0 && (
-                          <span className="text-[9px] font-bold text-rose-600 block">
-                            +{formatINR(Number((trip as any).totalExpenses))} exp
-                          </span>
-                        )}
-                        {showDueBadge && (
-                          <div className="mt-0.5">
-                            {hasDue ? (
-                              <span className="inline-block text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/70 px-1.5 py-0.2 rounded">
-                                Due {formatINR(effectiveBalance)}
-                              </span>
-                            ) : isPaid ? (
-                              <span className="inline-block text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-1.5 py-0.2 rounded">
-                                Paid
-                              </span>
-                            ) : null}
-                          </div>
-                        )}
-                      </div>
+                      {showDueBadge && (
+                        <div>
+                          {hasDue ? (
+                            <span className="inline-block text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/70 px-1.5 py-0.5 rounded">
+                              Due {formatINR(effectiveBalance)}
+                            </span>
+                          ) : isPaid ? (
+                            <span className="inline-block text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-1.5 py-0.5 rounded">
+                              Paid
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
                       {isSelected && (
                         <Check className="w-4 h-4 text-blue-600 shrink-0" />
                       )}

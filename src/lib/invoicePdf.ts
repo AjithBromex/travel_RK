@@ -18,8 +18,6 @@ export interface InvoiceData {
 
   // Payment Details
   tripAmount: number
-  baseFare?: number
-  totalExpenses?: number
   advanceReceived: number
   balanceAmount: number
   paymentStage?: 'advance' | 'balance' | 'full' | 'payout'
@@ -179,8 +177,6 @@ export function buildInvoiceData(
     journeyDate: journeyDateFormatted,
     pax: '-',
     tripAmount: totalFare,
-    baseFare: trip?.baseFare !== undefined ? Number(trip.baseFare) : totalFare,
-    totalExpenses: Number((trip as any)?.totalExpenses || 0),
     advanceReceived: advance,
     balanceAmount: balance,
     paymentStage: isAdvancePayment ? 'advance' : isBalancePayment ? 'balance' : payment.type === 'driver_payment' ? 'payout' : 'full',
@@ -198,8 +194,8 @@ export function buildInvoiceData(
     dutyStart: trip?.tripDate || '-',
     dutyEnd: '-',
     remarks: payment.notes
-      ? `Payment Mode: ${payment.paymentMode.toUpperCase()} • ${payment.notes}${Number((trip as any)?.totalExpenses || 0) > 0 ? ` (Includes ₹${Number((trip as any).totalExpenses).toLocaleString('en-IN')} operating expenses)` : ''}`
-      : `Payment Mode: ${payment.paymentMode.toUpperCase()} • Received with thanks.${Number((trip as any)?.totalExpenses || 0) > 0 ? ` (Includes ₹${Number((trip as any).totalExpenses).toLocaleString('en-IN')} operating expenses)` : ''}`,
+      ? `Payment Mode: ${payment.paymentMode.toUpperCase()} • ${payment.notes}`
+      : `Payment Mode: ${payment.paymentMode.toUpperCase()} • Received with thanks.`,
     paymentMode: payment.paymentMode.toUpperCase(),
   }
 }

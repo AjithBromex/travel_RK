@@ -188,7 +188,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
       if (entity === "payments" || entity === "all") {
         fetchPaymentsData();
       }
-      if (entity === "trips" || entity === "expenses" || entity === "all") {
+      if (entity === "trips" || entity === "all") {
         fetchTripsData();
       }
       if (entity === "vehicles" || entity === "all") {
@@ -410,8 +410,7 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
               matchedTrip = t;
               if (form.type === "customer_received") {
                 const newPaid = (Number(t.customerPaid) || 0) + amountNum;
-                const currentBalance = Number(t.customerBalance) > 0 ? Number(t.customerBalance) : Math.max(0, (Number(t.baseFare || t.totalFare) || 0) - (Number(t.customerPaid) || 0));
-                const newBal = Math.max(0, currentBalance - amountNum);
+                const newBal = Math.max(0, (Number(t.totalFare) || 0) - newPaid);
                 const newAdv = form.paymentStage === "advance"
                   ? (Number(t.advanceReceived) || 0) + amountNum
                   : t.advanceReceived;
@@ -1002,16 +1001,9 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                     <span className="font-bold text-slate-800 truncate">
                       Trip #{selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} • {selectedTrip.customerName}
                     </span>
-                    <div className="text-right shrink-0 ml-2">
-                      <span className="font-bold text-slate-900 font-mono-nums block">
-                        Total Fare: {formatINR(selectedTrip.totalFare)}
-                      </span>
-                      {Number((selectedTrip as any).totalExpenses) > 0 && (
-                        <span className="text-[10px] font-semibold text-rose-600 block">
-                          (Base {formatINR(selectedTrip.baseFare || selectedTrip.totalFare)} + {formatINR((selectedTrip as any).totalExpenses)} exp)
-                        </span>
-                      )}
-                    </div>
+                    <span className="font-bold text-slate-900 font-mono-nums shrink-0 ml-2">
+                      Total Fare: {formatINR(selectedTrip.totalFare)}
+                    </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-slate-200/60">
                     <div className="bg-white/80 p-2 rounded-lg border border-slate-100">

@@ -141,9 +141,7 @@ export default function AdminDashboardClient({ initialData }: Props) {
     const balance =
       sum(cash, (c) => c.type === 'In') - sum(cash, (c) => c.type === 'Out');
     const profit = received - spent;
-    const toCollect = trips
-      .filter((t) => t.status !== 'Cancelled')
-      .reduce((acc, t) => acc + (Number((t as any).customerBalance) > 0 ? Number((t as any).customerBalance) : 0), 0);
+    const toCollect = Math.max(billed - received, 0);
 
     const today = new Date().toISOString().slice(0, 10);
     const due = reminders
@@ -516,20 +514,10 @@ export default function AdminDashboardClient({ initialData }: Props) {
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <div className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <span className="font-extrabold text-slate-900 block">
-                          {inr(t.amount)}
-                        </span>
-                        {Number(t.totalExpenses || 0) > 0 && (
-                          <span
-                            className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200/60 px-1 rounded"
-                            title={`Includes ${inr(Number(t.totalExpenses))} operating expenses added to trip amount`}
-                          >
-                            +{inr(Number(t.totalExpenses))}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider block">
+                      <span className="font-extrabold text-slate-900 block">
+                        {inr(t.amount)}
+                      </span>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider">
                         {String(t.startDate)}
                       </span>
                     </div>
