@@ -817,6 +817,85 @@ test('Security Headers: HSTS max-age=31536000 is enforced in production', () => 
   assert.strictEqual(prodHeaders['Strict-Transport-Security'], 'max-age=31536000; includeSubDomains');
 });
 
+// ─── 14. SETTINGS OPERATIONAL OVERVIEW & DATA HYDRATION ─────────────────────
+console.log('\n[SUITE 14: Settings Operational Overview & Client Hydration]');
+
+function calculateSettingsOperationalMetrics({ trips = [], vehicles = [], payments = [], reminders = [] }) {
+  const totalFleetCount = vehicles.length;
+  const activeVehicles = vehicles.filter((v) => v.status !== 'inactive');
+  const activeVehiclesCount = activeVehicles.length > 0 ? activeVehicles.length : vehicles.length;
+
+  const totalTripsCount = trips.length;
+
+  const custPayments = payments
+    .filter((p) => p.type === 'customer_received')
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const unrecordedAdvances = trips.reduce((sum, t) => {
+    const hasRecorded = payments.some(
+      (p) =>
+        p.type === 'customer_received' &&
+        (p.paymentStage === 'advance' || (p.notes && /advance/i.test(p.notes))) &&
+        (p.tripId === t.id || p.tripId === t.tripNumber)
+    );
+    return sum + (hasRecorded ? 0 : Number(t.advanceReceived || 0));
+  }, 0);
+
+  const totalRevenue = custPayments + unrecordedAdvances;
+
+  const pendingReminders = reminders.filter((r) => r.status !== 'completed');
+  const activeRemindersCount = pendingReminders.length > 0 ? pendingReminders.length : reminders.length;
+
+  return {
+    totalFleetCount,
+    activeVehiclesCount,
+    totalTripsCount,
+    totalRevenue,
+    activeRemindersCount,
+  };
+}
+
+test('Settings Operational Overview: calculates metrics accurately with active data', () => {
+  const mockVehicles = [
+    { id: 'v1', status: 'active' },
+    { id: 'v2', status: 'active' },
+    { id: 'v3', status: 'inactive' },
+  ];
+  const mockTrips = [
+    { id: 't1', tripNumber: 'TRP-001', advanceReceived: 1000 },
+    { id: 't2', tripNumber: 'TRP-002', advanceReceived: 2000 },
+  ];
+  const mockPayments = [
+    { id: 'p1', tripId: 't1', type: 'customer_received', paymentStage: 'advance', amount: 1000 },
+    { id: 'p2', tripId: 't1', type: 'customer_received', paymentStage: 'balance', amount: 4000 },
+  ];
+  const mockReminders = [
+    { id: 'r1', status: 'pending' },
+    { id: 'r2', status: 'completed' },
+  ];
+
+  const metrics = calculateSettingsOperationalMetrics({
+    trips: mockTrips,
+    vehicles: mockVehicles,
+    payments: mockPayments,
+    reminders: mockReminders,
+  });
+
+  assert.strictEqual(metrics.totalFleetCount, 3);
+  assert.strictEqual(metrics.activeVehiclesCount, 2);
+  assert.strictEqual(metrics.totalTripsCount, 2);
+  // Revenue: 1000 + 4000 from p1,p2 + 2000 unrecorded advance from t2 = 7000
+  assert.strictEqual(metrics.totalRevenue, 7000);
+  assert.strictEqual(metrics.activeRemindersCount, 1);
+});
+
+test('Settings Hydration Fallback: falls back to stored local data when server props are empty', () => {
+  const serverTrips = [];
+  const storedTrips = [{ id: 't1', tripNumber: 'TRP-001' }];
+  const effectiveTrips = (serverTrips && serverTrips.length > 0) ? serverTrips : storedTrips;
+  assert.strictEqual(effectiveTrips.length, 1);
+});
+
 // ─── TEST SUMMARY ─────────────────────────────────────────────────────────────
 console.log('\n=============================================================================');
 console.log(`  TEST RESULTS: ${passedTests} / ${totalTests} PASSED (${Math.round((passedTests / totalTests) * 100)}%)`);

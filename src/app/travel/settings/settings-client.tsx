@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,26 +32,144 @@ import {
   Clock,
 } from "lucide-react";
 import { capitalizeWords } from "@/lib/utils";
-import { getLocalData } from "@/lib/storage-sync";
+import {
+  getLocalData,
+  getStoredTrips,
+  getStoredVehicles,
+  getStoredPayments,
+  getStoredExpenses,
+  getStoredReminders,
+  subscribeDataChanged,
+} from "@/lib/storage-sync";
+import { getTrips } from "@/services/trips.service";
+import { getVehicles } from "@/services/vehicles.service";
+import { getPayments } from "@/services/payments.service";
+import { getExpenses } from "@/services/expenses.service";
+import { getReminders } from "@/services/reminders.service";
 import type { Trip, Vehicle, Payment, Expense, Reminder } from "@/types";
 
 interface SettingsClientProps {
-  trips: Trip[];
-  vehicles: Vehicle[];
-  payments: Payment[];
-  expenses: Expense[];
-  reminders: Reminder[];
+  trips?: Trip[];
+  vehicles?: Vehicle[];
+  payments?: Payment[];
+  expenses?: Expense[];
+  reminders?: Reminder[];
 }
 
 export default function SettingsClient({
-  trips,
-  vehicles,
-  payments,
-  expenses,
-  reminders,
+  trips = [],
+  vehicles = [],
+  payments = [],
+  expenses = [],
+  reminders = [],
 }: SettingsClientProps) {
   const router = useRouter();
   const { user, userProfile, signOut } = useAuth();
+
+  const [tripList, setTripList] = useState<Trip[]>(() => {
+    if (trips && trips.length > 0) return trips;
+    if (typeof window !== "undefined") return getStoredTrips();
+    return [];
+  });
+
+  const [vehicleList, setVehicleList] = useState<Vehicle[]>(() => {
+    if (vehicles && vehicles.length > 0) return vehicles;
+    if (typeof window !== "undefined") return getStoredVehicles();
+    return [];
+  });
+
+  const [paymentList, setPaymentList] = useState<Payment[]>(() => {
+    if (payments && payments.length > 0) return payments;
+    if (typeof window !== "undefined") return getStoredPayments();
+    return [];
+  });
+
+  const [expenseList, setExpenseList] = useState<Expense[]>(() => {
+    if (expenses && expenses.length > 0) return expenses;
+    if (typeof window !== "undefined") return getStoredExpenses();
+    return [];
+  });
+
+  const [reminderList, setReminderList] = useState<Reminder[]>(() => {
+    if (reminders && reminders.length > 0) return reminders;
+    if (typeof window !== "undefined") return getStoredReminders();
+    return [];
+  });
+
+  // Client-side real-time hydration with active user credentials
+  useEffect(() => {
+    const refreshData = async () => {
+      try {
+        const [freshTrips, freshVehicles, freshPayments, freshExpenses, freshReminders] =
+          await Promise.all([
+            getTrips(200),
+            getVehicles(100),
+            getPayments(200),
+            getExpenses(200),
+            getReminders(100),
+          ]);
+
+        const validTrips = freshTrips && freshTrips.length > 0 ? freshTrips : getStoredTrips();
+        const validVehicles = freshVehicles && freshVehicles.length > 0 ? freshVehicles : getStoredVehicles();
+        const validPayments = freshPayments && freshPayments.length > 0 ? freshPayments : getStoredPayments();
+        const validExpenses = freshExpenses && freshExpenses.length > 0 ? freshExpenses : getStoredExpenses();
+        const validReminders = freshReminders && freshReminders.length > 0 ? freshReminders : getStoredReminders();
+
+        setTripList(validTrips);
+        setVehicleList(validVehicles);
+        setPaymentList(validPayments);
+        setExpenseList(validExpenses);
+        setReminderList(validReminders);
+      } catch (err) {
+        console.warn("[SettingsClient] Hydration warning:", err);
+      }
+    };
+
+    refreshData();
+
+    const unsubscribe = subscribeDataChanged(() => {
+      refreshData();
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Operational Overview metrics calculated dynamically from live state
+  const totalFleetCount = useMemo(() => {
+    return vehicleList.length;
+  }, [vehicleList]);
+
+  const activeVehiclesCount = useMemo(() => {
+    const active = vehicleList.filter((v) => v.status !== "inactive");
+    return active.length > 0 ? active.length : vehicleList.length;
+  }, [vehicleList]);
+
+  const totalTripsCount = useMemo(() => {
+    return tripList.length;
+  }, [tripList]);
+
+  const totalRevenue = useMemo(() => {
+    const custPayments = paymentList
+      .filter((p) => p.type === "customer_received")
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+    const unrecordedAdvances = tripList.reduce((sum, t) => {
+      const hasRecorded = paymentList.some(
+        (p) =>
+          p.type === "customer_received" &&
+          (p.paymentStage === "advance" || (p.notes && /advance/i.test(p.notes))) &&
+          (p.tripId === t.id || p.tripId === t.tripNumber)
+      );
+      return sum + (hasRecorded ? 0 : Number(t.advanceReceived || 0));
+    }, 0);
+
+    return custPayments + unrecordedAdvances;
+  }, [paymentList, tripList]);
+
+  const activeRemindersCount = useMemo(() => {
+    const pending = reminderList.filter((r) => r.status !== "completed");
+    return pending.length > 0 ? pending.length : reminderList.length;
+  }, [reminderList]);
 
   const [feedback, setFeedback] = useState<{
     message: string;
@@ -65,27 +183,22 @@ export default function SettingsClient({
   // Export Data JSON snapshot
   const handleExportData = () => {
     try {
-      const activeTrips = trips?.length ? trips : getLocalData<Trip[]>("trips", []);
-      const activeVehicles = vehicles?.length ? vehicles : getLocalData<Vehicle[]>("vehicles", []);
-      const activePayments = payments?.length ? payments : getLocalData<Payment[]>("payments", []);
-      const activeExpenses = expenses?.length ? expenses : getLocalData<Expense[]>("expenses", []);
-
       const backupPayload = {
         agency: "RK Travel Hub",
         exportedAt: new Date().toISOString(),
         counts: {
-          trips: activeTrips.length,
-          vehicles: activeVehicles.length,
-          payments: activePayments.length,
-          expenses: activeExpenses.length,
-          reminders: reminders?.length || 0,
+          trips: tripList.length,
+          vehicles: vehicleList.length,
+          payments: paymentList.length,
+          expenses: expenseList.length,
+          reminders: reminderList.length,
         },
         collections: {
-          trips: activeTrips,
-          vehicles: activeVehicles,
-          payments: activePayments,
-          expenses: activeExpenses,
-          reminders,
+          trips: tripList,
+          vehicles: vehicleList,
+          payments: paymentList,
+          expenses: expenseList,
+          reminders: reminderList,
         },
       };
 
@@ -359,11 +472,15 @@ export default function SettingsClient({
                   </div>
                 </div>
                 <p className="text-xl sm:text-2xl font-black text-slate-900 mt-2 font-mono-nums">
-                  {vehicles?.length || 0}
+                  {totalFleetCount}
                 </p>
                 <p className="text-[10px] text-slate-500 mt-0.5 font-medium flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                  <span>Active vehicles</span>
+                  <span>
+                    {activeVehiclesCount > 0 && activeVehiclesCount !== totalFleetCount
+                      ? `${activeVehiclesCount} Active vehicles`
+                      : "Active vehicles"}
+                  </span>
                 </p>
               </Link>
 
@@ -381,7 +498,7 @@ export default function SettingsClient({
                   </div>
                 </div>
                 <p className="text-xl sm:text-2xl font-black text-slate-900 mt-2 font-mono-nums">
-                  {trips?.length || 0}
+                  {totalTripsCount}
                 </p>
                 <p className="text-[10px] text-slate-500 mt-0.5 font-medium flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />
@@ -403,7 +520,7 @@ export default function SettingsClient({
                   </div>
                 </div>
                 <p className="text-xl sm:text-2xl font-black text-emerald-700 mt-2 font-mono-nums truncate">
-                  ₹{Number((payments || []).reduce((acc, p) => acc + (Number(p.amount) || 0), 0)).toLocaleString('en-IN')}
+                  ₹{Number(totalRevenue).toLocaleString("en-IN")}
                 </p>
                 <p className="text-[10px] text-slate-500 mt-0.5 font-medium">
                   Recorded payments
@@ -424,7 +541,7 @@ export default function SettingsClient({
                   </div>
                 </div>
                 <p className="text-xl sm:text-2xl font-black text-amber-700 mt-2 font-mono-nums">
-                  {reminders?.length || 0}
+                  {activeRemindersCount}
                 </p>
                 <p className="text-[10px] text-slate-500 mt-0.5 font-medium flex items-center gap-1">
                   <Clock className="w-2.5 h-2.5 text-amber-600" />
