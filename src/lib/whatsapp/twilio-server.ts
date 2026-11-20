@@ -28,11 +28,20 @@ export interface TwilioConfig {
  * Resolves active Twilio configuration from server environment secrets
  */
 export function getTwilioConfig(): TwilioConfig {
+  let rawFrom = (process.env.TWILIO_WHATSAPP_FROM || '').trim();
+
+  // Safeguard: Twilio trial accounts receive a voice/SMS number (+1 737-250-8034) which CANNOT send WhatsApp messages.
+  // The WhatsApp Sandbox strictly requires sending from '+14155238886'.
+  // If unset or accidentally set to the SMS trial number, safeguard by routing to the official WhatsApp Sandbox sender.
+  if (!rawFrom || rawFrom.includes('7372508034') || rawFrom.includes('737250')) {
+    rawFrom = 'whatsapp:+14155238886';
+  }
+
   return {
     accountSid: (process.env.TWILIO_ACCOUNT_SID || '').trim(),
     authToken: (process.env.TWILIO_AUTH_TOKEN || '').trim(),
-    whatsappFrom: (process.env.TWILIO_WHATSAPP_FROM || '').trim(),
-    adminPhone: (process.env.TWILIO_ADMIN_PHONE || '').trim(),
+    whatsappFrom: rawFrom,
+    adminPhone: (process.env.TWILIO_ADMIN_PHONE || '+919809207080').trim(),
     contentSid: (process.env.TWILIO_CONTENT_SID || '').trim() || undefined,
     statusCallbackUrl: (process.env.TWILIO_STATUS_CALLBACK_URL || '').trim() || undefined,
   };
