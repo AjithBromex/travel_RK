@@ -41,7 +41,7 @@ export function getTwilioConfig(): TwilioConfig {
     accountSid: (process.env.TWILIO_ACCOUNT_SID || '').trim(),
     authToken: (process.env.TWILIO_AUTH_TOKEN || '').trim(),
     whatsappFrom: rawFrom,
-    adminPhone: (process.env.TWILIO_ADMIN_PHONE || '+919809207080').trim(),
+    adminPhone: (process.env.TWILIO_ADMIN_PHONE || '').trim(),
     contentSid: (process.env.TWILIO_CONTENT_SID || '').trim() || undefined,
     statusCallbackUrl: (process.env.TWILIO_STATUS_CALLBACK_URL || '').trim() || undefined,
   };

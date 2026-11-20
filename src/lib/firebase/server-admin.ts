@@ -5,9 +5,7 @@
 import type { BackupRecord, BackupPayload } from '@/types'
 
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'rk-travels-1f4f3'
-const API_KEY =
-  process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
-  'AIzaSyAu0i9koilbhdhjk5V6rQ-E1blwnIBhk7M'
+const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || ''
 
 let cachedAdminToken: string | null = null
 let tokenExpiresAt = 0
@@ -19,6 +17,10 @@ let tokenExpiresAt = 0
 export async function getAdminToken(): Promise<string> {
   if (cachedAdminToken && Date.now() < tokenExpiresAt) {
     return cachedAdminToken!
+  }
+
+  if (!API_KEY) {
+    throw new Error('NEXT_PUBLIC_FIREBASE_API_KEY is not configured in environment variables.')
   }
 
   const postData = JSON.stringify({

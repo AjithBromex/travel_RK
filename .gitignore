@@ -1,33 +1,15 @@
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# =============================================================================
+# RK Travel Hub - Git Ignore Configuration
+# Prevents sensitive credentials, environment files, build artifacts, and logs
+# from being committed to the Git repository.
+# =============================================================================
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# reference files
-files/
-
-# local env and credentials files
-.env*.local
+# Environment variables
 .env
+.env.*
+!.env.example
+
+# Credentials and private keys
 *credentials*.json
 client_secret*.json
 *service-account*.json
@@ -38,12 +20,47 @@ firebase-service-account*.json
 *.service-account.json
 *-adminsdk-*.json
 *-firebase-adminsdk-*.json
+*.pem
+*.key
+*.p12
+*.pfx
 
-# vercel
-.vercel
+# Firebase runtime & debug logs
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
 
-# typescript
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Build files & caches
+/.next/
+/dist/
+/build
+/out/
 *.tsbuildinfo
 next-env.d.ts
 
+# Testing & Coverage
+/coverage
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE, OS & System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Vercel & Deployment
+.vercel
+
+# Reference & internal files
+files/
 /src/generated/prisma

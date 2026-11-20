@@ -17,7 +17,7 @@ export async function waitForAuthReady(): Promise<void> {
     if (!auth?.currentUser && typeof window !== 'undefined') {
       const pathname = window.location.pathname
       const hasAdminCookie = document.cookie.includes('rk_admin=')
-      if (pathname.startsWith('/admin') || hasAdminCookie) {
+      if ((pathname.startsWith('/admin') || hasAdminCookie) && process.env.NODE_ENV === 'development') {
         if (!authInitPromise) {
           authInitPromise = signInWithEmailAndPassword(auth, 'admin@gmail.com', 'admin123')
             .then(() => {})
