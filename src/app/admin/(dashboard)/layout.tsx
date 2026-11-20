@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export default function DashboardShellLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#F4F7FB] relative selection:bg-blue-600/10 selection:text-blue-600 font-sans text-slate-900 antialiased overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-[#F4F7FB] relative selection:bg-blue-600/10 selection:text-blue-600 font-sans text-slate-900 antialiased overflow-x-hidden">
       {/* Lightweight GPU-accelerated ambient backdrop */}
       <div
         className="fixed inset-0 pointer-events-none z-0 opacity-60"
@@ -18,9 +18,9 @@ export default function DashboardShellLayout({ children }: { children: React.Rea
         }}
       />
 
-      <div className="w-full relative z-10 flex flex-col min-h-screen">
+      <div className="w-full relative z-10 flex flex-col min-h-[100dvh]">
         <AdminTopbar />
-        <main className="flex-1 w-full p-2.5 sm:p-4 md:p-6 lg:p-8 pb-24 xl:pb-8 max-w-[1520px] mx-auto transition-all">
+        <main className="flex-1 w-full p-2.5 sm:p-4 md:p-6 lg:p-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] xl:pb-8 max-w-[1560px] 2xl:max-w-[1800px] mx-auto transition-all">
           {children}
         </main>
       </div>

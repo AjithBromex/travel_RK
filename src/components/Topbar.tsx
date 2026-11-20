@@ -523,7 +523,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
                     onClick={() => setNotificationsOpen(false)}
                   />
 
-                  <div className="fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 sm:left-auto top-14 sm:top-full mt-1 sm:mt-2 w-auto sm:w-96 max-w-md sm:max-w-[380px] mx-auto sm:mx-0 bg-white/98 backdrop-blur-2xl rounded-2xl border border-slate-200 shadow-2xl overflow-hidden z-50 animate-fade-in origin-top sm:origin-top-right">
+                  <div className="fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 sm:left-auto top-14 sm:top-full mt-1 sm:mt-2 w-auto sm:w-96 max-w-[calc(100vw-24px)] sm:max-w-[380px] mx-auto sm:mx-0 bg-white/98 backdrop-blur-2xl rounded-2xl border border-slate-200 shadow-2xl overflow-hidden z-50 animate-fade-in origin-top sm:origin-top-right">
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white">
                       <div className="flex items-center gap-2">
@@ -665,7 +665,7 @@ export default function Topbar({ onToggleMobileSidebar }: TopbarProps) {
 
               {/* Profile Dropdown Menu */}
               {profileOpen && (
-                <div className="absolute right-0 top-full mt-2 w-52 bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-xl py-1.5 z-50 animate-fade-in">
+                <div className="absolute right-0 top-full mt-2 w-52 max-w-[calc(100vw-24px)] bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-xl py-1.5 z-50 animate-fade-in">
                   <div className="px-3.5 py-2 border-b border-slate-100">
                     <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">{userName}</p>
                     <p className="text-[10px] text-slate-400 capitalize tracking-wider">{userRole}</p>

@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#F4F7FB] relative selection:bg-blue-600/10 selection:text-blue-600 font-sans">
+    <div className="min-h-[100dvh] overflow-x-hidden bg-[#F4F7FB] relative selection:bg-blue-600/10 selection:text-blue-600 font-sans">
       {/* High-Performance Hardware-Accelerated Ambient Light Background */}
       <div
         className="fixed inset-0 pointer-events-none z-0"
@@ -36,7 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content area */}
       <div className="w-full relative z-10">
         <Topbar onToggleMobileSidebar={() => setMobileOpen(!mobileOpen)} />
-        <main className="p-3 sm:p-5 lg:p-6 pb-24 xl:pb-8 min-h-[calc(100vh-68px)] max-w-[1520px] mx-auto">
+        <main className="p-2.5 sm:p-5 lg:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] xl:pb-8 min-h-[calc(100dvh-68px)] max-w-[1560px] 2xl:max-w-[1800px] mx-auto">
           {children}
         </main>
       </div>

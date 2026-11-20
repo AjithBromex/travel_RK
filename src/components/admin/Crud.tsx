@@ -736,7 +736,7 @@ export default function Crud({
           ───────────────────────────────────────────────────────────── */}
       {form && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/50 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-4 sm:p-6 relative max-h-[92vh] overflow-y-auto">
+          <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-4 sm:p-6 relative max-h-[90dvh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
@@ -841,7 +841,7 @@ export default function Crud({
           ───────────────────────────────────────────────────────────── */}
       {waModal && waCtx && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="w-full max-w-xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-4 sm:p-6 relative max-h-[92vh] overflow-y-auto">
+          <div className="w-full max-w-xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-4 sm:p-6 relative max-h-[90dvh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2.5">

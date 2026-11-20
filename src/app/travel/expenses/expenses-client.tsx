@@ -1547,8 +1547,8 @@ export default function ExpensesClient({
           5. ADD NEW CATEGORY MODAL
           ───────────────────────────────────────────────────────────── */}
       {showAddCategoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden transform transition-all scale-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto shadow-2xl border border-slate-200 overflow-hidden transform transition-all scale-in-95 duration-150">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/60">
               <div className="flex items-center gap-2.5">

@@ -37,6 +37,12 @@ const navItems = [
   { name: 'Users', href: '/admin/users', icon: Users },
 ];
 
+const mobileNavItems = [
+  ...navItems,
+  { name: 'Audit Logs', href: '/admin/audit-logs', icon: ShieldCheck },
+  { name: 'Settings', href: '/admin/settings', icon: Settings },
+];
+
 export default function AdminTopbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -173,7 +179,7 @@ export default function AdminTopbar() {
                 </button>
 
                 {profileOpen && (
-                  <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl border border-slate-200 shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute right-0 mt-2 w-52 max-w-[calc(100vw-24px)] bg-white rounded-2xl border border-slate-200 shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2">
                     <div className="px-3 py-2 border-b border-slate-100">
                       <p className="text-xs font-bold text-slate-900">Signed in as Admin</p>
                       <p className="text-[11px] text-slate-500 truncate">admin@gmail.com</p>
@@ -266,7 +272,7 @@ export default function AdminTopbar() {
               </div>
 
               <nav className="mt-4 space-y-1">
-                {navItems.map((item) => {
+                {mobileNavItems.map((item) => {
                   const active = isNavActive(item.href);
                   const Icon = item.icon;
                   return (

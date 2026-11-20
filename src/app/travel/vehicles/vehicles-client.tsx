@@ -2022,7 +2022,7 @@ export default function VehiclesClient({ initialVehicles }: VehiclesClientProps)
           ───────────────────────────────────────────────────────────── */}
       {isCropModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-white rounded-[24px] max-w-2xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 flex flex-col max-h-[92vh]">
+          <div className="bg-white rounded-[24px] max-w-2xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 flex flex-col max-h-[90dvh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-2">

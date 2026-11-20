@@ -6,6 +6,7 @@ import DisableNumberScroll from "@/components/DisableNumberScroll";
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 5,
   viewportFit: 'cover',
 };
 
@@ -25,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen bg-page text-text-primary antialiased selection:bg-primary/10 selection:text-primary font-sans">
+      <body className="min-h-[100dvh] overflow-x-hidden max-w-full bg-page text-text-primary antialiased selection:bg-primary/10 selection:text-primary font-sans">
         <AuthProvider>
           <DisableNumberScroll />
           {children}

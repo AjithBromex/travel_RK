@@ -115,7 +115,7 @@ export default function AdminLogin() {
       {/* ─────────────────────────────────────────────────────────────
           2. MAIN RESPONSIVE CONTAINER (DESKTOP 2-COL / MOBILE STACK)
           ───────────────────────────────────────────────────────────── */}
-      <div className="relative z-10 w-full max-w-[1360px] min-h-screen mx-auto p-4 sm:p-6 lg:p-10 flex flex-col justify-between">
+      <div className="relative z-10 w-full max-w-[1360px] min-h-screen mx-auto p-3 sm:p-6 lg:p-10 flex flex-col justify-between">
         {/* Top Floating Mini Header */}
         <div className="flex items-center justify-between py-2 sm:py-3">
           <Link
@@ -227,7 +227,7 @@ export default function AdminLogin() {
 
           {/* ══════════════ RIGHT COLUMN: TRANSLUCENT FROSTED GLASS LOGIN CARD ══════════════ */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
-            <div className="w-full max-w-[450px] bg-white/95 backdrop-blur-2xl p-6 sm:p-9 rounded-[28px] sm:rounded-[36px] border border-white/90 shadow-[0_25px_65px_-12px_rgba(0,0,0,0.65)] relative overflow-hidden transition-all text-slate-900">
+            <div className="w-full max-w-[450px] bg-white/95 backdrop-blur-2xl p-5 sm:p-8 md:p-9 rounded-[28px] sm:rounded-[36px] border border-white/90 shadow-[0_25px_65px_-12px_rgba(0,0,0,0.65)] relative overflow-hidden transition-all text-slate-900">
               {/* Card Header */}
               <div className="mb-6 text-center">
                 <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25">

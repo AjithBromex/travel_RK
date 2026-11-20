@@ -1187,7 +1187,7 @@ export default function CashBookClient({
                 <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
                   Payment Mode
                 </label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, paymentMode: "cash" })}
