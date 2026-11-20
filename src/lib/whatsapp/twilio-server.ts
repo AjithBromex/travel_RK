@@ -257,14 +257,18 @@ export async function saveWhatsAppNotification(
   try {
     const token = await getAdminToken();
     const docId = record.id;
-    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/whatsapp_notifications/${docId}`;
-
     const fields: Record<string, any> = {};
+    const fieldMasks: string[] = [];
+
     for (const [k, v] of Object.entries(record)) {
-      if (k !== 'id') {
+      if (k !== 'id' && v !== undefined) {
         fields[k] = encodeFirestoreField(v);
+        fieldMasks.push(`updateMask.fieldPaths=${encodeURIComponent(k)}`);
       }
     }
+
+    const maskQuery = fieldMasks.length > 0 ? `?${fieldMasks.join('&')}` : '';
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/whatsapp_notifications/${docId}${maskQuery}`;
 
     const res = await fetch(url, {
       method: 'PATCH',
