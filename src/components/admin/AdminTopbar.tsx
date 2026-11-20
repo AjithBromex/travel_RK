@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   ShieldCheck,
@@ -112,8 +113,15 @@ export default function AdminTopbar() {
                     : 'bg-white/95 border-slate-200/90 shadow-[0_2px_10px_rgba(15,23,42,0.04)]'
                 }`}
               >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-xs">
-                  <ShieldCheck className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.3]" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 relative shrink-0">
+                  <Image
+                    src="/images/rk-logo.png"
+                    alt="RK Travel Hub"
+                    fill
+                    priority
+                    unoptimized
+                    className="object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
+                  />
                 </div>
                 <div className="flex flex-col text-left leading-tight">
                   <span className="text-[11px] sm:text-xs font-black tracking-wider text-slate-900 uppercase">

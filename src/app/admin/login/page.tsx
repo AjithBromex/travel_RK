@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ShieldCheck,
   Mail,
@@ -144,8 +145,17 @@ export default function AdminLogin() {
             {/* Brand Monogram & Wordmark */}
             <div>
               <div className="flex items-center gap-3.5 xl:gap-4">
-                <div className="w-12 h-12 xl:w-14 xl:h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/25 border border-white/20 p-2 shrink-0">
-                  <ShieldCheck className="w-7 h-7 xl:w-8 xl:h-8 stroke-[2.2]" />
+                <div className="w-12 h-12 xl:w-14 xl:h-14 rounded-2xl bg-slate-950/60 backdrop-blur-xl border border-white/25 flex items-center justify-center shadow-2xl p-1.5 xl:p-2 relative group hover:border-blue-400/50 transition-colors shrink-0">
+                  <div className="relative w-full h-full">
+                    <Image
+                      src="/images/rk-logo.png"
+                      alt="RK Monogram"
+                      fill
+                      priority
+                      unoptimized
+                      className="object-contain drop-shadow-[0_4px_12px_rgba(59,130,246,0.35)]"
+                    />
+                  </div>
                 </div>
                 <div>
                   <h1 className="text-xl xl:text-2xl 2xl:text-3xl font-black tracking-wider text-white uppercase drop-shadow-sm">
@@ -230,8 +240,15 @@ export default function AdminLogin() {
             <div className="w-full max-w-[390px] lg:max-w-[400px] xl:max-w-[430px] bg-white/95 backdrop-blur-2xl p-4 sm:p-6 lg:p-5 xl:p-7 2xl:p-8 rounded-[24px] sm:rounded-[30px] xl:rounded-[36px] border border-white/90 shadow-[0_25px_65px_-12px_rgba(0,0,0,0.65)] relative overflow-hidden transition-all text-slate-900">
               {/* Card Header */}
               <div className="mb-3 lg:mb-3.5 xl:mb-4 text-center">
-                <div className="w-11 h-11 lg:w-11 lg:h-11 xl:w-13 xl:h-13 mx-auto mb-2 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
-                  <ShieldCheck className="w-6 h-6 xl:w-7 xl:h-7 stroke-[2.2]" />
+                <div className="relative w-12 h-12 lg:w-12 lg:h-12 xl:w-14 xl:h-14 mx-auto mb-2 flex items-center justify-center">
+                  <Image
+                    src="/images/rk-logo.png"
+                    alt="RK Travel Hub Logo"
+                    fill
+                    priority
+                    unoptimized
+                    className="object-contain drop-shadow-md"
+                  />
                 </div>
 
                 <p className="text-[11px] font-black tracking-widest text-slate-900 uppercase">
