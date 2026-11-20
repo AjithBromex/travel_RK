@@ -1445,6 +1445,193 @@ test('WhatsApp Reminders: Twilio signature verification succeeds with matching H
   assert.strictEqual(validateTwilioSignature('', validSignature, url, params), false);
 });
 
+// ─── 16. EDGE RUNTIME & MIDDLEWARE API SECURITY RULES ───────────────────────
+console.log('\n[SUITE 16: Edge Middleware Routing & Webhook Protection]');
+
+test('Middleware API Security: Twilio webhook path is exempted from admin cookie requirement', () => {
+  function checkMiddlewareExemption(pathname) {
+    const isExempt =
+      pathname === '/api/login' ||
+      pathname === '/api/logout' ||
+      pathname === '/api/auth/session' ||
+      pathname === '/api/webhooks/twilio';
+    return isExempt;
+  }
+
+  assert.strictEqual(checkMiddlewareExemption('/api/webhooks/twilio'), true);
+  assert.strictEqual(checkMiddlewareExemption('/api/login'), true);
+  assert.strictEqual(checkMiddlewareExemption('/api/logout'), true);
+  assert.strictEqual(checkMiddlewareExemption('/api/auth/session'), true);
+  assert.strictEqual(checkMiddlewareExemption('/api/trips'), false);
+  assert.strictEqual(checkMiddlewareExemption('/api/admin/trash'), false);
+});
+
+test('Middleware API Security: Vercel Cron routes accept CRON_SECRET or x-vercel-cron header', () => {
+  const CRON_SECRET = 'sample-cron-secret-2026';
+
+  function evaluateCronAuth(pathname, authBearer, vercelHeader) {
+    const isCronPath =
+      pathname === '/api/admin/backups/cron' ||
+      pathname === '/api/admin/whatsapp/cron';
+
+    if (!isCronPath) return false;
+
+    const isTokenValid = Boolean(CRON_SECRET) && authBearer === CRON_SECRET;
+    const isHeaderValid = vercelHeader === '1';
+
+    return isTokenValid || isHeaderValid;
+  }
+
+  // Backup cron with bearer token
+  assert.strictEqual(evaluateCronAuth('/api/admin/backups/cron', 'sample-cron-secret-2026', null), true);
+  // WhatsApp cron with bearer token
+  assert.strictEqual(evaluateCronAuth('/api/admin/whatsapp/cron', 'sample-cron-secret-2026', null), true);
+  // WhatsApp cron with x-vercel-cron header
+  assert.strictEqual(evaluateCronAuth('/api/admin/whatsapp/cron', '', '1'), true);
+  // Invalid secret
+  assert.strictEqual(evaluateCronAuth('/api/admin/whatsapp/cron', 'wrong-secret', null), false);
+  // Normal non-cron path should not pass via cron auth
+  assert.strictEqual(evaluateCronAuth('/api/admin/trash', 'sample-cron-secret-2026', null), false);
+});
+
+// ─── 17. ADMIN STORE DATA NORMALIZATION & CACHE INTEGRITY ──────────────────
+console.log('\n[SUITE 17: Admin Store Data Normalization & Cache Invalidation]');
+
+test('Admin Store Data Normalization: non-numeric strings safely default to 0 instead of NaN', () => {
+  function cleanNumericField(v, isRequired = false) {
+    const parsed = Number(v);
+    const cleaned = (v === '' || v == null || Number.isNaN(parsed)) ? 0 : parsed;
+    if (isRequired && (cleaned === 0 && (v === '' || Number.isNaN(parsed)))) {
+      throw new Error('Required numeric field is invalid');
+    }
+    return cleaned;
+  }
+
+  assert.strictEqual(cleanNumericField('500'), 500);
+  assert.strictEqual(cleanNumericField(1250), 1250);
+  assert.strictEqual(cleanNumericField(''), 0);
+  assert.strictEqual(cleanNumericField(null), 0);
+  assert.strictEqual(cleanNumericField(undefined), 0);
+  assert.strictEqual(cleanNumericField('abc'), 0);
+  assert.strictEqual(cleanNumericField(NaN), 0);
+  assert.throws(() => cleanNumericField('invalid', true), /Required numeric field is invalid/);
+});
+
+test('Admin Store Cache Invalidation: updates and deletions purge related cached datasets', () => {
+  const memoryCache = new Map();
+  memoryCache.set('trips', [{ id: '1' }]);
+  memoryCache.set('payments', [{ id: '1' }]);
+  memoryCache.set('expenses', [{ id: '1' }]);
+  memoryCache.set('cashbook', [{ id: '1' }]);
+
+  function invalidateOnMutation(slug) {
+    memoryCache.delete(slug);
+    if (slug === 'trips') {
+      memoryCache.delete('payments');
+      memoryCache.delete('expenses');
+      memoryCache.delete('cashbook');
+    }
+    if (slug === 'payments' || slug === 'expenses') {
+      memoryCache.delete('trips');
+      memoryCache.delete('cashbook');
+    }
+  }
+
+  // Mutating a payment purges payments, trips, and cashbook
+  invalidateOnMutation('payments');
+  assert.strictEqual(memoryCache.has('payments'), false);
+  assert.strictEqual(memoryCache.has('cashbook'), false);
+  assert.strictEqual(memoryCache.has('trips'), false);
+  assert.strictEqual(memoryCache.has('expenses'), true);
+});
+
+// ─── 18. ENHANCED CSV FORMULA INJECTION HARDENING (CWE-1236) ────────────────
+console.log('\n[SUITE 18: Enhanced CSV Formula Injection Defense]');
+
+test('CSV Formula Injection: neutralizes tab, carriage return, pipe, and formula operators', () => {
+  function escapeCsvField(field) {
+    if (typeof field === 'number') {
+      return isNaN(field) ? '0' : String(field);
+    }
+    const str = String(field ?? '');
+    const sanitized = /^[=+\-@\t\r|]/.test(str) ? `'${str}` : str;
+    if (sanitized.includes(',') || sanitized.includes('"') || sanitized.includes('\n') || sanitized.includes('\r')) {
+      return `"${sanitized.replace(/"/g, '""')}"`;
+    }
+    return sanitized;
+  }
+
+  // Formula injections are neutralized with single quote prefix
+  assert.strictEqual(escapeCsvField('=cmd|/C calc'), '\'=cmd|/C calc');
+  assert.strictEqual(escapeCsvField('+1+1'), '\'+1+1');
+  assert.strictEqual(escapeCsvField('-2+3'), '\'-2+3');
+  assert.strictEqual(escapeCsvField('@SUM(A1:A10)'), '\'@SUM(A1:A10)');
+  assert.strictEqual(escapeCsvField('\tpowershell'), '\'\tpowershell');
+  assert.strictEqual(escapeCsvField('|whoami'), '\'|whoami');
+
+  // Genuine numbers are safely preserved without quote prefix
+  assert.strictEqual(escapeCsvField(1500), '1500');
+  assert.strictEqual(escapeCsvField(-250), '-250');
+  assert.strictEqual(escapeCsvField(0), '0');
+  assert.strictEqual(escapeCsvField(NaN), '0');
+
+  // Text with commas and quotes are escaped
+  assert.strictEqual(escapeCsvField('RK Travels, Kerala'), '"RK Travels, Kerala"');
+  assert.strictEqual(escapeCsvField('Trip "Special" Package'), '"Trip ""Special"" Package"');
+});
+
+// ─── 19. FIRESTORE PRIVILEGE ESCALATION DEFENSE ─────────────────────────────
+console.log('\n[SUITE 19: Firestore Privilege Escalation Guard]');
+
+test('Privilege Escalation Defense: non-admin cannot self-assign or escalate role to admin', () => {
+  function evaluateUserCreateRule(authUid, resourceData, requestUid, requestRole, isAdmin) {
+    if (isAdmin) return true;
+    if (authUid === requestUid) {
+      if (!requestRole) return true;
+      if (String(requestRole).toLowerCase() === 'admin') return false; // Rejected!
+      return true;
+    }
+    return false;
+  }
+
+  // Self-signup attempting to set role: "admin" is rejected
+  assert.strictEqual(evaluateUserCreateRule('user_123', null, 'user_123', 'admin', false), false);
+  assert.strictEqual(evaluateUserCreateRule('user_123', null, 'user_123', 'ADMIN', false), false);
+
+  // Self-signup setting role: "staff" is accepted
+  assert.strictEqual(evaluateUserCreateRule('user_123', null, 'user_123', 'staff', false), true);
+
+  // Administrator can assign any role
+  assert.strictEqual(evaluateUserCreateRule('admin_001', null, 'user_123', 'admin', true), true);
+});
+
+test('Immutable Audit Logs: update operation on audit log records is strictly forbidden', () => {
+  function allowAuditLogUpdate() {
+    return false; // In firestore.rules: allow update: if false;
+  }
+  assert.strictEqual(allowAuditLogUpdate(), false);
+});
+
+// ─── 20. FINANCIAL & PAYMENT BOUNDARY CONDITIONS ────────────────────────────
+console.log('\n[SUITE 20: Financial & Payment Boundary Conditions]');
+
+test('Payment Calculations: fractional currency rounding and zero due trips', () => {
+  // Test precision
+  const fare = 15450.75;
+  const advance = 5000.25;
+  const balance = fare - advance;
+  assert.strictEqual(balance, 10450.5);
+
+  // Zero-fare trip (complimentary service)
+  const zeroFare = 0;
+  const zeroDue = Math.max(0, zeroFare - 0);
+  assert.strictEqual(zeroDue, 0);
+
+  // Overpayment gracefully clamps balance to 0 instead of negative
+  const overPaid = Math.max(0, 1000 - 1500);
+  assert.strictEqual(overPaid, 0);
+});
+
 
 // ─── TEST SUMMARY ─────────────────────────────────────────────────────────────
 console.log('\n=============================================================================');

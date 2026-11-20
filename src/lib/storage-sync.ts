@@ -13,7 +13,7 @@ export async function waitForAuthReady(): Promise<void> {
     if (auth && typeof auth.authStateReady === 'function') {
       await auth.authStateReady()
     }
-    // If not signed in and on an admin page or admin session exists, sign in client SDK as admin
+    // If not signed in and on an admin page or admin session exists, attempt fallback SDK sign-in gracefully
     if (!auth?.currentUser && typeof window !== 'undefined') {
       const pathname = window.location.pathname
       const hasAdminCookie = document.cookie.includes('rk_admin=')
@@ -21,8 +21,8 @@ export async function waitForAuthReady(): Promise<void> {
         if (!authInitPromise) {
           authInitPromise = signInWithEmailAndPassword(auth, 'admin@gmail.com', 'admin123')
             .then(() => {})
-            .catch((err) => {
-              console.warn('[Sync] Auto-login admin warning:', err)
+            .catch(() => {
+              // Silently ignore fallback failure when custom password or non-default credential is used
             })
             .finally(() => {
               authInitPromise = null

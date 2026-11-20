@@ -320,7 +320,8 @@ export function clean(slug: string, body: Record<string, unknown>): Record<strin
   for (const f of mod.fields) {
     let v = body[f.key];
     if (f.type === 'number' || f.type === 'money') {
-      v = v === '' || v == null ? 0 : Number(v);
+      const parsed = Number(v);
+      v = (v === '' || v == null || Number.isNaN(parsed)) ? 0 : parsed;
     } else {
       v = (v ?? '').toString().trim();
     }
@@ -382,6 +383,9 @@ export async function createRow(slug: string, body: Record<string, unknown>): Pr
 
   const doc = await res.json();
   rowsCache.delete(slug);
+  if (slug === 'payments' || slug === 'expenses') {
+    rowsCache.delete('cashbook');
+  }
   return normalize(slug, decodeDoc(doc));
 }
 
@@ -425,6 +429,11 @@ export async function updateRow(slug: string, id: string, body: Record<string, u
 
   if (!res.ok) {
     return null;
+  }
+
+  rowsCache.delete(slug);
+  if (slug === 'payments' || slug === 'expenses') {
+    rowsCache.delete('cashbook');
   }
 
   const doc = await res.json();
@@ -662,9 +671,11 @@ export async function deleteRow(slug: string, id: string): Promise<boolean> {
     if (slug === 'trips') {
       rowsCache.delete('payments');
       rowsCache.delete('expenses');
+      rowsCache.delete('cashbook');
     }
-    if (slug === 'payments') {
+    if (slug === 'payments' || slug === 'expenses') {
       rowsCache.delete('trips');
+      rowsCache.delete('cashbook');
     }
     return res.ok;
   } catch {

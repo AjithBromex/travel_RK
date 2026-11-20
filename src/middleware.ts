@@ -73,6 +73,7 @@ export async function middleware(req: NextRequest) {
     res.headers.set('X-Frame-Options', 'SAMEORIGIN');
     res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.headers.set('X-XSS-Protection', '1; mode=block');
     if (process.env.NODE_ENV === 'production') {
       res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }
@@ -134,15 +135,24 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/api/') &&
     pathname !== '/api/login' &&
     pathname !== '/api/logout' &&
-    pathname !== '/api/auth/session'
+    pathname !== '/api/auth/session' &&
+    pathname !== '/api/webhooks/twilio'
   ) {
     const authHeader = req.headers.get('authorization') || '';
     const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
 
-    const isCron =
-      pathname === '/api/admin/backups/cron' &&
+    const isCronPath =
+      pathname === '/api/admin/backups/cron' ||
+      pathname === '/api/admin/whatsapp/cron';
+
+    const isCronTokenValid =
       Boolean(process.env.CRON_SECRET) &&
+      Boolean(bearer) &&
       constantTimeCompare(bearer, process.env.CRON_SECRET || '');
+
+    const isVercelCronHeader = req.headers.get('x-vercel-cron') === '1';
+
+    const isCron = isCronPath && (isCronTokenValid || isVercelCronHeader);
 
     const adminToken = req.cookies.get('rk_admin')?.value;
     const isAdmin =

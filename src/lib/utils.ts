@@ -155,10 +155,13 @@ export function isDocumentExpired(expiryDate: string): boolean {
 
 // ─── CSV Export ───
 export function escapeCsvField(field: string | number): string {
+  if (typeof field === 'number') {
+    return isNaN(field) ? '0' : String(field)
+  }
   const str = String(field ?? '')
-  // Neutralize CSV Formula Injection (CWE-1236) for Excel / Sheets
-  const sanitized = /^[=+\-@]/.test(str) ? `'${str}` : str
-  if (sanitized.includes(',') || sanitized.includes('"') || sanitized.includes('\n')) {
+  // Neutralize CSV Formula Injection (CWE-1236) for Excel / Sheets (=, +, -, @, \t, \r, |)
+  const sanitized = /^[=+\-@\t\r|]/.test(str) ? `'${str}` : str
+  if (sanitized.includes(',') || sanitized.includes('"') || sanitized.includes('\n') || sanitized.includes('\r')) {
     return `"${sanitized.replace(/"/g, '""')}"`
   }
   return sanitized
