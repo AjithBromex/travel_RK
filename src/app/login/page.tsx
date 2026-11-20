@@ -170,7 +170,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center overflow-x-hidden selection:bg-blue-600/30 selection:text-white font-sans">
+    <div className="relative min-h-[100dvh] lg:h-screen lg:max-h-screen w-full flex items-center justify-center overflow-x-hidden lg:overflow-hidden selection:bg-blue-600/30 selection:text-white font-sans">
       {/* ─── 1. Cinematic Alpine Mountain Highway Background with Force Traveller ─── */}
       <div
         className="fixed inset-0 z-0 pointer-events-none bg-cover bg-center bg-no-repeat"
@@ -189,11 +189,11 @@ function LoginForm() {
       </div>
 
       {/* ─── 2. Responsive Canvas (Desktop Split & Mobile Stack) ─── */}
-      <div className="relative z-10 w-full max-w-[1440px] min-h-screen mx-auto p-3 sm:p-6 lg:p-12 flex flex-col justify-between">
+      <div className="relative z-10 w-full max-w-[1440px] min-h-[100dvh] lg:h-full lg:max-h-screen mx-auto p-3 sm:p-5 lg:px-8 lg:py-3 xl:px-12 xl:py-5 2xl:px-16 2xl:py-8 flex flex-col justify-between">
         {/* Mobile Header Bar */}
-        <div className="lg:hidden flex items-center justify-between pb-4">
-          <div className="flex items-center gap-3 bg-slate-950/65 backdrop-blur-md border border-white/20 px-3.5 py-2 rounded-2xl shadow-xl">
-            <div className="relative w-8 h-8 shrink-0">
+        <div className="lg:hidden flex items-center justify-between pb-3 shrink-0">
+          <div className="flex items-center gap-3 bg-slate-950/65 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-2xl shadow-xl">
+            <div className="relative w-7 h-7 shrink-0">
               <Image
                 src="/images/rk-logo.png"
                 alt="RK Logo"
@@ -213,13 +213,13 @@ function LoginForm() {
         </div>
 
         {/* Center Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center my-auto py-4 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 xl:gap-12 items-center my-auto py-2 sm:py-4 lg:py-0">
           {/* ══════════════ LEFT COLUMN: BRANDING & SHOWCASE (DESKTOP) ══════════════ */}
-          <div className="hidden lg:flex lg:col-span-7 flex-col justify-between space-y-9 pr-6">
+          <div className="hidden lg:flex lg:col-span-7 flex-col justify-between space-y-4 lg:space-y-4 xl:space-y-6 2xl:space-y-8 pr-2 lg:pr-4">
             {/* Top Left: Official 3D Metallic Emblem & Wordmark */}
             <div>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-slate-950/60 backdrop-blur-xl border border-white/25 flex items-center justify-center shadow-2xl p-2 relative group hover:border-blue-400/50 transition-colors">
+              <div className="flex items-center gap-3.5 xl:gap-4">
+                <div className="w-12 h-12 xl:w-14 xl:h-14 rounded-2xl bg-slate-950/60 backdrop-blur-xl border border-white/25 flex items-center justify-center shadow-2xl p-1.5 xl:p-2 relative group hover:border-blue-400/50 transition-colors shrink-0">
                   <div className="relative w-full h-full">
                     <Image
                       src="/images/rk-logo.png"
@@ -232,10 +232,10 @@ function LoginForm() {
                 </div>
 
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-black tracking-wider text-white uppercase drop-shadow-md">
+                  <h1 className="text-xl xl:text-2xl 2xl:text-3xl font-black tracking-wider text-white uppercase drop-shadow-md">
                     RK TRAVEL HUB
                   </h1>
-                  <p className="text-[11px] font-bold tracking-[0.28em] text-blue-200 uppercase drop-shadow mt-0.5">
+                  <p className="text-[10px] xl:text-[11px] font-bold tracking-[0.28em] text-blue-200 uppercase drop-shadow mt-0.5">
                     TRAVEL BEYOND BORDERS
                   </p>
                 </div>
@@ -243,70 +243,70 @@ function LoginForm() {
             </div>
 
             {/* Middle: Signature Headline & Slogan */}
-            <div className="space-y-4 pt-2">
-              <div className="space-y-1">
-                <h2 className="text-5xl lg:text-[68px] font-black italic text-white tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-[1.04]">
+            <div className="space-y-3 xl:space-y-4 pt-1">
+              <div className="space-y-0.5 xl:space-y-1">
+                <h2 className="text-3xl sm:text-4xl lg:text-[40px] xl:text-[52px] 2xl:text-[62px] font-black italic text-white tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-[1.05]">
                   Safe Journeys
                 </h2>
-                <h2 className="text-5xl lg:text-[68px] font-black italic text-white tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-[1.04]">
+                <h2 className="text-3xl sm:text-4xl lg:text-[40px] xl:text-[52px] 2xl:text-[62px] font-black italic text-white tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-[1.05]">
                   Stronger
                 </h2>
-                <h2 className="text-5xl lg:text-[68px] font-black italic text-[#60A5FA] tracking-tight drop-shadow-[0_4px_20px_rgba(96,165,250,0.45)] leading-[1.04]">
+                <h2 className="text-3xl sm:text-4xl lg:text-[40px] xl:text-[52px] 2xl:text-[62px] font-black italic text-[#60A5FA] tracking-tight drop-shadow-[0_4px_20px_rgba(96,165,250,0.45)] leading-[1.05]">
                   Connections
                 </h2>
               </div>
 
               {/* Tagline Divider */}
-              <div className="flex items-center gap-3.5 pt-3">
+              <div className="flex items-center gap-3 pt-2 lg:pt-2.5">
                 <div className="flex items-center gap-1.5">
                   <div className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_#60A5FA]" />
-                  <div className="w-10 h-0.5 bg-blue-400/80 rounded-full" />
+                  <div className="w-8 xl:w-10 h-0.5 bg-blue-400/80 rounded-full" />
                 </div>
-                <p className="text-xs font-bold tracking-[0.25em] text-slate-100 uppercase drop-shadow">
+                <p className="text-[11px] xl:text-xs font-bold tracking-[0.25em] text-slate-100 uppercase drop-shadow">
                   COMFORT &nbsp;|&nbsp; SAFETY &nbsp;|&nbsp; RELIABILITY
                 </p>
               </div>
             </div>
 
             {/* Bottom: 4 Key Value Feature Pills */}
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 pt-6">
-              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-2xl p-3.5 flex items-center gap-3 shadow-xl hover:border-white/30 transition-all">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0 border border-blue-400/30">
-                  <Bus className="w-5 h-5" />
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 xl:gap-3 pt-2 xl:pt-4">
+              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-xl xl:rounded-2xl p-2.5 xl:p-3 flex items-center gap-2.5 xl:gap-3 shadow-xl hover:border-white/30 transition-all">
+                <div className="w-8 h-8 xl:w-9 xl:h-9 rounded-lg xl:rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0 border border-blue-400/30">
+                  <Bus className="w-4 h-4 xl:w-4.5 xl:h-4.5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-white truncate">Modern Fleet</p>
-                  <p className="text-[10px] text-slate-300 truncate">Well maintained vehicles</p>
+                  <p className="text-[11px] xl:text-xs font-bold text-white truncate">Modern Fleet</p>
+                  <p className="text-[9px] xl:text-[10px] text-slate-300 truncate">Well maintained</p>
                 </div>
               </div>
 
-              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-2xl p-3.5 flex items-center gap-3 shadow-xl hover:border-white/30 transition-all">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/30">
-                  <Shield className="w-5 h-5" />
+              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-xl xl:rounded-2xl p-2.5 xl:p-3 flex items-center gap-2.5 xl:gap-3 shadow-xl hover:border-white/30 transition-all">
+                <div className="w-8 h-8 xl:w-9 xl:h-9 rounded-lg xl:rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/30">
+                  <Shield className="w-4 h-4 xl:w-4.5 xl:h-4.5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-white truncate">Safe Travel</p>
-                  <p className="text-[10px] text-slate-300 truncate">Your safety, our priority</p>
+                  <p className="text-[11px] xl:text-xs font-bold text-white truncate">Safe Travel</p>
+                  <p className="text-[9px] xl:text-[10px] text-slate-300 truncate">Safety priority</p>
                 </div>
               </div>
 
-              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-2xl p-3.5 flex items-center gap-3 shadow-xl hover:border-white/30 transition-all">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0 border border-purple-400/30">
-                  <Users className="w-5 h-5" />
+              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-xl xl:rounded-2xl p-2.5 xl:p-3 flex items-center gap-2.5 xl:gap-3 shadow-xl hover:border-white/30 transition-all">
+                <div className="w-8 h-8 xl:w-9 xl:h-9 rounded-lg xl:rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0 border border-purple-400/30">
+                  <Users className="w-4 h-4 xl:w-4.5 xl:h-4.5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-white truncate">Reliable Service</p>
-                  <p className="text-[10px] text-slate-300 truncate">Trusted by many</p>
+                  <p className="text-[11px] xl:text-xs font-bold text-white truncate">Reliable Service</p>
+                  <p className="text-[9px] xl:text-[10px] text-slate-300 truncate">Trusted by many</p>
                 </div>
               </div>
 
-              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-2xl p-3.5 flex items-center gap-3 shadow-xl hover:border-white/30 transition-all">
-                <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-300 flex items-center justify-center shrink-0 border border-sky-400/30">
-                  <MapPin className="w-5 h-5" />
+              <div className="bg-slate-950/50 backdrop-blur-md border border-white/15 rounded-xl xl:rounded-2xl p-2.5 xl:p-3 flex items-center gap-2.5 xl:gap-3 shadow-xl hover:border-white/30 transition-all">
+                <div className="w-8 h-8 xl:w-9 xl:h-9 rounded-lg xl:rounded-xl bg-sky-500/20 text-sky-300 flex items-center justify-center shrink-0 border border-sky-400/30">
+                  <MapPin className="w-4 h-4 xl:w-4.5 xl:h-4.5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-white truncate">Pan India</p>
-                  <p className="text-[10px] text-slate-300 truncate">Travel beyond borders</p>
+                  <p className="text-[11px] xl:text-xs font-bold text-white truncate">Pan India</p>
+                  <p className="text-[9px] xl:text-[10px] text-slate-300 truncate">Beyond borders</p>
                 </div>
               </div>
             </div>
@@ -314,10 +314,10 @@ function LoginForm() {
 
           {/* ══════════════ RIGHT COLUMN: TRANSLUCENT FROSTED GLASS LOGIN CARD ══════════════ */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
-            <div className="w-full max-w-[440px] bg-white/80 sm:bg-white/85 backdrop-blur-2xl p-5 sm:p-8 md:p-9 rounded-[28px] sm:rounded-[36px] border border-white/90 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.4)] relative overflow-hidden transition-all">
+            <div className="w-full max-w-[390px] lg:max-w-[400px] xl:max-w-[430px] bg-white/85 sm:bg-white/90 backdrop-blur-2xl p-4 sm:p-6 lg:p-5 xl:p-7 2xl:p-8 rounded-[24px] sm:rounded-[30px] xl:rounded-[36px] border border-white/90 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.4)] relative overflow-hidden transition-all">
               {/* Card Header with User's Official RK Logo */}
-              <div className="mb-6 text-center">
-                <div className="relative w-16 h-16 mx-auto mb-2 flex items-center justify-center">
+              <div className="mb-3 lg:mb-3 xl:mb-4 text-center">
+                <div className="relative w-11 h-11 lg:w-11 lg:h-11 xl:w-13 xl:h-13 mx-auto mb-1.5 flex items-center justify-center">
                   <Image
                     src="/images/rk-logo.png"
                     alt="RK Travel Hub Logo"
@@ -327,23 +327,23 @@ function LoginForm() {
                   />
                 </div>
 
-                <p className="text-xs font-bold tracking-widest text-slate-900 uppercase">
+                <p className="text-[11px] font-bold tracking-widest text-slate-900 uppercase">
                   RK TRAVEL HUB
                 </p>
-                <p className="text-[9px] font-bold tracking-[0.2em] text-slate-500 uppercase mt-0.5">
+                <p className="text-[8.5px] font-bold tracking-[0.2em] text-slate-500 uppercase mt-0.5">
                   TRAVEL BEYOND BORDERS
                 </p>
 
-                <h2 className="text-2xl sm:text-[26px] font-black tracking-tight text-slate-900 mt-3">
+                <h2 className="text-xl sm:text-[22px] xl:text-[24px] font-black tracking-tight text-slate-900 mt-1.5 lg:mt-2">
                   {isResetMode
                     ? "Reset Password"
                     : isRegisterMode
                     ? "Create Account"
                     : "Travel Portal"}
                 </h2>
-                <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">
+                <p className="text-[11px] xl:text-xs text-slate-500 mt-0.5 max-w-xs mx-auto leading-snug">
                   {isResetMode
-                    ? "Enter your username to receive reset instructions"
+                    ? "Enter username to receive reset instructions"
                     : isRegisterMode
                     ? "Create a staff account for RK Travel Hub"
                     : "Enter your credentials to access the management portal"}
@@ -352,14 +352,14 @@ function LoginForm() {
 
               {/* Feedback Alerts */}
               {successMessage && (
-                <div className="p-3 mb-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-emerald-800 animate-in fade-in duration-200">
+                <div className="p-2.5 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-semibold text-emerald-800 animate-in fade-in duration-200">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <p className="leading-tight">{successMessage}</p>
                 </div>
               )}
 
               {error && (
-                <div className="p-3 mb-4 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-rose-800 animate-in fade-in duration-200">
+                <div className="p-2.5 mb-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-xs font-semibold text-rose-800 animate-in fade-in duration-200">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                   <p className="leading-tight">{error}</p>
                 </div>
@@ -367,13 +367,13 @@ function LoginForm() {
 
               {/* Reset Password Form */}
               {isResetMode ? (
-                <form onSubmit={handlePasswordReset} className="space-y-4">
+                <form onSubmit={handlePasswordReset} className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[11px] xl:text-xs font-bold text-slate-700 mb-1">
                       Username
                     </label>
                     <div className="relative group">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                       <input
                         type="text"
                         required
@@ -383,9 +383,9 @@ function LoginForm() {
                           const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "").toUpperCase();
                           setResetEmail(val);
                         }}
-                        className="w-full h-12 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
+                        className="w-full h-10 pl-10 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
                       />
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none">
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400 pointer-events-none select-none">
                         @gmail.com
                       </span>
                     </div>
@@ -394,14 +394,14 @@ function LoginForm() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-12 bg-[#1565D8] hover:bg-[#0D57C5] active:scale-[0.99] text-white rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full h-10 lg:h-10 xl:h-11 bg-[#1565D8] hover:bg-[#0D57C5] active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer disabled:opacity-50"
                   >
                     {loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
                         <span>Send Reset Link</span>
-                        <KeyRound className="w-4 h-4" />
+                        <KeyRound className="w-3.5 h-3.5" />
                       </>
                     )}
                   </button>
@@ -412,7 +412,7 @@ function LoginForm() {
                       setIsResetMode(false);
                       setError("");
                     }}
-                    className="w-full text-center text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors flex items-center justify-center gap-1.5 pt-1 cursor-pointer"
+                    className="w-full text-center text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors flex items-center justify-center gap-1.5 pt-0.5 cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Back to Sign In</span>
@@ -420,30 +420,30 @@ function LoginForm() {
                 </form>
               ) : isRegisterMode ? (
                 /* Register Form */
-                <form onSubmit={handleRegister} className="space-y-3.5">
+                <form onSubmit={handleRegister} className="space-y-2.5">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[11px] xl:text-xs font-bold text-slate-700 mb-1">
                       Full Name
                     </label>
                     <div className="relative group">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                       <input
                         type="text"
                         required
                         placeholder="John Doe"
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
-                        className="w-full h-11 pl-11 pr-4 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
+                        className="w-full h-9.5 lg:h-9.5 xl:h-10 pl-10 pr-3.5 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[11px] xl:text-xs font-bold text-slate-700 mb-1">
                       Username
                     </label>
                     <div className="relative group">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                       <input
                         type="text"
                         required
@@ -453,54 +453,54 @@ function LoginForm() {
                           const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "").toUpperCase();
                           setUserId(val);
                         }}
-                        className="w-full h-11 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
+                        className="w-full h-9.5 lg:h-9.5 xl:h-10 pl-10 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
                       />
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none">
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400 pointer-events-none select-none">
                         @gmail.com
                       </span>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[11px] xl:text-xs font-bold text-slate-700 mb-1">
                       Password
                     </label>
                     <div className="relative group">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                       <input
                         type={showPassword ? "text" : "password"}
                         required
                         placeholder="Minimum 6 characters"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full h-11 pl-11 pr-11 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
+                        className="w-full h-9.5 lg:h-9.5 xl:h-10 pl-10 pr-10 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
                       >
                         {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
+                          <EyeOff className="w-3.5 h-3.5" />
                         ) : (
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5" />
                         )}
                       </button>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[11px] xl:text-xs font-bold text-slate-700 mb-1">
                       Assigned Role
                     </label>
-                    <div className="relative flex items-center justify-between px-3.5 h-11 bg-[#EEF4FB] border border-slate-200/80 rounded-2xl select-none">
+                    <div className="relative flex items-center justify-between px-3 h-9.5 lg:h-9.5 xl:h-10 bg-[#EEF4FB] border border-slate-200/80 rounded-xl select-none">
                       <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-blue-600" />
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
                         <span className="text-xs sm:text-sm font-bold text-slate-900">
                           Staff
                         </span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-wider">
+                      <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[9px] font-black uppercase tracking-wider">
                         Role: Staff
                       </span>
                     </div>
@@ -509,19 +509,19 @@ function LoginForm() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-12 bg-[#1565D8] hover:bg-[#0D57C5] active:scale-[0.99] text-white rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 mt-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full h-10 lg:h-10 xl:h-11 bg-[#1565D8] hover:bg-[#0D57C5] active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 mt-1 shadow-lg shadow-blue-600/30 transition-all cursor-pointer disabled:opacity-50"
                   >
                     {loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
                         <span>Create Account</span>
-                        <UserPlus className="w-4 h-4" />
+                        <UserPlus className="w-3.5 h-3.5" />
                       </>
                     )}
                   </button>
 
-                  <div className="text-center pt-2">
+                  <div className="text-center pt-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -539,14 +539,14 @@ function LoginForm() {
                 </form>
               ) : (
                 /* Main Sign In Form */
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-2.5 lg:space-y-2.5 xl:space-y-3">
                   {/* Username */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[11px] xl:text-xs font-bold text-slate-700 mb-1">
                       Username
                     </label>
                     <div className="relative group">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                       <input
                         type="text"
                         name="username"
@@ -559,9 +559,9 @@ function LoginForm() {
                           const val = e.target.value.replace(/@gmail\.com$/i, "").replace(/@.*$/, "").toUpperCase();
                           setUserId(val);
                         }}
-                        className="w-full h-12 pl-11 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
+                        className="w-full h-9.5 lg:h-9.5 xl:h-10 pl-10 pr-24 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 uppercase transition-all"
                       />
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none">
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400 pointer-events-none select-none">
                         @gmail.com
                       </span>
                     </div>
@@ -569,8 +569,8 @@ function LoginForm() {
 
                   {/* Password & Forgot password */}
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-bold text-slate-700">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] xl:text-xs font-bold text-slate-700">
                         Password
                       </label>
                       <button
@@ -581,13 +581,13 @@ function LoginForm() {
                           setSuccessMessage("");
                           setResetEmail(userId);
                         }}
-                        className="text-xs text-blue-600 hover:underline font-bold cursor-pointer"
+                        className="text-[11px] xl:text-xs text-blue-600 hover:underline font-bold cursor-pointer"
                       >
                         Forgot password?
                       </button>
                     </div>
                     <div className="relative group">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                       <input
                         type={showPassword ? "text" : "password"}
                         name="password"
@@ -597,17 +597,17 @@ function LoginForm() {
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full h-12 pl-11 pr-11 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
+                        className="w-full h-9.5 lg:h-9.5 xl:h-10 pl-10 pr-10 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 transition-all"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
                       >
                         {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
+                          <EyeOff className="w-3.5 h-3.5" />
                         ) : (
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5" />
                         )}
                       </button>
                     </div>
@@ -617,7 +617,7 @@ function LoginForm() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-12 bg-[#1565D8] hover:bg-[#0D57C5] active:scale-[0.99] text-white rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 mt-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full h-10 lg:h-10 xl:h-11 bg-[#1565D8] hover:bg-[#0D57C5] active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 mt-1 shadow-lg shadow-blue-600/30 transition-all cursor-pointer disabled:opacity-50"
                   >
                     {loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -630,7 +630,7 @@ function LoginForm() {
                   </button>
 
                   {/* Need to set up access? Create Account */}
-                  <div className="text-center pt-2">
+                  <div className="text-center pt-0.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -648,40 +648,38 @@ function LoginForm() {
                 </form>
               )}
 
-                {/* Admin Portal Link */}
-                <div className="mt-4 pt-4 border-t border-slate-200/80">
-                  <Link
-                    href="/admin/login"
-                    className="w-full h-11 flex items-center justify-between px-3.5 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-2xl text-xs font-bold text-slate-800 hover:text-blue-600 transition-all cursor-pointer group shadow-2xs"
-                    title="Switch to Admin Portal"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                        <Shield className="w-3.5 h-3.5" />
-                      </div>
-                      <span>Admin Portal Access</span>
+              {/* Admin Portal Link */}
+              <div className="mt-2.5 lg:mt-2.5 xl:mt-3 pt-2.5 lg:pt-2.5 xl:pt-3 border-t border-slate-200/80">
+                <Link
+                  href="/admin/login"
+                  className="w-full h-8.5 lg:h-8.5 xl:h-9.5 flex items-center justify-between px-3 bg-[#EEF4FB] hover:bg-[#E5EEF8] border border-slate-200/80 rounded-xl text-[11px] xl:text-xs font-bold text-slate-800 hover:text-blue-600 transition-all cursor-pointer group shadow-2xs"
+                  title="Switch to Admin Portal"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                      <Shield className="w-3 h-3" />
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
-                  </Link>
-                </div>
-
-                {/* Enterprise Security Badge */}
-                <div className="mt-3 text-center flex items-center justify-center">
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/90 border border-slate-200/80 rounded-full shadow-2xs">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-700">
-                      Enterprise Fleet &amp; Operations Access Only
-                    </span>
+                    <span>Admin Portal Access</span>
                   </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                </Link>
+              </div>
+
+              {/* Enterprise Security Badge */}
+              <div className="mt-2 lg:mt-2 xl:mt-2.5 text-center flex items-center justify-center">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/90 border border-slate-200/80 rounded-full shadow-2xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span className="text-[9.5px] xl:text-[10.5px] font-bold text-slate-700">
+                    Enterprise Fleet &amp; Operations Access Only
+                  </span>
                 </div>
-
-
+              </div>
             </div>
           </div>
         </div>
 
         {/* Mobile Bottom Value Badges */}
-        <div className="lg:hidden grid grid-cols-2 gap-2 pt-4 pb-2">
+        <div className="lg:hidden grid grid-cols-2 gap-2 pt-3 pb-2 shrink-0">
           <div className="bg-slate-950/60 backdrop-blur-md border border-white/15 rounded-xl p-2.5 flex items-center gap-2">
             <Bus className="w-4 h-4 text-blue-400 shrink-0" />
             <div className="min-w-0">
