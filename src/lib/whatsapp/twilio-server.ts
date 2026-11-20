@@ -8,6 +8,8 @@ import {
   formatWhatsAppRecipient,
   buildReminderDetails,
   getReminderDocumentId,
+  getKolkataDateParts,
+  getTargetTripDateKolkata,
   REMINDER_TYPE_ADMIN_5DAY,
 } from './trip-reminder-logic';
 
@@ -375,5 +377,200 @@ export async function retryNotification(notificationId: string): Promise<{
       status: 'failed',
     };
   }
+}
+
+/**
+ * Executes the automated 5-day WhatsApp trip reminders on Next.js / Vercel (Cron)
+ */
+export async function executeScheduledWhatsAppCron(
+  forcedTargetDate?: string,
+  isDryRun = false
+): Promise<{
+  targetDate: string;
+  totalTripsFound: number;
+  eligibleCount: number;
+  submittedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  details: { tripId: string; status: string; messageSid?: string; error?: string }[];
+}> {
+  const config = getTwilioConfig();
+  const todayStr = getKolkataDateParts().dateStr;
+  const targetDate = forcedTargetDate || getTargetTripDateKolkata(5);
+
+  console.log(`[WhatsAppCron] Running automated 5-day reminder job. Today (IST): ${todayStr}, Target: ${targetDate}`);
+
+  const token = await getAdminToken();
+  const tripsUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/trips?pageSize=200`;
+
+  const tripsRes = await fetch(tripsUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+
+  if (!tripsRes.ok) {
+    throw new Error(`Failed to query trips from Firestore: HTTP ${tripsRes.status}`);
+  }
+
+  const tripsJson = await tripsRes.json();
+  const allTrips = (tripsJson.documents || []).map(decodeFirestoreDoc).filter(Boolean);
+
+  let eligibleCount = 0;
+  let submittedCount = 0;
+  let skippedCount = 0;
+  let failedCount = 0;
+  const details: { tripId: string; status: string; messageSid?: string; error?: string }[] = [];
+
+  const targetTrips = allTrips.filter((t: any) => {
+    const tDate = String(t.tripDate || t.startDate || '').trim();
+    return tDate === targetDate;
+  });
+
+  const totalTripsFound = targetTrips.length;
+
+  for (const trip of targetTrips) {
+    const tripId = trip.id;
+
+    // Check soft-delete
+    if (trip.isDeleted || trip.deletedAt) {
+      skippedCount++;
+      details.push({ tripId, status: 'skipped_deleted' });
+      continue;
+    }
+
+    const status = String(trip.status || 'scheduled').toLowerCase();
+    if (status === 'cancelled' || status === 'completed') {
+      skippedCount++;
+      details.push({ tripId, status: `skipped_${status}` });
+      continue;
+    }
+
+    if (!trip.isConfirmed) {
+      skippedCount++;
+      details.push({ tripId, status: 'skipped_unconfirmed' });
+      continue;
+    }
+
+    eligibleCount++;
+
+    // Fetch vehicle if vehicleId exists
+    let vehicleData: Record<string, any> | null = null;
+    if (trip.vehicleId) {
+      try {
+        const vUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/vehicles/${trip.vehicleId}`;
+        const vRes = await fetch(vUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        });
+        if (vRes.ok) {
+          vehicleData = decodeFirestoreDoc(await vRes.json());
+        }
+      } catch {}
+    }
+
+    const reminderDetails = buildReminderDetails(trip, vehicleData);
+    const cleanDate = targetDate.replace(/[^0-9-]/g, '');
+    const notificationId = `${tripId}_${REMINDER_TYPE_ADMIN_5DAY}_${cleanDate}`;
+
+    // Check existing notification
+    const notifUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/whatsapp_notifications/${notificationId}`;
+    const checkRes = await fetch(notifUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+
+    if (checkRes.ok) {
+      const existing = decodeFirestoreDoc(await checkRes.json());
+      if (['submitted', 'sent', 'delivered', 'missed'].includes(existing?.status)) {
+        skippedCount++;
+        details.push({ tripId, status: `skipped_already_${existing.status}` });
+        continue;
+      }
+
+      if (existing?.status === 'processing') {
+        const updatedMs = new Date(existing.updatedAt || 0).getTime();
+        if (Date.now() - updatedMs < 15 * 60 * 1000) {
+          skippedCount++;
+          details.push({ tripId, status: 'skipped_currently_processing' });
+          continue;
+        }
+      }
+    }
+
+    // Acquire lock
+    await saveWhatsAppNotification({
+      id: notificationId,
+      tripId,
+      receiptNumber: reminderDetails.receiptNumber,
+      customerName: reminderDetails.customerName,
+      customerPhone: reminderDetails.customerPhone,
+      reminderType: REMINDER_TYPE_ADMIN_5DAY,
+      tripDate: targetDate,
+      reminderDate: todayStr,
+      recipientPhone: config.adminPhone,
+      templateSid: config.contentSid || null,
+      status: 'processing',
+      metadata: {
+        pickupLocation: reminderDetails.pickupLocation,
+        destination: reminderDetails.destination,
+        driverName: reminderDetails.driverName,
+        driverPhone: reminderDetails.driverPhone,
+        vehicleName: reminderDetails.vehicleName,
+        vehicleNumber: reminderDetails.vehicleNumber,
+        tripAmount: reminderDetails.tripAmount,
+        isDryRun,
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (isDryRun) {
+      await saveWhatsAppNotification({
+        id: notificationId,
+        status: 'submitted',
+        twilioMessageSid: `DRY_RUN_${Date.now()}`,
+        sentAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      submittedCount++;
+      details.push({ tripId, status: 'dry_run_success' });
+      continue;
+    }
+
+    // Dispatch via Twilio
+    const sendRes = await sendWhatsAppViaTwilio(config, reminderDetails);
+
+    if (sendRes.success) {
+      await saveWhatsAppNotification({
+        id: notificationId,
+        status: 'submitted',
+        twilioMessageSid: sendRes.messageSid,
+        sentAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        errorMessage: null,
+      });
+      submittedCount++;
+      details.push({ tripId, status: 'submitted', messageSid: sendRes.messageSid });
+    } else {
+      await saveWhatsAppNotification({
+        id: notificationId,
+        status: 'failed',
+        errorMessage: sendRes.errorMessage,
+        updatedAt: new Date().toISOString(),
+      });
+      failedCount++;
+      details.push({ tripId, status: 'failed', error: sendRes.errorMessage });
+    }
+  }
+
+  return {
+    targetDate,
+    totalTripsFound,
+    eligibleCount,
+    submittedCount,
+    skippedCount,
+    failedCount,
+    details,
+  };
 }
 
