@@ -20,6 +20,7 @@ import {
   X,
   Trash2,
   Database,
+  MessageSquare,
 } from "lucide-react";
 
 export default function MobileBottomNav({ isAdmin = false }: { isAdmin?: boolean }) {
@@ -58,6 +59,7 @@ export default function MobileBottomNav({ isAdmin = false }: { isAdmin?: boolean
   const moreAdminPages = [
     { name: "Expenses", href: "/admin/expenses", icon: Receipt, desc: "Operating expenses & audits" },
     { name: "Cash Book", href: "/admin/cashbook", icon: BookOpen, desc: "Master cashbook & registers" },
+    { name: "WhatsApp Alerts", href: "/admin/whatsapp-reminders", icon: MessageSquare, desc: "Automated 5-day admin trip alerts" },
     { name: "Reminders", href: "/admin/reminders", icon: Bell, desc: "Compliance & vehicle documents" },
     { name: "Users", href: "/admin/users", icon: Users, desc: "Staff & user role permissions" },
     { name: "Trash & Recovery", href: "/admin/trash", icon: Trash2, desc: "Restore soft-deleted records" },

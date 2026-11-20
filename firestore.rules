@@ -116,7 +116,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 6. Default: deny everything else
+    // 6. Automated WhatsApp Notifications (Admin only)
+    match /whatsapp_notifications/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // 7. Default: deny everything else
     match /{document=**} {
       allow read, write: if false;
     }

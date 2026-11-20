@@ -361,3 +361,49 @@ export interface AuditLogEntry {
   newState?: Record<string, any>
   metadata?: Record<string, any>
 }
+
+// ─── Automated WhatsApp Trip Reminders (Twilio) ───
+export type WhatsAppNotificationStatus =
+  | 'pending'
+  | 'processing'
+  | 'submitted'
+  | 'sent'
+  | 'delivered'
+  | 'failed'
+  | 'missed';
+
+export interface WhatsAppNotificationRecord {
+  id: string; // Deterministic: `${tripId}_admin_5day_${cleanTripDate}`
+  tripId: string;
+  receiptNumber: string;
+  customerName: string;
+  customerPhone?: string;
+  reminderType: 'admin_5day' | string;
+  tripDate: string; // YYYY-MM-DD
+  reminderDate: string; // YYYY-MM-DD
+  recipientPhone: string;
+  templateSid?: string | null;
+  twilioMessageSid?: string | null;
+  status: WhatsAppNotificationStatus;
+  errorMessage?: string | null;
+  payload?: Record<string, any>;
+  metadata?: {
+    pickupLocation?: string;
+    destination?: string;
+    driverName?: string;
+    driverPhone?: string;
+    vehicleName?: string;
+    vehicleNumber?: string;
+    tripAmount?: string | number;
+    lockToken?: string;
+    attempts?: number;
+    deliveryStatus?: string;
+    isDryRun?: boolean;
+    [key: string]: any;
+  };
+  createdAt: string;
+  sentAt?: string | null;
+  deliveredAt?: string | null;
+  updatedAt: string;
+}
+

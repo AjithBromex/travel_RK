@@ -1,0 +1,379 @@
+// Server-side Twilio WhatsApp API & Notification Management Service
+// Strictly handles credentials securely server-side without exposing keys to clients
+
+import { createHmac } from 'crypto';
+import { getAdminToken } from '@/lib/firebase/server-admin';
+import type { WhatsAppNotificationRecord, WhatsAppNotificationStatus } from '@/types';
+import {
+  formatWhatsAppRecipient,
+  buildReminderDetails,
+  getReminderDocumentId,
+  REMINDER_TYPE_ADMIN_5DAY,
+} from './trip-reminder-logic';
+
+const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'rk-travels-1f4f3';
+
+export interface TwilioConfig {
+  accountSid: string;
+  authToken: string;
+  whatsappFrom: string;
+  adminPhone: string;
+  contentSid?: string;
+  statusCallbackUrl?: string;
+}
+
+/**
+ * Resolves active Twilio configuration from server environment secrets
+ */
+export function getTwilioConfig(): TwilioConfig {
+  return {
+    accountSid: (process.env.TWILIO_ACCOUNT_SID || '').trim(),
+    authToken: (process.env.TWILIO_AUTH_TOKEN || '').trim(),
+    whatsappFrom: (process.env.TWILIO_WHATSAPP_FROM || '').trim(),
+    adminPhone: (process.env.TWILIO_ADMIN_PHONE || '').trim(),
+    contentSid: (process.env.TWILIO_CONTENT_SID || '').trim() || undefined,
+    statusCallbackUrl: (process.env.TWILIO_STATUS_CALLBACK_URL || '').trim() || undefined,
+  };
+}
+
+/**
+ * Validates Twilio cryptographic signature (X-Twilio-Signature)
+ * Formula: Base64(HMAC-SHA1(authToken, fullUrl + sortedKeyValues))
+ */
+export function validateTwilioSignature(
+  authToken: string,
+  signature: string,
+  url: string,
+  params: Record<string, string> = {}
+): boolean {
+  if (!authToken || !signature || !url) return false;
+
+  let data = url;
+  const keys = Object.keys(params).sort();
+  for (const key of keys) {
+    data += key + params[key];
+  }
+
+  const expected = createHmac('sha1', authToken).update(data).digest('base64');
+  return expected === signature;
+}
+
+export interface SendWhatsAppResponse {
+  success: boolean;
+  messageSid?: string;
+  status?: string;
+  errorMessage?: string;
+  payloadSent?: Record<string, any>;
+}
+
+/**
+ * Sends a WhatsApp trip reminder via Twilio REST API
+ */
+export async function sendWhatsAppViaTwilio(
+  config: TwilioConfig,
+  reminder: ReturnType<typeof buildReminderDetails>,
+  overrideRecipientPhone?: string
+): Promise<SendWhatsAppResponse> {
+  const { accountSid, authToken, whatsappFrom, adminPhone, contentSid, statusCallbackUrl } = config;
+
+  if (!accountSid || !authToken) {
+    return {
+      success: false,
+      errorMessage: 'Twilio Account SID or Auth Token is missing from server configuration.',
+    };
+  }
+
+  const rawRecipient = overrideRecipientPhone || adminPhone;
+  const to = formatWhatsAppRecipient(rawRecipient);
+  const from = formatWhatsAppRecipient(whatsappFrom);
+
+  if (!to) {
+    return {
+      success: false,
+      errorMessage: `Invalid admin recipient WhatsApp number: "${rawRecipient}".`,
+    };
+  }
+
+  if (!from) {
+    return {
+      success: false,
+      errorMessage: `Invalid Twilio WhatsApp sender number: "${whatsappFrom}".`,
+    };
+  }
+
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+  const formParams = new URLSearchParams();
+  formParams.append('From', from);
+  formParams.append('To', to);
+
+  if (statusCallbackUrl && statusCallbackUrl.startsWith('http')) {
+    formParams.append('StatusCallback', statusCallbackUrl);
+  }
+
+  // 1. If an approved Content Template SID is provided, use Twilio Content API format
+  if (contentSid && contentSid.startsWith('HX')) {
+    formParams.append('ContentSid', contentSid);
+    formParams.append('ContentVariables', JSON.stringify(reminder.contentVariables));
+  } else {
+    // 2. Otherwise use the standard formatted text body (for Sandbox and free-form windows)
+    formParams.append('Body', reminder.plainTextMessage);
+  }
+
+  const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formParams.toString(),
+      cache: 'no-store',
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      const errMsg = json?.message || json?.error_message || `HTTP ${res.status} ${res.statusText}`;
+      return {
+        success: false,
+        errorMessage: `Twilio Error [${json?.code || res.status}]: ${errMsg}`,
+        payloadSent: Object.fromEntries(formParams.entries()),
+      };
+    }
+
+    return {
+      success: true,
+      messageSid: json.sid,
+      status: json.status,
+      payloadSent: Object.fromEntries(formParams.entries()),
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      errorMessage: `Network error connecting to Twilio API: ${err?.message || String(err)}`,
+    };
+  }
+}
+
+/**
+ * Helper to encode values for Firestore REST API
+ */
+function encodeFirestoreField(val: any): any {
+  if (val === null || val === undefined) return { nullValue: null };
+  if (typeof val === 'boolean') return { booleanValue: val };
+  if (typeof val === 'number') {
+    return Number.isInteger(val) ? { integerValue: String(val) } : { doubleValue: val };
+  }
+  if (typeof val === 'string') return { stringValue: val };
+  if (Array.isArray(val)) {
+    return { arrayValue: { values: val.map(encodeFirestoreField) } };
+  }
+  if (typeof val === 'object') {
+    const fields: Record<string, any> = {};
+    for (const [k, v] of Object.entries(val)) {
+      fields[k] = encodeFirestoreField(v);
+    }
+    return { mapValue: { fields } };
+  }
+  return { stringValue: String(val) };
+}
+
+/**
+ * Decodes Firestore REST document to normal JS object
+ */
+function decodeFirestoreDoc(doc: any): any {
+  if (!doc || !doc.fields) return null;
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(doc.fields as Record<string, any>)) {
+    if ('stringValue' in v) out[k] = v.stringValue;
+    else if ('integerValue' in v) out[k] = parseInt(v.integerValue, 10);
+    else if ('doubleValue' in v) out[k] = v.doubleValue;
+    else if ('booleanValue' in v) out[k] = v.booleanValue;
+    else if ('timestampValue' in v) out[k] = v.timestampValue;
+    else if ('nullValue' in v) out[k] = null;
+    else if ('mapValue' in v) out[k] = decodeFirestoreDoc({ fields: v.mapValue?.fields || {} });
+    else out[k] = v;
+  }
+  if (doc.name) {
+    out.id = doc.name.split('/').pop();
+  }
+  return out;
+}
+
+/**
+ * Reads all WhatsApp notifications from Firestore with optional filtering
+ */
+export async function getWhatsAppNotifications(
+  filterStatus?: string
+): Promise<WhatsAppNotificationRecord[]> {
+  try {
+    const token = await getAdminToken();
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/whatsapp_notifications?pageSize=100`;
+
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      console.warn(`[WhatsAppServer] Firestore query failed: HTTP ${res.status}`);
+      return [];
+    }
+
+    const data = await res.json();
+    const docs = (data.documents || [])
+      .map(decodeFirestoreDoc)
+      .filter(Boolean) as WhatsAppNotificationRecord[];
+
+    docs.sort(
+      (a, b) =>
+        new Date(b.createdAt || b.updatedAt || 0).getTime() -
+        new Date(a.createdAt || a.updatedAt || 0).getTime()
+    );
+
+    if (filterStatus && filterStatus !== 'all') {
+      return docs.filter((d) => d.status === filterStatus);
+    }
+
+    return docs;
+  } catch (err) {
+    console.warn('[WhatsAppServer] Error fetching notifications:', err);
+    return [];
+  }
+}
+
+/**
+ * Persists or updates a notification record in Firestore
+ */
+export async function saveWhatsAppNotification(
+  record: Partial<WhatsAppNotificationRecord> & { id: string }
+): Promise<boolean> {
+  try {
+    const token = await getAdminToken();
+    const docId = record.id;
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/whatsapp_notifications/${docId}`;
+
+    const fields: Record<string, any> = {};
+    for (const [k, v] of Object.entries(record)) {
+      if (k !== 'id') {
+        fields[k] = encodeFirestoreField(v);
+      }
+    }
+
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields }),
+      cache: 'no-store',
+    });
+
+    return res.ok;
+  } catch (err) {
+    console.error('[WhatsAppServer] Error saving notification:', err);
+    return false;
+  }
+}
+
+/**
+ * Retries a failed notification with duplicate protection
+ */
+export async function retryNotification(notificationId: string): Promise<{
+  success: boolean;
+  message: string;
+  status: WhatsAppNotificationStatus;
+  messageSid?: string;
+}> {
+  const token = await getAdminToken();
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/whatsapp_notifications/${notificationId}`;
+
+  const fetchRes = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+
+  if (!fetchRes.ok) {
+    return {
+      success: false,
+      message: `Notification record "${notificationId}" was not found.`,
+      status: 'failed',
+    };
+  }
+
+  const notif = decodeFirestoreDoc(await fetchRes.json()) as WhatsAppNotificationRecord;
+
+  // Duplicate protection: prevent retrying already-delivered or submitted notifications
+  if (notif.status === 'delivered') {
+    return {
+      success: true,
+      message: 'This reminder was already delivered successfully.',
+      status: 'delivered',
+      messageSid: notif.twilioMessageSid || undefined,
+    };
+  }
+
+  // Acquire processing lock
+  await saveWhatsAppNotification({
+    id: notificationId,
+    status: 'processing',
+    updatedAt: new Date().toISOString(),
+  });
+
+  // Re-fetch latest trip data
+  let tripData: Record<string, any> | null = null;
+  if (notif.tripId) {
+    try {
+      const tripUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/trips/${notif.tripId}`;
+      const tripRes = await fetch(tripUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
+      if (tripRes.ok) {
+        tripData = decodeFirestoreDoc(await tripRes.json());
+      }
+    } catch {}
+  }
+
+  const config = getTwilioConfig();
+  const reminderDetails = buildReminderDetails(tripData || notif);
+
+  const sendResult = await sendWhatsAppViaTwilio(config, reminderDetails);
+
+  if (sendResult.success) {
+    await saveWhatsAppNotification({
+      id: notificationId,
+      status: 'submitted',
+      twilioMessageSid: sendResult.messageSid,
+      sentAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      errorMessage: null,
+    });
+
+    return {
+      success: true,
+      message: `Manual retry succeeded! Twilio Message SID: ${sendResult.messageSid}`,
+      status: 'submitted',
+      messageSid: sendResult.messageSid,
+    };
+  } else {
+    await saveWhatsAppNotification({
+      id: notificationId,
+      status: 'failed',
+      errorMessage: sendResult.errorMessage,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return {
+      success: false,
+      message: `Manual retry failed: ${sendResult.errorMessage}`,
+      status: 'failed',
+    };
+  }
+}
+

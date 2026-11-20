@@ -31,6 +31,14 @@ export default async function ModulePage({ params }: PageProps) {
   ) {
     redirect('/admin/audit-logs');
   }
+  if (
+    slug === 'whatsapp-reminders' ||
+    slug === 'whatsapp' ||
+    slug === 'whatsapp_reminders' ||
+    slug === 'whatsapp-alerts'
+  ) {
+    redirect('/admin/whatsapp-reminders');
+  }
 
   const m = MODULES[rawSlug] || MODULES[slug];
   if (!m) notFound();

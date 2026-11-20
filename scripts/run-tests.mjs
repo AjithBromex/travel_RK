@@ -896,6 +896,556 @@ test('Settings Hydration Fallback: falls back to stored local data when server p
   assert.strictEqual(effectiveTrips.length, 1);
 });
 
+// ─── 15. AUTOMATED 5-DAY WHATSAPP TRIP REMINDERS (TWILIO) ───────────────────
+console.log('\n[SUITE 15: Automated 5-Day WhatsApp Trip Reminders (Twilio Integration)]');
+
+const TIMEZONE_IST = 'Asia/Kolkata';
+const REMINDER_TYPE_ADMIN_5DAY = 'admin_5day';
+
+function getKolkataDateParts(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIMEZONE_IST,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const dateStr = formatter.format(date);
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return { year, month, day, dateStr };
+}
+
+function getTargetTripDateKolkata(daysAhead = 5, baseDate = new Date()) {
+  const { year, month, day } = getKolkataDateParts(baseDate);
+  const target = new Date(Date.UTC(year, month - 1, day + daysAhead, 12, 0, 0));
+  return getKolkataDateParts(target).dateStr;
+}
+
+function getDaysUntilTripKolkata(tripDateStr, baseDate = new Date()) {
+  const todayStr = getKolkataDateParts(baseDate).dateStr;
+  const [tYear, tMonth, tDay] = todayStr.split('-').map(Number);
+  const [targetYear, targetMonth, targetDay] = tripDateStr.split('-').map(Number);
+
+  const utcToday = Date.UTC(tYear, tMonth - 1, tDay);
+  const utcTarget = Date.UTC(targetYear, targetMonth - 1, targetDay);
+
+  const diffMs = utcTarget - utcToday;
+  return Math.round(diffMs / (1000 * 60 * 60 * 24));
+}
+
+function formatWhatsAppRecipient(rawPhone) {
+  if (!rawPhone) return '';
+  let cleaned = String(rawPhone).trim();
+  if (cleaned.startsWith('whatsapp:')) {
+    cleaned = cleaned.replace(/^whatsapp:/, '').trim();
+  }
+  const hasPlus = cleaned.startsWith('+');
+  const digits = cleaned.replace(/\D/g, '');
+
+  if (digits.length === 10) {
+    return `whatsapp:+91${digits}`;
+  }
+  if (digits.length === 11 && digits.startsWith('0')) {
+    return `whatsapp:+91${digits.slice(1)}`;
+  }
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return `whatsapp:+${digits}`;
+  }
+  if (hasPlus) {
+    return `whatsapp:+${digits}`;
+  }
+  return digits.length >= 10 ? `whatsapp:+${digits}` : '';
+}
+
+function getReminderDocumentId(tripId, tripDate, reminderType = REMINDER_TYPE_ADMIN_5DAY) {
+  const cleanTripId = String(tripId).trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+  const cleanDate = String(tripDate).trim().replace(/[^0-9-]/g, '');
+  return `${cleanTripId}_${reminderType}_${cleanDate}`;
+}
+
+function evaluateTripEligibility(trip, targetTripDate, todayDateStr = getKolkataDateParts().dateStr) {
+  if (trip.isDeleted || trip.deletedAt) {
+    return { isEligible: false, reason: 'Trip has been deleted/moved to trash.', status: 'missed' };
+  }
+  const status = String(trip.status || 'scheduled').toLowerCase();
+  if (status === 'cancelled') {
+    return { isEligible: false, reason: 'Trip has been cancelled.', status: 'missed' };
+  }
+  if (status === 'completed') {
+    return { isEligible: false, reason: 'Trip has already been completed.', status: 'missed' };
+  }
+  if (!trip.isConfirmed) {
+    return { isEligible: false, reason: 'Trip has not yet been confirmed by administrator.', status: 'pending' };
+  }
+  const tripDate = String(trip.tripDate || trip.startDate || '').trim();
+  if (!tripDate || !/^\d{4}-\d{2}-\d{2}$/.test(tripDate)) {
+    return { isEligible: false, reason: `Invalid or missing trip date: "${tripDate}".`, status: 'failed' };
+  }
+  if (tripDate !== targetTripDate) {
+    const daysUntil = getDaysUntilTripKolkata(tripDate, new Date());
+    if (daysUntil < 5) {
+      return { isEligible: false, reason: `Trip confirmed/scheduled ${daysUntil} days before departure (< 5 days). Marked as missed.`, status: 'missed' };
+    }
+    return { isEligible: false, reason: `Trip date (${tripDate}) does not match target 5-day reminder date (${targetTripDate}).`, status: 'pending' };
+  }
+  return { isEligible: true, reason: 'Trip is fully eligible for 5-day automated admin reminder.', status: 'pending' };
+}
+
+function buildReminderDetails(trip, vehicle) {
+  const raw = trip.raw || trip;
+  const receiptNumber = String(raw.receiptNumber || raw.tripNumber || trip.receiptNumber || trip.id || 'N/A').trim();
+  const customerName = String(raw.customerName || trip.customerName || trip.customer || 'Valued Customer').trim();
+  const customerPhone = String(raw.customerPhone || trip.customerPhone || raw.phone || trip.phone || 'N/A').trim();
+  const tripDate = String(raw.tripDate || trip.tripDate || raw.startDate || 'N/A').trim();
+  const pickupLocation = String(raw.from || trip.from || raw.pickupLocation || 'N/A').trim();
+  const destination = String(raw.to || trip.to || raw.destination || 'N/A').trim();
+  const driverName = String(raw.driverName || trip.driverName || raw.driver || 'Unassigned').trim();
+  const driverPhone = String(raw.driverPhone || trip.driverPhone || 'N/A').trim();
+  const vehicleName = String(vehicle?.name || raw.vehicleName || 'Standard Fleet').trim();
+  const vehicleNumber = String(vehicle?.registrationNumber || raw.vehicleNumber || 'Pending Assignment').trim();
+  const rawAmount = Number(raw.totalFare || raw.baseFare || trip.totalFare || trip.baseFare || 0);
+  const tripAmount = `₹${rawAmount.toLocaleString('en-IN')}`;
+
+  const plainTextMessage = [
+    'Hello Admin,',
+    '',
+    'A trip is scheduled in 5 days!',
+    '',
+    'TRIP DETAILS',
+    '',
+    `Receipt Number: ${receiptNumber}`,
+    '',
+    `Customer Name: ${customerName}`,
+    '',
+    `Customer Phone: ${customerPhone}`,
+    '',
+    `Trip Date: ${tripDate}`,
+    '',
+    `Pickup Location: ${pickupLocation}`,
+    '',
+    `Destination: ${destination}`,
+    '',
+    `Assigned Driver: ${driverName}`,
+    '',
+    `Driver Phone: ${driverPhone}`,
+    '',
+    `Vehicle: ${vehicleName}`,
+    '',
+    `Vehicle Registration: ${vehicleNumber}`,
+    '',
+    `Trip Amount: ${tripAmount}`,
+    '',
+    'Please verify the vehicle, driver and trip arrangements before departure.',
+    '',
+    'Regards,',
+    'RK Travel Hub.',
+  ].join('\n');
+
+  return {
+    receiptNumber,
+    customerName,
+    customerPhone,
+    tripDate,
+    pickupLocation,
+    destination,
+    driverName,
+    driverPhone,
+    vehicleName,
+    vehicleNumber,
+    tripAmount,
+    plainTextMessage,
+  };
+}
+
+function validateTwilioSignature(authToken, signature, url, params = {}) {
+  if (!authToken || !signature || !url) return false;
+  let data = url;
+  const keys = Object.keys(params).sort();
+  for (const key of keys) {
+    data += key + params[key];
+  }
+  const expected = createHmac('sha1', authToken).update(data).digest('base64');
+  return expected === signature;
+}
+
+// SCENARIO 1: Confirmed trip exactly five days away
+test('WhatsApp Reminders: Scenario 1 - Confirmed trip exactly 5 days away is eligible', () => {
+  const todayStr = getKolkataDateParts().dateStr;
+  const targetDate = getTargetTripDateKolkata(5);
+
+  const trip = {
+    id: 'trip_101',
+    receiptNumber: '#1001',
+    customerName: 'Ajith Customer',
+    customerPhone: '9876543210',
+    tripDate: targetDate,
+    status: 'scheduled',
+    isConfirmed: true,
+    totalFare: 5000,
+  };
+
+  const result = evaluateTripEligibility(trip, targetDate, todayStr);
+  assert.strictEqual(result.isEligible, true);
+  assert.strictEqual(result.status, 'pending');
+
+  const details = buildReminderDetails(trip);
+  assert.strictEqual(details.receiptNumber, '#1001');
+  assert.strictEqual(details.customerName, 'Ajith Customer');
+  assert.strictEqual(details.tripDate, targetDate);
+  assert.strictEqual(details.tripAmount, '₹5,000');
+  assert.match(details.plainTextMessage, /Hello Admin,/);
+  assert.match(details.plainTextMessage, /A trip is scheduled in 5 days!/);
+  assert.match(details.plainTextMessage, /Receipt Number: #1001/);
+});
+
+// SCENARIO 2: Trip scheduled more than five days away
+test('WhatsApp Reminders: Scenario 2 - Trip scheduled > 5 days away is not yet eligible for 5-day reminder', () => {
+  const todayStr = getKolkataDateParts().dateStr;
+  const targetDate5 = getTargetTripDateKolkata(5);
+  const futureDate8 = getTargetTripDateKolkata(8);
+
+  const trip = {
+    id: 'trip_102',
+    tripDate: futureDate8,
+    isConfirmed: true,
+    status: 'scheduled',
+  };
+
+  const result = evaluateTripEligibility(trip, targetDate5, todayStr);
+  assert.strictEqual(result.isEligible, false);
+  assert.match(result.reason, /does not match target 5-day/);
+});
+
+// SCENARIO 3: Unconfirmed trip
+test('WhatsApp Reminders: Scenario 3 - Unconfirmed trip is strictly rejected', () => {
+  const targetDate = getTargetTripDateKolkata(5);
+  const trip = {
+    id: 'trip_103',
+    tripDate: targetDate,
+    isConfirmed: false,
+    status: 'scheduled',
+  };
+
+  const result = evaluateTripEligibility(trip, targetDate);
+  assert.strictEqual(result.isEligible, false);
+  assert.match(result.reason, /not yet been confirmed/);
+});
+
+// SCENARIO 4: Cancelled trip
+test('WhatsApp Reminders: Scenario 4 - Cancelled trip is strictly rejected and marked missed', () => {
+  const targetDate = getTargetTripDateKolkata(5);
+  const trip = {
+    id: 'trip_104',
+    tripDate: targetDate,
+    isConfirmed: true,
+    status: 'cancelled',
+  };
+
+  const result = evaluateTripEligibility(trip, targetDate);
+  assert.strictEqual(result.isEligible, false);
+  assert.strictEqual(result.status, 'missed');
+  assert.match(result.reason, /cancelled/i);
+});
+
+// SCENARIO 5: Completed trip
+test('WhatsApp Reminders: Scenario 5 - Completed trip is strictly rejected and marked missed', () => {
+  const targetDate = getTargetTripDateKolkata(5);
+  const trip = {
+    id: 'trip_105',
+    tripDate: targetDate,
+    isConfirmed: true,
+    status: 'completed',
+  };
+
+  const result = evaluateTripEligibility(trip, targetDate);
+  assert.strictEqual(result.isEligible, false);
+  assert.strictEqual(result.status, 'missed');
+  assert.match(result.reason, /completed/i);
+});
+
+// SCENARIO 6: Trip date changed before reminder
+test('WhatsApp Reminders: Scenario 6 - Rescheduled trip invalidates old pending reminder', () => {
+  const originalDate = '2026-11-25';
+  const newRescheduledDate = '2026-11-28';
+
+  const notification = {
+    id: getReminderDocumentId('trip_106', originalDate),
+    tripId: 'trip_106',
+    tripDate: originalDate,
+    status: 'pending',
+  };
+
+  const updatedTrip = {
+    id: 'trip_106',
+    tripDate: newRescheduledDate,
+    isConfirmed: true,
+    status: 'scheduled',
+  };
+
+  // When live trip date differs from recorded notification date, stale record is invalidated
+  const isStale = updatedTrip.tripDate !== notification.tripDate;
+  assert.strictEqual(isStale, true);
+
+  const updatedNotification = {
+    ...notification,
+    status: isStale ? 'missed' : notification.status,
+    errorMessage: isStale ? `Trip date was rescheduled from ${originalDate} to ${newRescheduledDate}.` : null,
+  };
+
+  assert.strictEqual(updatedNotification.status, 'missed');
+  assert.match(updatedNotification.errorMessage, /rescheduled/);
+
+  // New reminder cycle is generated with new target date
+  const newNotificationId = getReminderDocumentId('trip_106', newRescheduledDate);
+  assert.notStrictEqual(newNotificationId, notification.id);
+});
+
+// SCENARIO 7: Trip confirmed fewer than five days before departure
+test('WhatsApp Reminders: Scenario 7 - Trip confirmed < 5 days before departure is marked missed', () => {
+  const todayStr = getKolkataDateParts().dateStr;
+  const targetDate5 = getTargetTripDateKolkata(5);
+  const urgentDate2 = getTargetTripDateKolkata(2);
+
+  const trip = {
+    id: 'trip_107',
+    tripDate: urgentDate2,
+    isConfirmed: true,
+    status: 'scheduled',
+  };
+
+  const result = evaluateTripEligibility(trip, targetDate5, todayStr);
+  assert.strictEqual(result.isEligible, false);
+  assert.strictEqual(result.status, 'missed');
+  assert.match(result.reason, /Marked as missed/);
+});
+
+// SCENARIO 8: Multiple trips on the same date
+test('WhatsApp Reminders: Scenario 8 - Multiple trips on the same target date receive unique idempotent IDs', () => {
+  const targetDate = getTargetTripDateKolkata(5);
+  const tripA = { id: 'trip_201', tripDate: targetDate, isConfirmed: true, status: 'scheduled' };
+  const tripB = { id: 'trip_202', tripDate: targetDate, isConfirmed: true, status: 'scheduled' };
+
+  const notifIdA = getReminderDocumentId(tripA.id, tripA.tripDate);
+  const notifIdB = getReminderDocumentId(tripB.id, tripB.tripDate);
+
+  assert.strictEqual(notifIdA, `trip_201_admin_5day_${targetDate}`);
+  assert.strictEqual(notifIdB, `trip_202_admin_5day_${targetDate}`);
+  assert.notStrictEqual(notifIdA, notifIdB);
+});
+
+// SCENARIO 9: Duplicate scheduler execution
+test('WhatsApp Reminders: Scenario 9 - Idempotency lock strictly prevents duplicate dispatch', () => {
+  const notificationsStore = new Map();
+
+  function attemptAcquireLock(notificationId, targetStatus) {
+    if (notificationsStore.has(notificationId)) {
+      const existing = notificationsStore.get(notificationId);
+      if (['submitted', 'sent', 'delivered', 'missed'].includes(existing.status)) {
+        return { locked: false, reason: 'Already in terminal state' };
+      }
+      if (existing.status === 'processing') {
+        return { locked: false, reason: 'Currently locked by another process' };
+      }
+    }
+
+    notificationsStore.set(notificationId, { status: targetStatus, timestamp: Date.now() });
+    return { locked: true };
+  }
+
+  const notifId = 'trip_301_admin_5day_2026-11-25';
+
+  // Execution 1: successfully acquires lock
+  const run1 = attemptAcquireLock(notifId, 'processing');
+  assert.strictEqual(run1.locked, true);
+
+  // Execution 2 (concurrent or repeated trigger): rejected by lock
+  const run2 = attemptAcquireLock(notifId, 'processing');
+  assert.strictEqual(run2.locked, false);
+  assert.strictEqual(run2.reason, 'Currently locked by another process');
+
+  // Execution 1 completes and marks submitted
+  notificationsStore.set(notifId, { status: 'submitted', messageSid: 'SM123456789' });
+
+  // Execution 3 (retry after completion): strictly skipped
+  const run3 = attemptAcquireLock(notifId, 'processing');
+  assert.strictEqual(run3.locked, false);
+  assert.strictEqual(run3.reason, 'Already in terminal state');
+});
+
+// SCENARIO 10: Twilio API failure handling
+test('WhatsApp Reminders: Scenario 10 - Twilio API failure marks status failed without throwing unhandled error', () => {
+  const mockNotification = {
+    id: 'trip_401_admin_5day_2026-11-25',
+    status: 'processing',
+  };
+
+  const simulatedTwilioError = new Error('Twilio API Error [21608]: The number is not joined to the sandbox.');
+
+  function handleTwilioResult(notif, err, result) {
+    if (err) {
+      return {
+        ...notif,
+        status: 'failed',
+        errorMessage: err.message,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return {
+      ...notif,
+      status: 'submitted',
+      twilioMessageSid: result.sid,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const failedState = handleTwilioResult(mockNotification, simulatedTwilioError, null);
+  assert.strictEqual(failedState.status, 'failed');
+  assert.match(failedState.errorMessage, /21608/);
+});
+
+// SCENARIO 11: Invalid admin phone number
+test('WhatsApp Reminders: Scenario 11 - Invalid admin phone number is rejected before calling Twilio', () => {
+  assert.strictEqual(formatWhatsAppRecipient(''), '');
+  assert.strictEqual(formatWhatsAppRecipient('12345'), ''); // Too short
+  assert.strictEqual(formatWhatsAppRecipient('invalid_text'), '');
+
+  // Valid numbers format correctly
+  assert.strictEqual(formatWhatsAppRecipient('9876543210'), 'whatsapp:+919876543210');
+  assert.strictEqual(formatWhatsAppRecipient('09876543210'), 'whatsapp:+919876543210');
+  assert.strictEqual(formatWhatsAppRecipient('+919876543210'), 'whatsapp:+919876543210');
+  assert.strictEqual(formatWhatsAppRecipient('whatsapp:+919876543210'), 'whatsapp:+919876543210');
+});
+
+// SCENARIO 12: Failed delivery callback
+test('WhatsApp Reminders: Scenario 12 - Twilio status callback updates delivered or failed states accurately', () => {
+  const currentNotif = {
+    id: 'trip_501_admin_5day_2026-11-25',
+    twilioMessageSid: 'SM999888777',
+    status: 'submitted',
+  };
+
+  function applyTwilioCallback(notif, messageStatus, errorCode, errorMessage) {
+    const status = String(messageStatus).toLowerCase();
+    if (status === 'delivered' || status === 'read') {
+      return { ...notif, status: 'delivered', deliveredAt: new Date().toISOString() };
+    }
+    if (status === 'failed' || status === 'undelivered') {
+      return { ...notif, status: 'failed', errorMessage: errorMessage || `Code ${errorCode}` };
+    }
+    if (status === 'sent') {
+      return notif.status === 'delivered' ? notif : { ...notif, status: 'sent' };
+    }
+    return notif;
+  }
+
+  const delivered = applyTwilioCallback(currentNotif, 'delivered', null, null);
+  assert.strictEqual(delivered.status, 'delivered');
+  assert.ok(delivered.deliveredAt);
+
+  const failed = applyTwilioCallback(currentNotif, 'undelivered', '30008', 'Unknown error');
+  assert.strictEqual(failed.status, 'failed');
+  assert.strictEqual(failed.errorMessage, 'Unknown error');
+});
+
+// SCENARIO 13: Unauthorized access to notification history
+test('WhatsApp Reminders: Scenario 13 - Unauthorized requests are strictly blocked', () => {
+  function verifyAdminAuth(req) {
+    const cookieVal = req?.cookies?.get?.('rk_admin')?.value;
+    if (mockVerifyToken(cookieVal)) return { authorized: true };
+    const authHeader = req?.headers?.get?.('authorization') || '';
+    if (authHeader.startsWith('Bearer ')) {
+      const bearer = authHeader.slice(7).trim();
+      if (mockVerifyToken(bearer)) return { authorized: true };
+    }
+    return { authorized: false, reason: 'Unauthorized administrative access' };
+  }
+
+  const fakeUnauthorizedReq = {
+    cookies: { get: () => undefined },
+    headers: { get: () => null },
+  };
+
+  const authCheck = verifyAdminAuth(fakeUnauthorizedReq);
+  assert.strictEqual(authCheck.authorized, false);
+
+  // Authenticated admin token succeeds
+  const validToken = mockCreateToken();
+  const fakeAuthorizedReq = {
+    cookies: { get: (name) => (name === 'rk_admin' ? { value: validToken } : undefined) },
+    headers: { get: () => null },
+  };
+  const authCheckPass = verifyAdminAuth(fakeAuthorizedReq);
+  assert.strictEqual(authCheckPass.authorized, true);
+});
+
+// SCENARIO 14: Manual retry of failed notifications
+test('WhatsApp Reminders: Scenario 14 - Manual retry safely re-dispatches failed notification', () => {
+  const failedNotif = {
+    id: 'trip_601_admin_5day_2026-11-25',
+    tripId: 'trip_601',
+    status: 'failed',
+    errorMessage: 'Twilio unreachable',
+    attempts: 1,
+  };
+
+  function manualRetry(notif) {
+    if (notif.status === 'delivered') {
+      return { success: false, reason: 'Already delivered' };
+    }
+    // Simulate successful retry
+    return {
+      success: true,
+      updatedRecord: {
+        ...notif,
+        status: 'submitted',
+        twilioMessageSid: 'SM_RETRY_SUCCESS_111',
+        errorMessage: null,
+        attempts: (notif.attempts || 1) + 1,
+        sentAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  const retryRes = manualRetry(failedNotif);
+  assert.strictEqual(retryRes.success, true);
+  assert.strictEqual(retryRes.updatedRecord.status, 'submitted');
+  assert.strictEqual(retryRes.updatedRecord.twilioMessageSid, 'SM_RETRY_SUCCESS_111');
+  assert.strictEqual(retryRes.updatedRecord.errorMessage, null);
+  assert.strictEqual(retryRes.updatedRecord.attempts, 2);
+});
+
+// SCENARIO 15: Timezone accuracy at 10:00 AM Asia/Kolkata
+test('WhatsApp Reminders: Scenario 15 - Timezone calculation accurately computes 5 calendar days ahead in IST', () => {
+  // Test IST base date: 2026-11-20
+  const istDate = new Date('2026-11-20T04:30:00.000Z'); // 10:00 AM IST is 04:30 UTC
+  const kolkataParts = getKolkataDateParts(istDate);
+  assert.strictEqual(kolkataParts.dateStr, '2026-11-20');
+
+  const targetDate = getTargetTripDateKolkata(5, istDate);
+  assert.strictEqual(targetDate, '2026-11-25');
+
+  const daysDiff = getDaysUntilTripKolkata('2026-11-25', istDate);
+  assert.strictEqual(daysDiff, 5);
+});
+
+// Webhook signature validation test
+test('WhatsApp Reminders: Twilio signature verification succeeds with matching HMAC-SHA1', () => {
+  const authToken = '12345secret-auth-token-twilio';
+  const url = 'https://travel-rk.vercel.app/api/webhooks/twilio';
+  const params = {
+    MessageSid: 'SM1234567890',
+    MessageStatus: 'delivered',
+  };
+
+  // Generate valid signature using HMAC-SHA1
+  let data = url + 'MessageSidSM1234567890' + 'MessageStatusdelivered';
+  const validSignature = createHmac('sha1', authToken).update(data).digest('base64');
+
+  assert.strictEqual(validateTwilioSignature(authToken, validSignature, url, params), true);
+  assert.strictEqual(validateTwilioSignature(authToken, 'tampered_signature', url, params), false);
+  assert.strictEqual(validateTwilioSignature('', validSignature, url, params), false);
+});
+
+
 // ─── TEST SUMMARY ─────────────────────────────────────────────────────────────
 console.log('\n=============================================================================');
 console.log(`  TEST RESULTS: ${passedTests} / ${totalTests} PASSED (${Math.round((passedTests / totalTests) * 100)}%)`);

@@ -22,12 +22,14 @@ import {
   ChevronDown,
   Trash2,
   Database,
+  MessageSquare,
 } from 'lucide-react';
 
 const navItems = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Trips', href: '/admin/trips', icon: Bus },
   { name: 'Vehicles', href: '/admin/vehicles', icon: Car },
+  { name: 'WhatsApp', href: '/admin/whatsapp-reminders', icon: MessageSquare },
   { name: 'Payments', href: '/admin/payments', icon: Wallet },
   { name: 'Expenses', href: '/admin/expenses', icon: Receipt },
   { name: 'Trash', href: '/admin/trash', icon: Trash2 },
