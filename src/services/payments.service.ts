@@ -125,7 +125,14 @@ export async function getPayments(limitCount = 100): Promise<Payment[]> {
           }
           return true
         })
-      const sorted = sortPaymentsRecentFirst(list)
+
+      // Merge: Preserve any locally created payments that have not yet been reflected in Firestore query
+      const localPayments = getStoredPayments().filter(
+        (p) => p.id && !isDeleted('payments', p.id)
+      )
+      const remoteIds = new Set(list.map((p) => p.id))
+      const merged = [...list, ...localPayments.filter((p) => !remoteIds.has(p.id))]
+      const sorted = sortPaymentsRecentFirst(merged)
       saveStoredPayments(sorted)
       return sorted
     },
@@ -172,13 +179,21 @@ export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'up
     }
   }
 
+  // Remove undefined properties before passing to Firestore addDoc to avoid:
+  // "Function addDoc() called with invalid data. Unsupported field value: undefined"
+  const cleanData: Record<string, any> = {
+    createdAt: now,
+    updatedAt: now,
+  }
+  for (const [key, val] of Object.entries(data)) {
+    if (val !== undefined) {
+      cleanData[key] = val
+    }
+  }
+
   let docId = `pay_${Date.now()}`
   try {
-    const docRef = await addDoc(collection(db, COLLECTION), {
-      ...data,
-      createdAt: now,
-      updatedAt: now,
-    })
+    const docRef = await addDoc(collection(db, COLLECTION), cleanData)
     docId = docRef.id
   } catch (err) {
     console.warn('[PaymentsService] Firestore write fallback to local:', err)
@@ -204,18 +219,20 @@ export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'up
         const reconciled = reconcileTripWithPayments(targetTrip, allPaymentsForTrip)
 
         const tripUpdates: Partial<Trip> = {
-          advanceReceived: reconciled.advanceReceived,
-          customerPaid: reconciled.customerPaid,
-          customerBalance: reconciled.customerBalance,
-          driverPaid: reconciled.driverPaid,
-          driverBalance: reconciled.driverBalance,
+          advanceReceived: Number(reconciled.advanceReceived) || 0,
+          customerPaid: Number(reconciled.customerPaid) || 0,
+          customerBalance: Number(reconciled.customerBalance) || 0,
+          driverPaid: Number(reconciled.driverPaid) || 0,
+          driverBalance: Number(reconciled.driverBalance) || 0,
           updatedAt: now,
         }
 
         upsertStoredTrip({ ...targetTrip, ...tripUpdates })
 
         try {
-          await updateDoc(doc(db, 'trips', targetTrip.id), tripUpdates)
+          if (targetTrip.id && !targetTrip.id.startsWith('trip_')) {
+            await updateDoc(doc(db, 'trips', targetTrip.id), tripUpdates)
+          }
         } catch (tripErr) {
           console.warn('[PaymentsService] Linked trip update fallback to local:', tripErr)
         }

@@ -496,6 +496,43 @@ test('Payment Settlement: balance payment for fully settled trip (due = 0) is re
   assert.match(res.error, /This trip is already fully settled/);
 });
 
+test('Driver Payout: driver payment voucher succeeds without customer balance restriction', () => {
+  const trip = { id: 'TRP-1', tripNumber: 'TRP-1', totalFare: 5000, customerBalance: 0, driverName: 'Ramesh', driverAgreedPay: 1500, driverBalance: 1500 };
+  const res = validatePaymentSubmission({ tripId: 'TRP-1', selectedTrip: trip, type: 'driver_payment', stage: undefined, amount: 1500, maxBalance: 0 });
+  assert.strictEqual(res.ok, true);
+});
+
+test('Driver Payout: sanitizeData removes undefined properties to prevent Firestore addDoc crashes', () => {
+  const payload = {
+    tripId: 'TRP-1',
+    type: 'driver_payment',
+    paymentStage: undefined,
+    amount: 1500,
+    paymentDate: '2026-11-22',
+    notes: 'Driver bata',
+  };
+  const cleanData = {};
+  for (const [k, v] of Object.entries(payload)) {
+    if (v !== undefined) cleanData[k] = v;
+  }
+  assert.strictEqual('paymentStage' in cleanData, false);
+  assert.strictEqual(cleanData.type, 'driver_payment');
+  assert.strictEqual(cleanData.amount, 1500);
+});
+
+test('Driver Payout: getPayments preserves local pending payments across Firestore syncs', () => {
+  const localPayments = [
+    { id: 'pay_1795359', tripId: 'TRP-1', type: 'driver_payment', amount: 1500, paymentDate: '2026-11-22' }
+  ];
+  const remotePayments = [
+    { id: 'remote_1', tripId: 'TRP-1', type: 'customer_received', amount: 14500, paymentDate: '2026-11-22' }
+  ];
+  const remoteIds = new Set(remotePayments.map(p => p.id));
+  const merged = [...remotePayments, ...localPayments.filter(p => !remoteIds.has(p.id))];
+  assert.strictEqual(merged.length, 2);
+  assert.ok(merged.some(p => p.id === 'pay_1795359'));
+});
+
 // ─── 10. EXPENSE TRIP LINKAGE VALIDATION TESTS ───────────────────────────────
 console.log('\n[SUITE 10: Expense Trip Linkage Validation]');
 

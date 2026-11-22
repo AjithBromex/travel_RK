@@ -54,7 +54,7 @@ export async function getCashBookEntries(): Promise<CashBookEntry[]> {
           id: `p-${p.id}`,
           date: p.paymentDate,
           tripId: p.tripId,
-          description: `Driver Payment (Trip ${p.tripId})`,
+          description: p.notes && p.notes.trim() ? p.notes.trim() : (p.tripId && p.tripId !== 'general' ? `Driver Payment (Trip #${p.tripId})` : 'Driver Payment'),
           cashIn: 0,
           cashOut: Number(p.amount) || 0,
           balance: 0,

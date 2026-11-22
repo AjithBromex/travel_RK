@@ -32,6 +32,7 @@ import {
   Eye,
   Lock,
   AlertCircle,
+  Coins,
 } from "lucide-react";
 import { formatINR, formatDate, exportToCSV, exportToPDF } from "@/lib/utils";
 import type { Payment, Trip, Vehicle, PaymentType, PaymentMode, PaymentStage } from "@/types";
@@ -249,8 +250,14 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
         } else if (bal === 0) {
           autoAmount = "";
         }
-      } else if (form.type === "driver_payment" && Number(trip.driverBalance) > 0) {
-        autoAmount = String(trip.driverBalance);
+      } else if (form.type === "driver_payment") {
+        const dBal = Number(trip.driverBalance) || 0;
+        const dAgreed = Number(trip.driverAgreedPay) || 0;
+        if (dBal > 0) {
+          autoAmount = String(dBal);
+        } else if (dAgreed > 0) {
+          autoAmount = String(dAgreed);
+        }
         autoNotes = `Driver payout voucher - Trip #${trip.tripNumber || trip.id.slice(0, 6)} (${trip.driverName || "Driver"})`;
       }
     }
@@ -441,7 +448,11 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
           : "Driver payout voucher recorded successfully! Voucher generated.",
         type: "success",
       });
-      setForm(emptyForm);
+      // Preserve current payment tab (Driver Payout vs Customer Inflow)
+      setForm({
+        ...emptyForm,
+        type: form.type,
+      });
     } catch (err: unknown) {
       console.error("Save payment error:", err);
       setFeedback({
@@ -890,7 +901,25 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
               <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, type: "customer_received" })}
+                  onClick={() => {
+                    const isNewType = form.type !== "customer_received";
+                    setForm((prev) => {
+                      if (!isNewType) return prev;
+                      let notes = prev.notes;
+                      let amt = prev.amount;
+                      if (selectedTrip) {
+                        const bal = Number(selectedTrip.customerBalance) || 0;
+                        amt = bal > 0 ? String(bal) : prev.amount;
+                        notes = `Payment receipt - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`;
+                      }
+                      return {
+                        ...prev,
+                        type: "customer_received",
+                        amount: amt,
+                        notes: notes,
+                      };
+                    });
+                  }}
                   className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     form.type === "customer_received"
                       ? "bg-emerald-600 text-white shadow-xs"
@@ -902,7 +931,26 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                 </button>
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, type: "driver_payment" })}
+                  onClick={() => {
+                    const isNewType = form.type !== "driver_payment";
+                    setForm((prev) => {
+                      if (!isNewType) return prev;
+                      let notes = prev.notes;
+                      let amt = prev.amount;
+                      if (selectedTrip) {
+                        const dBal = Number(selectedTrip.driverBalance) || 0;
+                        const dAgreed = Number(selectedTrip.driverAgreedPay) || 0;
+                        amt = dBal > 0 ? String(dBal) : dAgreed > 0 ? String(dAgreed) : prev.amount;
+                        notes = `Driver payout voucher - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.driverName || "Driver"})`;
+                      }
+                      return {
+                        ...prev,
+                        type: "driver_payment",
+                        amount: amt,
+                        notes: notes,
+                      };
+                    });
+                  }}
                   className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     form.type === "driver_payment"
                       ? "bg-blue-600 text-white shadow-xs"
@@ -972,9 +1020,14 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                   trips={reconciledTripList}
                   value={form.tripId}
                   onChange={(selectedId) => handleTripSelect(selectedId)}
-                  placeholder="🔍 Search & select a trip booking (Required)..."
+                  placeholder={
+                    form.type === "driver_payment"
+                      ? "🔍 Search & select trip for driver payout..."
+                      : "🔍 Search & select a trip booking (Required)..."
+                  }
                   requiredTrip={true}
                   showDueBadge={true}
+                  mode={form.type === "driver_payment" ? "driver" : "customer"}
                 />
                 {!selectedTrip && (
                   <div className="mt-2.5 p-3 bg-amber-50/80 border border-amber-200/90 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 shadow-2xs">
@@ -999,63 +1052,122 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                 <div className="p-3 bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-50 border border-blue-200/70 rounded-xl space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-800 truncate">
-                      Trip #{selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} • {selectedTrip.customerName}
+                      Trip #{selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} • {form.type === "driver_payment" ? (selectedTrip.driverName || "Driver") : selectedTrip.customerName}
                     </span>
                     <span className="font-bold text-slate-900 font-mono-nums shrink-0 ml-2">
-                      Total Fare: {formatINR(selectedTrip.totalFare)}
+                      {form.type === "driver_payment"
+                        ? `Driver Bata / Agreed: ${formatINR(selectedTrip.driverAgreedPay || 0)}`
+                        : `Total Fare: ${formatINR(selectedTrip.totalFare)}`}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-slate-200/60">
-                    <div className="bg-white/80 p-2 rounded-lg border border-slate-100">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Advance Paid (Pre-Trip)</span>
-                      <span className="font-extrabold text-sky-700 text-xs font-mono-nums">
-                        {formatINR(selectedTrip.advanceReceived || 0)}
-                      </span>
-                    </div>
-                    <div className="bg-white/80 p-2 rounded-lg border border-slate-100">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Remaining Due</span>
-                      <span className={`font-extrabold text-xs font-mono-nums ${Number(selectedTrip.customerBalance) > 0 ? "text-amber-700" : "text-emerald-700"}`}>
-                        {Number(selectedTrip.customerBalance) > 0 ? formatINR(selectedTrip.customerBalance) : "Fully Settled ✓"}
-                      </span>
-                    </div>
-                  </div>
-                  {/* Quick-fill helper buttons */}
-                  <div className="flex items-center gap-2 pt-0.5 flex-wrap">
-                    {Number(selectedTrip.customerBalance) > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForm((prev) => ({
-                            ...prev,
-                            type: "customer_received",
-                            paymentStage: "balance",
-                            amount: String(selectedTrip.customerBalance),
-                            notes: `Balance payment after trip completion - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`,
-                          }));
-                        }}
-                        className="text-[10px] font-bold px-2.5 py-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-md transition-colors cursor-pointer flex items-center gap-1"
-                      >
-                        <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                        <span>Fill Remaining Balance ({formatINR(selectedTrip.customerBalance)})</span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setForm((prev) => ({
-                          ...prev,
-                          type: "customer_received",
-                          paymentStage: "advance",
-                          amount: selectedTrip.advanceReceived ? String(selectedTrip.advanceReceived) : prev.amount,
-                          notes: `Advance payment before trip - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`,
-                        }));
-                      }}
-                      className="text-[10px] font-bold px-2.5 py-1 bg-sky-100 text-sky-800 hover:bg-sky-200 rounded-md transition-colors cursor-pointer flex items-center gap-1"
-                    >
-                      <Clock className="w-3 h-3 text-sky-700" />
-                      <span>Record Advance (Pre-Trip)</span>
-                    </button>
-                  </div>
+
+                  {form.type === "driver_payment" ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-slate-200/60">
+                        <div className="bg-white/80 p-2 rounded-lg border border-slate-100">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Driver Paid So Far</span>
+                          <span className="font-extrabold text-blue-700 text-xs font-mono-nums">
+                            {formatINR(selectedTrip.driverPaid || 0)}
+                          </span>
+                        </div>
+                        <div className="bg-white/80 p-2 rounded-lg border border-slate-100">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Driver Pending Due</span>
+                          <span className={`font-extrabold text-xs font-mono-nums ${Number(selectedTrip.driverBalance) > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                            {Number(selectedTrip.driverBalance) > 0 ? formatINR(selectedTrip.driverBalance) : "Settled ✓"}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Quick-fill helper buttons for Driver Payout */}
+                      <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                        {Number(selectedTrip.driverBalance) > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setForm((prev) => ({
+                                ...prev,
+                                amount: String(selectedTrip.driverBalance),
+                                notes: `Driver balance settlement - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.driverName || "Driver"})`,
+                              }));
+                            }}
+                            className="text-[10px] font-bold px-2.5 py-1 bg-blue-100 text-blue-800 hover:bg-blue-200 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-blue-700" />
+                            <span>Fill Driver Balance ({formatINR(selectedTrip.driverBalance)})</span>
+                          </button>
+                        )}
+                        {Number(selectedTrip.driverAgreedPay) > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setForm((prev) => ({
+                                ...prev,
+                                amount: String(selectedTrip.driverAgreedPay),
+                                notes: `Driver agreed pay / bata - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.driverName || "Driver"})`,
+                              }));
+                            }}
+                            className="text-[10px] font-bold px-2.5 py-1 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                          >
+                            <Coins className="w-3 h-3 text-slate-700" />
+                            <span>Fill Agreed Pay ({formatINR(selectedTrip.driverAgreedPay)})</span>
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-slate-200/60">
+                        <div className="bg-white/80 p-2 rounded-lg border border-slate-100">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Advance Paid (Pre-Trip)</span>
+                          <span className="font-extrabold text-sky-700 text-xs font-mono-nums">
+                            {formatINR(selectedTrip.advanceReceived || 0)}
+                          </span>
+                        </div>
+                        <div className="bg-white/80 p-2 rounded-lg border border-slate-100">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Remaining Due</span>
+                          <span className={`font-extrabold text-xs font-mono-nums ${Number(selectedTrip.customerBalance) > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                            {Number(selectedTrip.customerBalance) > 0 ? formatINR(selectedTrip.customerBalance) : "Fully Settled ✓"}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Quick-fill helper buttons */}
+                      <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                        {Number(selectedTrip.customerBalance) > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setForm((prev) => ({
+                                ...prev,
+                                type: "customer_received",
+                                paymentStage: "balance",
+                                amount: String(selectedTrip.customerBalance),
+                                notes: `Balance payment after trip completion - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`,
+                              }));
+                            }}
+                            className="text-[10px] font-bold px-2.5 py-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                            <span>Fill Remaining Balance ({formatINR(selectedTrip.customerBalance)})</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm((prev) => ({
+                              ...prev,
+                              type: "customer_received",
+                              paymentStage: "advance",
+                              amount: selectedTrip.advanceReceived ? String(selectedTrip.advanceReceived) : prev.amount,
+                              notes: `Advance payment before trip - Trip #${selectedTrip.tripNumber || selectedTrip.id.slice(0, 6)} (${selectedTrip.customerName})`,
+                            }));
+                          }}
+                          className="text-[10px] font-bold px-2.5 py-1 bg-sky-100 text-sky-800 hover:bg-sky-200 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <Clock className="w-3 h-3 text-sky-700" />
+                          <span>Record Advance (Pre-Trip)</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -1090,6 +1202,8 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                       placeholder={
                         !selectedTrip
                           ? "Select trip booking first..."
+                          : form.type === "driver_payment"
+                          ? "e.g. 1500 (Driver Payout / Bata)"
                           : selectedTrip && form.type === "customer_received" && form.paymentStage === "balance" && maxCustomerBalance !== null && maxCustomerBalance > 0
                           ? String(maxCustomerBalance)
                           : "e.g. 5000"
@@ -1234,7 +1348,11 @@ export default function PaymentsClient({ initialPayments, trips, vehicles }: Pay
                   </span>
                   <input
                     type="text"
-                    placeholder="e.g. UPI Ref #98721345, Advance payment received"
+                    placeholder={
+                      form.type === "driver_payment"
+                        ? "e.g. Driver daily bata, trip settlement, fuel advance"
+                        : "e.g. UPI Ref #98721345, Advance payment received"
+                    }
                     value={form.notes}
                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
                     className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all"

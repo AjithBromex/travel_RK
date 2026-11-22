@@ -24,6 +24,7 @@ interface SearchableTripSelectProps {
   showDueBadge?: boolean;
   className?: string;
   requiredTrip?: boolean;
+  mode?: "customer" | "driver";
 }
 
 export default function SearchableTripSelect({
@@ -35,6 +36,7 @@ export default function SearchableTripSelect({
   showDueBadge = true,
   className = "",
   requiredTrip = false,
+  mode = "customer",
 }: SearchableTripSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -153,27 +155,53 @@ export default function SearchableTripSelect({
                 ({selectedTrip.from || "Origin"} → {selectedTrip.to || "Destination"})
               </span>
               {showDueBadge && (
-                (() => {
-                  const tTotal = Number(selectedTrip.totalFare) || 0;
-                  const tPaid = Number(selectedTrip.customerPaid) || 0;
-                  const tBal = Number(selectedTrip.customerBalance) || 0;
-                  const effBal = tBal > 0 ? tBal : Math.max(0, tTotal - tPaid);
-                  if (effBal > 0) {
+                mode === "driver" ? (
+                  (() => {
+                    const dBal = Number(selectedTrip.driverBalance) || 0;
+                    const dAgreed = Number(selectedTrip.driverAgreedPay) || 0;
+                    if (dBal > 0) {
+                      return (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded-md">
+                          Driver Due {formatINR(dBal)}
+                        </span>
+                      );
+                    }
+                    if (dAgreed > 0) {
+                      return (
+                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded-md">
+                          Driver Paid
+                        </span>
+                      );
+                    }
                     return (
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded-md">
-                        Due {formatINR(effBal)}
+                      <span className="text-[10px] font-semibold text-blue-700 bg-blue-100/80 px-1.5 py-0.2 rounded-md">
+                        {selectedTrip.driverName || "Driver Assigned"}
                       </span>
                     );
-                  }
-                  if (tTotal > 0 && tPaid >= tTotal) {
-                    return (
-                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded-md">
-                        Paid
-                      </span>
-                    );
-                  }
-                  return null;
-                })()
+                  })()
+                ) : (
+                  (() => {
+                    const tTotal = Number(selectedTrip.totalFare) || 0;
+                    const tPaid = Number(selectedTrip.customerPaid) || 0;
+                    const tBal = Number(selectedTrip.customerBalance) || 0;
+                    const effBal = tBal > 0 ? tBal : Math.max(0, tTotal - tPaid);
+                    if (effBal > 0) {
+                      return (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded-md">
+                          Due {formatINR(effBal)}
+                        </span>
+                      );
+                    }
+                    if (tTotal > 0 && tPaid >= tTotal) {
+                      return (
+                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded-md">
+                          Paid
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()
+                )
               )}
             </div>
           ) : requiredTrip ? (
@@ -220,6 +248,11 @@ export default function SearchableTripSelect({
                 placeholder={placeholder}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                  }
+                }}
                 className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-medium"
               />
               {search && (
@@ -323,15 +356,41 @@ export default function SearchableTripSelect({
                     <div className="text-right shrink-0 flex items-center gap-2">
                       {showDueBadge && (
                         <div>
-                          {hasDue ? (
-                            <span className="inline-block text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/70 px-1.5 py-0.5 rounded">
-                              Due {formatINR(effectiveBalance)}
-                            </span>
-                          ) : isPaid ? (
-                            <span className="inline-block text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-1.5 py-0.5 rounded">
-                              Paid
-                            </span>
-                          ) : null}
+                          {mode === "driver" ? (
+                            (() => {
+                              const dBal = Number(trip.driverBalance) || 0;
+                              const dAgreed = Number(trip.driverAgreedPay) || 0;
+                              if (dBal > 0) {
+                                return (
+                                  <span className="inline-block text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/70 px-1.5 py-0.5 rounded">
+                                    Driver Due {formatINR(dBal)}
+                                  </span>
+                                );
+                              }
+                              if (dAgreed > 0) {
+                                return (
+                                  <span className="inline-block text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-1.5 py-0.5 rounded">
+                                    Driver Paid
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="inline-block text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                  {trip.driverName || "Driver"}
+                                </span>
+                              );
+                            })()
+                          ) : (
+                            hasDue ? (
+                              <span className="inline-block text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/70 px-1.5 py-0.5 rounded">
+                                Due {formatINR(effectiveBalance)}
+                              </span>
+                            ) : isPaid ? (
+                              <span className="inline-block text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-1.5 py-0.5 rounded">
+                                Paid
+                              </span>
+                            ) : null
+                          )}
                         </div>
                       )}
                       {isSelected && (

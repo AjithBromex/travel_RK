@@ -1301,8 +1301,8 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                 )}
               </div>
 
-              {/* Row 5: Driver Name & Driver Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Row 5: Driver Name, Driver Phone & Driver Bata */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
                     DRIVER NAME
@@ -1363,6 +1363,25 @@ export default function TripsClient({ initialTrips, vehicles }: TripsClientProps
                       : "border-slate-200 focus:border-blue-500 focus:bg-white"
                       }`}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase tracking-wider mb-1">
+                    DRIVER BATA / AGREED PAY (₹)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs pointer-events-none">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="e.g. 1500"
+                      value={form.driverAgreedPay || ""}
+                      onChange={(e) => setForm({ ...form, driverAgreedPay: Number(e.target.value) || 0 })}
+                      className="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
+                    />
+                  </div>
                 </div>
               </div>
 
